@@ -1,0 +1,56 @@
+---
+import Layout from '../layouts/Layout.astro';
+const updated = '17 May 2026';
+---
+<Layout title="Now — Prashant Garg" current="now"
+        description="What I am thinking about, working on, and travelling to right now.">
+  <section class="border-b-2 border-ink dark:border-cream">
+    <div class="max-w-3xl mx-auto px-4 pt-14 pb-10">
+      <div class="text-xs font-bold uppercase tracking-wider text-brand-red">Now</div>
+      <h1 class="font-display text-4xl md:text-5xl font-bold mt-2">What I am up to right now.</h1>
+      <p class="mt-4 text-ink/70 dark:text-cream/70">
+        A page in the spirit of <a class="link" href="https://nownownow.com/about" target="_blank" rel="noopener">/now</a>.
+        Updated <span class="font-medium">{updated}</span>.
+      </p>
+    </div>
+  </section>
+
+  <section class="max-w-3xl mx-auto px-4 py-12 space-y-10">
+    <div>
+      <h2 class="font-display text-xl md:text-2xl font-bold mb-3">Working on</h2>
+      <ul class="space-y-2 text-base leading-relaxed list-disc pl-5 marker:text-brand-red">
+        <li>Revisions and follow-ups to <a class="link" href="/research/causal-claims-economics">Causal Claims in Economics</a>.</li>
+        <li>Pushing <a class="link" href="/research/ai-production-networks">AI-Generated Production Networks</a> through its next round of presentations.</li>
+        <li>Planning the move to Bocconi this September.</li>
+      </ul>
+    </div>
+
+    <div>
+      <h2 class="font-display text-xl md:text-2xl font-bold mb-3">Thinking about</h2>
+      <ul class="space-y-2 text-base leading-relaxed list-disc pl-5 marker:text-brand-blue">
+        <li>How LLMs change what we can measure in research on research.</li>
+        <li>Whether the next round of automation looks more like labour augmentation than substitution.</li>
+        <li>What an honest, useful "now" page should and shouldn't say.</li>
+      </ul>
+    </div>
+
+    <div>
+      <h2 class="font-display text-xl md:text-2xl font-bold mb-3">Reading</h2>
+      <p class="text-base leading-relaxed text-ink/80 dark:text-cream/80">
+        A few papers in the production-network and metascience corners, and the occasional novel
+        to remind myself that prose can be beautiful even when it is not maximally informative.
+      </p>
+    </div>
+
+    <div>
+      <h2 class="font-display text-xl md:text-2xl font-bold mb-3">Next on the road</h2>
+      <p class="text-base leading-relaxed text-ink/80 dark:text-cream/80">
+        See <a class="link" href="/talks">talks</a> for upcoming venues. If you'll be at one, say hi.
+      </p>
+    </div>
+
+    <p class="text-sm text-ink/60 dark:text-cream/60 pt-6 border-t border-ink/15 dark:border-cream/15">
+      This page is a placeholder Claude drafted — replace any of it with your own words.
+    </p>
+  </section>
+</Layout>

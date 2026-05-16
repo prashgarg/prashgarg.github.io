@@ -1,0 +1,173 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { papers, statusMeta, tools, talks, topicForTalk, type Paper, type Talk } from '../../data/site';
+
+export async function getStaticPaths() {
+  return papers.map(p => ({ params: { slug: p.slug }, props: { paper: p } }));
+}
+
+interface Props { paper: Paper }
+const { paper } = Astro.props;
+const tool = paper.tools?.length ? tools.find(t => t.slug === paper.tools![0]) : undefined;
+
+// Sibling navigation
+const idx = papers.findIndex(p => p.slug === paper.slug);
+const prev = idx > 0 ? papers[idx - 1] : null;
+const next = idx < papers.length - 1 ? papers[idx + 1] : null;
+
+// Talks for this paper
+const MONTHS = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+function monthIndex(date: string): number {
+  const m = date.toLowerCase().match(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\b/);
+  return m ? MONTHS.indexOf(m[1]) : 6;
+}
+function sortValue(t: Talk): number { return t.year * 12 + monthIndex(t.date); }
+
+const myTalks: Talk[] = talks
+  .filter(t => topicForTalk(t.title).paperSlug === paper.slug)
+  .sort((a, b) => sortValue(b) - sortValue(a));
+
+const years = Array.from(new Set(myTalks.map(t => t.year))).sort();
+
+// Branching viz layout
+function layout(n: number) {
+  const ROW = 30;
+  const TOP = 16;
+  const BOT = 16;
+  const H   = Math.max(220, TOP + BOT + n * ROW);
+  return {
+    H,
+    ANCHOR_X: 14,
+    ANCHOR_Y: H / 2,
+    DOT_X: 90,
+    positions: Array.from({ length: n }, (_, i) => ({
+      x: 90,
+      y: TOP + (n === 1 ? (H - TOP - BOT) / 2 : (i * (H - TOP - BOT)) / (n - 1)),
+    })),
+  };
+}
+const L = layout(myTalks.length);
+const accent = '#F54E00';
+function shortVenue(v: string): string { return v.length <= 48 ? v : v.slice(0, 46).trimEnd() + '…'; }
+---
+<Layout title={`${paper.title} — Prashant Garg`} description={paper.blurb} current="research">
+  <article class="max-w-4xl mx-auto px-4 pt-10 pb-20">
+    <a href="/research" class="inline-flex items-center gap-1.5 text-sm font-semibold hover:bg-brand-yellow/40 px-1 mb-6">
+      <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M11 5l-7 7 7 7"/></svg>
+      All research
+    </a>
+
+    <div class="flex items-center gap-2 flex-wrap mb-3">
+      <span class={`badge ${statusMeta[paper.status].badge}`}>{statusMeta[paper.status].label}</span>
+      {paper.venue && <span class="text-sm font-medium text-ink/60 dark:text-cream/60">{paper.venue}{paper.year ? ` · ${paper.year}` : ''}</span>}
+    </div>
+
+    <h1 class="font-display text-3xl md:text-5xl font-bold leading-tight tracking-tight">{paper.title}</h1>
+
+    {paper.coauthors.length > 0 && (
+      <div class="mt-3 text-base text-ink/70 dark:text-cream/70">
+        with {paper.coauthors.map((c, i) => (
+          <span><span class="font-semibold">{c}</span>{i < paper.coauthors.length - 1 ? ', ' : ''}</span>
+        ))}
+      </div>
+    )}
+
+    <p class="mt-8 text-lg leading-relaxed text-ink/90 dark:text-cream/90">{paper.blurb}</p>
+
+    <!-- LINKS -->
+    <section class="mt-10">
+      <div class="text-xs font-bold uppercase tracking-wider text-ink/50 dark:text-cream/50 mb-3">Links</div>
+      <div class="flex flex-wrap gap-2">
+        {paper.links.map(l => (
+          <a href={l.url} target="_blank" rel="noopener"
+             class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md border-2 border-ink dark:border-cream bg-white dark:bg-ink-3 hover:bg-brand-yellow dark:hover:bg-brand-yellow dark:hover:text-ink transition-colors">
+            {l.label}
+            <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M7 7h10v10"/></svg>
+          </a>
+        ))}
+      </div>
+    </section>
+
+    {tool && (
+      <section class="mt-8">
+        <a href={tool.url} target="_blank" rel="noopener" class="card flex items-center justify-between gap-4 hover:-translate-x-0.5 hover:-translate-y-0.5 transition-transform">
+          <div>
+            <div class="text-xs font-bold uppercase tracking-wider text-brand-red">Companion site</div>
+            <div class="font-display font-bold text-xl mt-1">{tool.name}</div>
+            <div class="text-sm text-ink/70 dark:text-cream/70 mt-1">{tool.blurb}</div>
+            <div class="text-xs font-mono text-ink/50 dark:text-cream/50 mt-2">{tool.url.replace(/^https?:\/\//, '')}</div>
+          </div>
+          <svg class="w-6 h-6 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M7 7h10v10"/></svg>
+        </a>
+      </section>
+    )}
+
+    {paper.coverage && paper.coverage.length > 0 && (
+      <section class="mt-10">
+        <div class="text-xs font-bold uppercase tracking-wider text-ink/50 dark:text-cream/50 mb-3">As seen in</div>
+        <div class="flex flex-wrap gap-2">
+          {paper.coverage.map(c => (
+            <a href={c.url} target="_blank" rel="noopener" class="chip hover:bg-brand-yellow/60">{c.outlet}</a>
+          ))}
+        </div>
+      </section>
+    )}
+
+    {myTalks.length > 0 && (
+      <section class="mt-12 pt-10 border-t-2 border-ink/15 dark:border-cream/15">
+        <div class="flex items-end justify-between gap-3 flex-wrap mb-5">
+          <div>
+            <div class="text-xs font-bold uppercase tracking-wider text-brand-red">Talks</div>
+            <h2 class="font-display text-2xl md:text-3xl font-bold mt-1">Where this paper has travelled.</h2>
+          </div>
+          <div class="text-sm text-ink/60 dark:text-cream/60">{myTalks.length} talks · {years[0]}{years.length > 1 ? `–${years[years.length - 1]}` : ''}</div>
+        </div>
+
+        <div class="card !p-5">
+          <svg viewBox={`0 0 720 ${L.H}`} class="w-full" style={`max-height:${L.H + 8}px`}>
+            <circle cx={L.ANCHOR_X} cy={L.ANCHOR_Y} r="6" fill={accent}/>
+            <line x1={L.ANCHOR_X} y1="8" x2={L.ANCHOR_X} y2={L.H - 8} stroke={accent} stroke-opacity="0.18" stroke-width="1.5"/>
+            {myTalks.map((t, i) => {
+              const p = L.positions[i];
+              const c1x = L.ANCHOR_X + 30;
+              const c2x = p.x - 30;
+              return (
+                <g>
+                  <path d={`M ${L.ANCHOR_X} ${L.ANCHOR_Y} C ${c1x} ${L.ANCHOR_Y}, ${c2x} ${p.y}, ${p.x} ${p.y}`}
+                        fill="none" stroke={accent} stroke-opacity="0.35" stroke-width="1.5"/>
+                  <a href={t.url ?? '#'} target={t.url ? '_blank' : undefined} rel="noopener">
+                    <circle cx={p.x} cy={p.y} r="5" fill={accent} stroke="white" stroke-width="1.5">
+                      <title>{`${t.venue} · ${t.location}\n${t.date}`}</title>
+                    </circle>
+                    <text x={p.x + 12} y={p.y + 4} font-size="13" fill="currentColor" fill-opacity="0.92" class="font-medium">
+                      {shortVenue(t.venue)}
+                    </text>
+                    <text x={p.x + 12} y={p.y + 18} font-size="11" fill="currentColor" fill-opacity="0.55">
+                      {t.location} · {t.date}
+                    </text>
+                  </a>
+                </g>
+              );
+            })}
+          </svg>
+        </div>
+      </section>
+    )}
+
+    <!-- Sibling nav -->
+    <nav class="mt-16 pt-8 border-t border-ink/15 dark:border-cream/15 grid sm:grid-cols-2 gap-3">
+      {prev ? (
+        <a href={`/research/${prev.slug}`} class="card hover:-translate-x-0.5 hover:-translate-y-0.5 transition-transform block">
+          <div class="text-xs font-bold uppercase tracking-wider text-ink/50 dark:text-cream/50">Previous</div>
+          <div class="font-display font-semibold mt-1">{prev.title}</div>
+        </a>
+      ) : <span></span>}
+      {next ? (
+        <a href={`/research/${next.slug}`} class="card hover:-translate-x-0.5 hover:-translate-y-0.5 transition-transform block sm:text-right">
+          <div class="text-xs font-bold uppercase tracking-wider text-ink/50 dark:text-cream/50">Next</div>
+          <div class="font-display font-semibold mt-1">{next.title}</div>
+        </a>
+      ) : <span></span>}
+    </nav>
+  </article>
+</Layout>

@@ -1,0 +1,72 @@
+---
+import Search from './Search.astro';
+const { current = '' } = Astro.props;
+const items = [
+  { href: '/',        label: 'Home',     id: 'home' },
+  { href: '/research',label: 'Research', id: 'research' },
+  { href: '/talks',   label: 'Talks',    id: 'talks' },
+  { href: '/library', label: 'Library',  id: 'library' },
+  { href: '/now',     label: 'Now',      id: 'now' },
+];
+---
+<header class="sticky top-0 z-30 backdrop-blur-md bg-cream/80 dark:bg-ink-2/80 border-b-2 border-ink dark:border-cream">
+  <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
+    <a href="/" class="flex items-center gap-2 group">
+      <span class="inline-flex items-center justify-center w-9 h-9 rounded-md border-2 border-ink dark:border-cream bg-brand-yellow text-ink font-display font-bold text-lg shadow-[3px_3px_0_0_var(--color-ink)] dark:shadow-[3px_3px_0_0_var(--color-cream)] group-hover:-translate-x-0.5 group-hover:-translate-y-0.5 transition-transform">
+        pg
+      </span>
+      <span class="font-display font-semibold tracking-tight hidden sm:inline">Prashant Garg</span>
+    </a>
+
+    <nav class="hidden md:flex items-center gap-1">
+      {items.map(it => (
+        <a href={it.href}
+           class={`px-3 py-1.5 rounded-md text-sm font-medium border-2 ${current === it.id ? 'border-ink dark:border-cream bg-brand-yellow text-ink shadow-[2px_2px_0_0_var(--color-ink)] dark:shadow-[2px_2px_0_0_var(--color-cream)]' : 'border-transparent hover:bg-cream-dim/60 dark:hover:bg-ink-3'}`}>
+          {it.label}
+        </a>
+      ))}
+    </nav>
+
+    <div class="flex items-center gap-2">
+      <Search />
+      <button id="theme-toggle" aria-label="Toggle theme"
+              class="w-9 h-9 inline-flex items-center justify-center rounded-md border-2 border-ink dark:border-cream bg-white dark:bg-ink-3 shadow-[2px_2px_0_0_var(--color-ink)] dark:shadow-[2px_2px_0_0_var(--color-cream)] hover:-translate-x-0.5 hover:-translate-y-0.5 transition-transform">
+        <svg class="w-4 h-4 hidden dark:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+        <svg class="w-4 h-4 dark:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      </button>
+
+      <button id="mobile-toggle" aria-label="Open menu" class="md:hidden w-9 h-9 inline-flex items-center justify-center rounded-md border-2 border-ink dark:border-cream bg-white dark:bg-ink-3 shadow-[2px_2px_0_0_var(--color-ink)] dark:shadow-[2px_2px_0_0_var(--color-cream)]">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <nav id="mobile-nav" class="md:hidden hidden border-t-2 border-ink dark:border-cream bg-cream dark:bg-ink-2">
+    <div class="max-w-6xl mx-auto px-4 py-2 flex flex-col gap-1">
+      {items.map(it => (
+        <a href={it.href}
+           class={`px-3 py-2 rounded-md text-sm font-medium ${current === it.id ? 'bg-brand-yellow text-ink' : 'hover:bg-cream-dim/60 dark:hover:bg-ink-3'}`}>{it.label}</a>
+      ))}
+    </div>
+  </nav>
+</header>
+
+<script is:inline>
+  (function () {
+    const saved = localStorage.getItem('theme');
+    if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      document.documentElement.classList.add('dark');
+    }
+    document.addEventListener('click', (e) => {
+      const t = e.target.closest('#theme-toggle');
+      if (!t) return;
+      document.documentElement.classList.toggle('dark');
+      localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+    });
+    document.addEventListener('click', (e) => {
+      const t = e.target.closest('#mobile-toggle');
+      if (!t) return;
+      document.getElementById('mobile-nav').classList.toggle('hidden');
+    });
+  })();
+</script>

@@ -1,0 +1,496 @@
+export const site = {
+  name: 'Prashant Garg',
+  tagline:
+    'Economist working on science, innovation, production, and media using machine learning, causal inference, and network science.',
+  email: 'prashant.garg@imperial.ac.uk',
+  cv: 'https://drive.google.com/file/d/1loWtmOeOwDtSSJ2WHKf7n_PzpQiP6rgF/view?usp=drive_link',
+  scholar: 'https://scholar.google.com/citations?hl=en&user=C3o_l0IAAAAJ',
+  twitter: 'https://x.com/Prashant_Garg_',
+  twitterHandle: '@Prashant_Garg_',
+  bluesky: 'https://bsky.app/profile/prashantgarg.bsky.social',
+  blueskyHandle: '@prashantgarg.bsky.social',
+  github: 'https://github.com/prashgarg',
+};
+
+export const affiliations = [
+  {
+    role: 'Research Associate',
+    org: 'University of Cambridge',
+    url: 'https://www.econ.cam.ac.uk/',
+    current: true,
+  },
+  {
+    role: 'Associate Fellow',
+    org: 'INET Oxford',
+    url: 'https://www.inet.ox.ac.uk/',
+    current: true,
+  },
+  {
+    role: 'PhD Economics',
+    org: 'Imperial College London',
+    url: 'https://www.imperial.ac.uk/business-school/faculty-research/academic-areas/economics-public-policy/',
+    current: false,
+  },
+  {
+    role: 'Postdoctoral Researcher (from Sept 2026)',
+    org: 'Bocconi University',
+    url: 'https://www.unibocconi.it/en',
+    incoming: true,
+  },
+];
+
+export type PaperStatus = 'published' | 'accepted' | 'working' | 'rr' | 'other';
+
+export interface PaperLink { label: string; url: string }
+export interface Coverage { outlet: string; url: string }
+
+export interface Paper {
+  slug: string;
+  title: string;
+  status: PaperStatus;
+  venue?: string;
+  year?: number;
+  coauthors: string[];
+  blurb: string;
+  links: PaperLink[];
+  coverage?: Coverage[];
+  tools?: string[];
+}
+
+export const papers: Paper[] = [
+  {
+    slug: 'political-expression-academics',
+    title: 'Political Expression of Academics on Twitter',
+    status: 'published',
+    venue: 'Nature Human Behaviour',
+    year: 2025,
+    coauthors: ['Thiemo Fetzer'],
+    blurb:
+      'Analyses social media content from more than 100,000 scholars to map politically salient academic expression on climate, cultural, and economic topics.',
+    links: [
+      { label: 'Paper (open access)', url: 'https://www.nature.com/articles/s41562-025-02199-1' },
+      { label: 'Project site', url: 'https://sites.google.com/view/politics-in-academia/' },
+      { label: 'Twitter thread', url: 'https://twitter.com/Prashant_Garg_/status/1803353773697335514' },
+      { label: 'Backstory', url: 'https://communities.springernature.com/posts/political-expression-of-academics-on-twitter' },
+    ],
+    coverage: [
+      { outlet: 'Marginal Revolution', url: 'https://marginalrevolution.com/marginalrevolution/2024/06/us-based-academics-and-those-at-top-ranked-institutions-exhibit-higher-egocentrism-and-toxicity-in-their-tweets.html' },
+      { outlet: 'Matthew Yglesias', url: 'https://x.com/mattyglesias/status/1808387332543787045' },
+      { outlet: 'Noahpinion', url: 'https://www.noahpinion.blog/p/at-least-five-interesting-things-554' },
+      { outlet: 'VoxEU', url: 'https://cepr.org/voxeu/columns/political-expression-academics-social-media' },
+      { outlet: 'Times Higher Education', url: 'https://www.timeshighereducation.com/news/political-social-media-posts-harm-academics-credibility' },
+      { outlet: 'The American Saga', url: 'https://www.theamericansaga.com/' },
+    ],
+    tools: ['academicexpression'],
+  },
+  {
+    slug: 'local-decline-populism',
+    title: 'Local Decline and Populism',
+    status: 'published',
+    venue: 'Economics Letters',
+    year: 2025,
+    coauthors: ['Thiemo Fetzer', 'Jacob Edenhofer'],
+    blurb:
+      'Links 83,000 high-street vacancies in England and Wales to support for the UK Independence Party (UKIP) over 2009–2019.',
+    links: [
+      { label: 'Paper (open access)', url: 'https://www.sciencedirect.com/science/article/pii/S0165176525001971' },
+      { label: 'Twitter thread', url: 'https://twitter.com/edenhofer_jacob/status/1816157318255644977' },
+    ],
+    coverage: [
+      { outlet: 'The Guardian', url: 'https://www.theguardian.com/' },
+      { outlet: 'FAZ', url: 'https://www.faz.net/' },
+      { outlet: 'LSE Business Review', url: 'https://blogs.lse.ac.uk/businessreview/' },
+      { outlet: 'The Conversation', url: 'https://theconversation.com/' },
+      { outlet: 'VoxEU', url: 'https://cepr.org/voxeu' },
+      { outlet: 'CAGE', url: 'https://warwick.ac.uk/fac/soc/economics/research/centres/cage/' },
+    ],
+  },
+  {
+    slug: 'cross-border-media-disasters',
+    title: 'Network Determinants of Cross-Border Media Coverage of Natural Disasters',
+    status: 'accepted',
+    venue: 'Nature Human Behaviour (Acceptance-in-Principle)',
+    coauthors: ['Thiemo Fetzer'],
+    blurb:
+      'Studies 466 news sources across 123 countries and 135 million articles since 2016 to map which disasters cross borders and which do not.',
+    links: [
+      { label: 'Preprint', url: 'https://www.researchsquare.com/article/rs-6057848/v1' },
+    ],
+  },
+  {
+    slug: 'global-automation-atlas',
+    title: 'Global Automation Atlas',
+    status: 'working',
+    coauthors: ['Tommaso Crosta', 'Jasmin Baier'],
+    blurb:
+      'Task-based, country-specific automation exposure across 124 countries, separating labor-substituting from labor-augmenting automation. 2.33M task–country labels covering ~99% of global GDP and population.',
+    links: [
+      { label: 'Live paper', url: 'https://automationatlas.org/paper/' },
+      { label: 'Interactive explorer', url: 'https://automationatlas.org/' },
+    ],
+    tools: ['automationatlas'],
+  },
+  {
+    slug: 'causal-claims-economics',
+    title: 'Causal Claims in Economics',
+    status: 'working',
+    coauthors: ['Thiemo Fetzer'],
+    blurb:
+      'Builds evidence-annotated claim graphs over 44,852 economics papers (1980–2023), turning prose into standardized networks of concepts with causal and non-causal relationships labelled.',
+    links: [
+      { label: 'Paper', url: 'https://arxiv.org/abs/2501.06873' },
+      { label: 'Project site', url: 'http://www.causal.claims' },
+      { label: 'Open data', url: 'https://drive.google.com/drive/folders/1JY3OpICSjvaG__6pJYcEtdovuN_t5-Ba?usp=drive_link' },
+      { label: 'GitHub', url: 'https://github.com/prashgarg/CausalClaimsInEconomics' },
+      { label: 'VoxEU summary', url: 'https://cepr.org/voxeu/columns/causal-claims-economics' },
+      { label: 'Methods guide', url: 'https://cepr.org/voxeu/columns/leveraging-large-language-models-large-scale-information-retrieval-economics' },
+      { label: 'Twitter thread', url: 'https://x.com/Prashant_Garg_/status/1853392260257182152' },
+    ],
+    coverage: [
+      { outlet: 'The Economist', url: 'https://www.economist.com/' },
+      { outlet: 'Marginal Revolution', url: 'https://marginalrevolution.com/' },
+      { outlet: 'Noahpinion', url: 'https://www.noahpinion.blog/' },
+      { outlet: 'World Bank', url: 'https://www.worldbank.org/' },
+      { outlet: 'VoxEU', url: 'https://cepr.org/voxeu' },
+      { outlet: 'VoxDev', url: 'https://voxdev.org/' },
+      { outlet: 'Australian Treasury', url: 'https://treasury.gov.au/' },
+      { outlet: 'Nada es Gratis', url: 'https://nadaesgratis.es/' },
+    ],
+    tools: ['causalclaims'],
+  },
+  {
+    slug: 'what-should-economics-ask-next',
+    title: 'What Should Economics Ask Next?',
+    status: 'working',
+    coauthors: [],
+    blurb:
+      'A literature graph over 242,595 papers (1976–2026) that ranks open research questions by their propensity to be pursued next.',
+    links: [
+      { label: 'Live paper', url: 'https://frontiergraph.com/paper/' },
+      { label: 'Frontier Graph', url: 'https://frontiergraph.com/' },
+    ],
+    coverage: [
+      { outlet: 'Marginal Revolution', url: 'https://marginalrevolution.com/' },
+    ],
+    tools: ['frontiergraph'],
+  },
+  {
+    slug: 'politicized-scientists',
+    title: 'Politicized Scientists: Credibility Cost of Political Expression on Twitter',
+    status: 'working',
+    coauthors: ['Eleonora Alabrese', 'Francesco Capozza'],
+    blurb:
+      'Studies 98,000 scientists active on Twitter (2016–2022) plus survey experiments with 6,000 US respondents and 135 journalists to estimate credibility penalties from political expression.',
+    links: [
+      { label: 'Preprint', url: 'https://www.researchsquare.com/article/rs-9354892/v1' },
+      { label: 'CESifo working paper', url: 'https://www.cesifo.org/en/publications/2024/working-paper/politicized-scientists-credibility-cost-political-expression' },
+      { label: 'Twitter thread', url: 'https://twitter.com/EleAla/status/1821124625616474165' },
+    ],
+    coverage: [
+      { outlet: 'Times Higher Education', url: 'https://www.timeshighereducation.com/' },
+      { outlet: 'University of Bath', url: 'https://www.bath.ac.uk/announcements/political-posts-on-x-could-harm-academics-credibility-new-study-finds/' },
+      { outlet: 'The American Saga', url: 'https://www.theamericansaga.com/' },
+    ],
+    tools: ['academicexpression'],
+  },
+  {
+    slug: 'ai-production-networks',
+    title: 'AI-Generated Production Networks: Measurement and Applications to Global Trade',
+    status: 'working',
+    coauthors: ['Thiemo Fetzer', 'Peter John Lambert', 'Bennet Feld'],
+    blurb:
+      'Uses generative AI to build a production network across 5,000 product nodes and applies it to study the 2017 Qatar blockade as a natural experiment in trade-network shocks.',
+    links: [
+      { label: 'Paper (CEPR DP19708)', url: 'https://cepr.org/publications/dp19708' },
+      { label: 'Interactive site', url: 'https://aipnet.io/' },
+      { label: 'Twitter thread', url: 'https://twitter.com/Prashant_Garg_/status/1858799879557890189' },
+    ],
+    coverage: [
+      { outlet: 'VoxEU', url: 'https://cepr.org/voxeu' },
+      { outlet: 'SCMP interview', url: 'https://www.scmp.com/' },
+      { outlet: 'The Ecologist', url: 'https://theecologist.org/' },
+    ],
+    tools: ['aipnet'],
+  },
+  {
+    slug: 'platform-migration',
+    title: 'Simple Contagion Drives Population-Scale Platform Migration',
+    status: 'working',
+    coauthors: ['Dorian Quelle', 'Frederic Denker', 'Alexandre Bovet'],
+    blurb:
+      'Links 276,431 scholars from Twitter/X to Bluesky and uses Brazil’s X suspension as exogenous variation. Best Student Paper at NetSciSci 2025.',
+    links: [
+      { label: 'Paper', url: 'https://arxiv.org/abs/2505.24801' },
+    ],
+    coverage: [
+      { outlet: 'Clarivate', url: 'https://clarivate.com/' },
+      { outlet: 'Cybernews', url: 'https://cybernews.com/' },
+      { outlet: 'Aporia Magazine', url: 'https://www.aporiamagazine.com/' },
+    ],
+  },
+  {
+    slug: 'health-shocks-research',
+    title: '(How) Do Health Shocks Reallocate Research Direction?',
+    status: 'working',
+    coauthors: ['Hongyu Zhou', 'Thiemo Fetzer'],
+    blurb:
+      'Builds a global disease-location panel for 204 countries (1990–2021) and uses event studies around outbreak alerts to study how science reallocates toward emerging health needs.',
+    links: [
+      { label: 'Paper (CEPR DP21230)', url: 'https://cepr.org/publications/dp21230' },
+    ],
+  },
+  {
+    slug: 'ai-health-advice',
+    title: 'AI Health Advice Accuracy Varies Across Languages and Contexts',
+    status: 'rr',
+    venue: 'BMJ Health & Care Informatics (R&R)',
+    coauthors: ['Thiemo Fetzer'],
+    blurb:
+      'Benchmarks seven large language models across 21 languages on ~9,100 journalist-vetted health assertions, showing where AI health advice degrades.',
+    links: [
+      { label: 'Preprint', url: 'https://www.researchsquare.com/article/rs-7460273/v1' },
+    ],
+  },
+  {
+    slug: 'mapping-dylans-mind',
+    title: 'Mapping Bob Dylan’s Mind',
+    status: 'other',
+    venue: 'Aeon · arXiv',
+    coauthors: [],
+    blurb:
+      'A knowledge graph of Bob Dylan’s songs across six decades, used to trace thematic evolution, conceptual reach, and stylistic shifts.',
+    links: [
+      { label: 'Aeon essay', url: 'https://aeon.co/essays/can-ai-tell-us-anything-meaningful-about-bob-dylans-songs' },
+      { label: 'Technical paper', url: 'https://arxiv.org/abs/2502.01772' },
+      { label: 'Twitter thread', url: 'https://x.com/Prashant_Garg_/status/1887097154696564917' },
+      { label: 'Bluesky thread', url: 'https://bsky.app/profile/prashantgarg.bsky.social/post/3lhggu2tcas2e' },
+    ],
+    coverage: [
+      { outlet: 'Financial Times', url: 'https://www.ft.com/' },
+    ],
+    tools: ['dylan'],
+  },
+];
+
+export const statusMeta: Record<PaperStatus, { label: string; badge: string }> = {
+  published: { label: 'Published', badge: 'badge-red' },
+  accepted:  { label: 'Accepted',  badge: 'badge-blue' },
+  rr:        { label: 'R&R',       badge: 'badge-yellow' },
+  working:   { label: 'Working',   badge: 'badge-cream' },
+  other:     { label: 'Essay',     badge: 'badge-teal' },
+};
+
+export interface Tool {
+  slug: string;
+  name: string;
+  url: string;
+  blurb: string;
+  longBlurb: string;
+  paperSlug?: string;
+  accent: 'red' | 'yellow' | 'blue' | 'teal' | 'purple';
+}
+
+export const tools: Tool[] = [
+  {
+    slug: 'causalclaims',
+    name: 'Causal Claims',
+    url: 'https://www.causal.claims',
+    blurb: 'A claim graph over 44,852 economics papers.',
+    longBlurb:
+      'Browse causal and non-causal relationships extracted from four decades of economics. Filter by field, search a concept, follow the graph from one claim to its neighbours.',
+    paperSlug: 'causal-claims-economics',
+    accent: 'red',
+  },
+  {
+    slug: 'frontiergraph',
+    name: 'Frontier Graph',
+    url: 'https://frontiergraph.com',
+    blurb: 'Ranking the open questions in economics.',
+    longBlurb:
+      'A literature graph of 242,595 papers (1976–2026). Predicts which open questions get pursued next, surfaces frontier topics, and lets you explore the structure of the discipline.',
+    paperSlug: 'what-should-economics-ask-next',
+    accent: 'blue',
+  },
+  {
+    slug: 'automationatlas',
+    name: 'Global Automation Atlas',
+    url: 'https://automationatlas.org',
+    blurb: 'Country-specific automation exposure across 124 countries.',
+    longBlurb:
+      'Task-based exposure measures separating labor-substituting from labor-augmenting automation. 2.33M task–country labels covering ~99% of global GDP. Choropleth maps, occupation views, and full open data.',
+    paperSlug: 'global-automation-atlas',
+    accent: 'yellow',
+  },
+  {
+    slug: 'aipnet',
+    name: 'AI Production Network',
+    url: 'https://aipnet.io',
+    blurb: '5,000 products, mapped end-to-end.',
+    longBlurb:
+      'A product-to-product input–output network built with generative AI. Interactive viewer with full data download; used in our work on the 2017 Qatar blockade.',
+    paperSlug: 'ai-production-networks',
+    accent: 'teal',
+  },
+  {
+    slug: 'academicexpression',
+    name: 'Academic Expression Online',
+    url: 'https://www.academicexpression.online',
+    blurb: '100,000+ academics, their voices on social media.',
+    longBlurb:
+      'The companion site for Political Expression of Academics on Twitter and Politicized Scientists. Filters by field, country, and topic; lets you see how scholars actually speak online.',
+    paperSlug: 'political-expression-academics',
+    accent: 'purple',
+  },
+];
+
+export interface Talk {
+  title: string;
+  venue: string;
+  location: string;
+  date: string;
+  year: number;
+  url?: string;
+}
+
+export const talks: Talk[] = [
+  // 2026
+  { year: 2026, title: 'What Should Economics Ask Next?', venue: 'MPWZ–CEPR Text-as-Data', location: 'Virtual', date: '13–14 Apr 2026', url: 'https://cepr.org' },
+  { year: 2026, title: 'Causal Claims in Economics', venue: 'MIT FutureTech Seminar', location: 'Virtual', date: '12 Mar 2026', url: 'https://futuretech.mit.edu/' },
+  { year: 2026, title: 'AI-Generated Production Networks', venue: 'CMA Seminar', location: 'London', date: '20 Jan 2026', url: 'https://www.gov.uk/government/collections/microeconomics-unit-research' },
+  { year: 2026, title: 'AI-Generated Production Networks', venue: 'U.S. International Trade Commission', location: 'Virtual', date: '15 Jan 2026', url: 'https://www.usitc.gov/research_and_analysis/office_economics.htm' },
+
+  // 2025
+  { year: 2025, title: 'Causal Claims in Economics', venue: 'CEPR Paris Symposium — Growth Programme', location: 'Paris', date: '5–8 Dec 2025', url: 'https://cepr.org/events/event-series/cepr-paris-symposium/cepr-paris-symposium-2025' },
+  { year: 2025, title: 'Chatting About Innovation', venue: 'Long-Run Productivity Conference', location: 'Cambridge', date: '20 Nov 2025', url: 'https://cepr.org/events/long-run-productivity-conference' },
+  { year: 2025, title: 'Conspiratorial Thinking', venue: 'AYEW Big Data/ML Workshop', location: 'Virtual', date: '12 Nov 2025', url: 'https://www.monash.edu/business/impact-labs/soda-labs/our-events/applied-young-economists' },
+  { year: 2025, title: 'Politicized Scientists', venue: 'Imperial Finance Seminar', location: 'London', date: '11 Nov 2025', url: 'https://www.imperial.ac.uk/business-school/faculty-research/academic-areas/finance/' },
+  { year: 2025, title: 'Politicized Scientists', venue: 'Oxford Behavioural Group Seminar', location: 'Oxford', date: '7 Nov 2025', url: 'https://www.economics.ox.ac.uk/' },
+  { year: 2025, title: 'Retrieving and Generating Data using LLMs', venue: 'C-SEB / ECONtribute Mini Course', location: 'Cologne', date: '28 Oct 2025', url: 'https://econtribute.de/event/econtribute-c-seb-mini-course-with-prashant-garg-imperial-college-business-school-london/' },
+  { year: 2025, title: 'Politicized Scientists', venue: 'University of Cologne Seminar', location: 'Cologne', date: '28 Oct 2025', url: 'https://www.uni-koeln.de/en/' },
+  { year: 2025, title: 'Conspiratorial Thinking', venue: 'CESifo Area Conference on Behavioural Economics', location: 'Munich', date: '24–25 Oct 2025', url: 'https://www.ifo.de/en/cesifo/event/2025-10-24/cesifo-area-conference-behavioral-economics-2025' },
+  { year: 2025, title: 'Cross-Border Enforcement and Product Innovation', venue: 'Imperial Economics Seminar', location: 'London', date: '9 Oct 2025', url: 'https://www.imperial.ac.uk/business-school/faculty-research/academic-areas/economics-public-policy/' },
+  { year: 2025, title: 'Chatting About Innovation', venue: 'LSE POID/PRINZ Seminar', location: 'London', date: '30 Sep 2025', url: 'https://poid.lse.ac.uk/events/prinz-seminars.asp' },
+  { year: 2025, title: 'Conspiratorial Thinking', venue: 'MPWZ–CEPR Text-as-Data', location: 'Virtual', date: '15–16 Sep 2025', url: 'https://cepr.org/events/10th-monash-paris-warwick-zurich-cepr-text-data-workshop' },
+  { year: 2025, title: 'Geography of Medical Knowledge', venue: 'LSE QueerConf', location: 'London', date: '15 Aug 2025', url: 'https://www.lsequeerconf.com/home' },
+  { year: 2025, title: 'Retrieving and Generating Data using LLMs', venue: 'Public Governance Workshop, PSL', location: 'Virtual', date: '7 Jul 2025', url: 'https://acss-dig.psl.eu/fr/seminaires/public-governance' },
+  { year: 2025, title: 'AI-Generated Production Networks', venue: 'RES Annual Conference', location: 'Birmingham', date: '1–2 Jul 2025', url: 'https://res.org.uk/event-listing/res-2025-annual-conference/' },
+  { year: 2025, title: 'Causal Claims in Economics', venue: 'Metascience 2025', location: 'London', date: '30 Jun 2025', url: 'https://metascience.info/' },
+  { year: 2025, title: 'Cross-Border Enforcement and Product Innovation', venue: 'Imperial Economics Seminar', location: 'London', date: '19 Jun 2025', url: 'https://www.imperial.ac.uk/business-school/faculty-research/academic-areas/economics-public-policy/' },
+  { year: 2025, title: 'Political Expression of Academics on Twitter', venue: 'Text as Data in Behavioural Economics', location: 'Potsdam', date: '10–11 Jun 2025', url: 'https://sites.google.com/view/text-as-data-workshop/home' },
+  { year: 2025, title: 'Causal Claims in Economics', venue: 'Networks in Science of Science', location: 'Maastricht', date: '2–6 Jun 2025', url: 'https://netscisci.github.io/papers' },
+  { year: 2025, title: 'Causal Claims in Economics', venue: 'EAYE Annual Meeting', location: 'London', date: '29–31 May 2025', url: 'https://www.eaye.info/eayeam/2025-edition' },
+  { year: 2025, title: 'AI-Generated Production Networks · LLMs Workshop', venue: 'University of Groningen', location: 'Groningen', date: '27 May 2025', url: 'https://www.rug.nl/bachelors/economics-and-business-economics/?lang=en' },
+  { year: 2025, title: 'Causal ML & Text-as-Data Roundtable', venue: 'AYEW', location: 'Virtual', date: '21 May 2025', url: 'https://www.monash.edu/business/impact-labs/soda-labs/our-events/applied-young-economists' },
+  { year: 2025, title: 'Causal Claims in Economics', venue: 'ZBW Seminar', location: 'Hamburg', date: '20 May 2025', url: 'https://www.zbw.eu/en/' },
+  { year: 2025, title: 'Network Determinants of Cross-Border Media Coverage of Natural Disasters', venue: 'LSE–IGC Environmental Populism Conference', location: 'London', date: '15–16 May 2025', url: 'https://www.lse-environment-week.com/env-pop-conf' },
+  { year: 2025, title: 'Network Determinants of Cross-Border Media Coverage of Natural Disasters', venue: 'Economics of Media Bias Workshop', location: 'Frankfurt', date: '8–9 May 2025', url: 'https://mediabiasworkshop.org/event/8th-economics-of-media-bias-workshop/' },
+  { year: 2025, title: 'Retrieving and Generating Data using LLMs in Python', venue: 'Workshop for Ukraine (charity)', location: 'Virtual', date: '8 May 2025', url: 'https://sites.google.com/view/dariia-mykhailyshyna/main/r-workshops-for-ukraine' },
+  { year: 2025, title: 'Causal Claims in Economics', venue: 'MPWZ–CEPR Text-as-Data', location: 'Virtual', date: '28–29 Apr 2025', url: 'https://cepr.org/events/9th-monash-paris-warwick-zurich-cepr-text-data-workshop' },
+  { year: 2025, title: 'Network Determinants of Cross-Border Media Coverage of Natural Disasters', venue: 'AERE @ OSWEET', location: 'Virtual', date: '11 Apr 2025', url: 'https://www.aere.org/osweet-paper-sessions' },
+  { year: 2025, title: 'Causal Claims in Economics', venue: 'PolMeth Europe', location: 'London', date: '7–8 Apr 2025', url: 'https://polmeth.eu/' },
+  { year: 2025, title: 'Causal Claims in Economics', venue: 'Text-as-Data (TaDa) Seminar', location: 'Virtual', date: '13 Mar 2025', url: 'https://sites.google.com/view/polsci-ml-initiative/talks' },
+  { year: 2025, title: 'AI-Generated Production Networks', venue: 'OECD Trade Seminar', location: 'Virtual', date: '3 Mar 2025', url: 'https://www.oecd.org/en/about/directorates/trade-and-agriculture-directorate.html' },
+  { year: 2025, title: 'AI-Generated Production Networks', venue: 'HM Treasury', location: 'London', date: 'Feb 2025', url: 'https://www.gov.uk/government/organisations/hm-treasury' },
+  { year: 2025, title: 'AI-Generated Production Networks', venue: 'STEG Annual Conference', location: 'Oxford', date: '8–11 Jan 2025', url: 'https://steg.cepr.org/news/steg-annual-conference-2025-university-oxford' },
+
+  // 2024
+  { year: 2024, title: 'AI-Generated Production Networks', venue: 'CEPR Paris Symposium', location: 'Paris', date: '12–18 Dec 2024', url: 'https://cepr.org/events/event-series/cepr-paris-symposium/cepr-paris-symposium-2024' },
+  { year: 2024, title: 'AI-Generated Production Networks', venue: 'RES PhD Conference', location: 'Portsmouth', date: '4 Dec 2024', url: 'https://res.org.uk/event-listing/res-phd-conference-2024/' },
+  { year: 2024, title: 'Causal Claims in Economics', venue: 'Leibniz Open Science Day', location: 'Berlin', date: '25 Nov 2024', url: 'https://www.zbw.eu/de/ueber-uns/veranstaltungen/leibniz-open-science-day' },
+  { year: 2024, title: 'AI-Generated Production Networks', venue: 'UniBZ Political Economy Workshop', location: 'Bruneck', date: '18–19 Nov 2024', url: 'https://wspoleco.events.unibz.it/' },
+  { year: 2024, title: 'AI-Generated Production Networks', venue: 'AYEW AI/Alternative Data Workshop', location: 'Virtual', date: '6 Nov 2024', url: 'https://x.com/ayew2021/status/1853727725166711047' },
+  { year: 2024, title: 'Causal Claims in Economics', venue: 'Causal Data Science Meeting', location: 'Virtual', date: '5–6 Nov 2024', url: 'https://www.causalscience.org/' },
+  { year: 2024, title: 'AI-Generated Production Networks', venue: 'Cambridge Janeway Networks Workshop', location: 'Cambridge', date: '25 Oct 2024', url: 'https://www.janeway.econ.cam.ac.uk/event/networks-workshop-prashant-garg-imperial-college-business-school' },
+  { year: 2024, title: 'AI-Generated Production Networks', venue: '3rd KIEL–CEPR Conference on Geoeconomics', location: 'Berlin', date: '17–18 Oct 2024', url: 'https://hub.cepr.org/event/4275' },
+  { year: 2024, title: 'Causal Claims in Economics', venue: 'Imperial Internal Seminar', location: 'London', date: '10 Oct 2024', url: 'https://www.imperial.ac.uk/business-school/faculty-research/academic-areas/economics-public-policy/' },
+  { year: 2024, title: 'Politicized Scientists', venue: 'Advances with Field Experiments (AFE)', location: 'London', date: '5–6 Sep 2024', url: 'https://socialsciences.uchicago.edu/advances-field-experiments-conference-2024' },
+  { year: 2024, title: 'AI-Generated Production Networks', venue: 'EUR–CEPR Trade, Geography and IO Workshop', location: 'Amsterdam', date: '25 Aug 2024' },
+  { year: 2024, title: 'Who Influences Whom About What?', venue: '7th CESifo Doctoral Workshop on Economics of Digitization', location: 'Munich', date: '13–14 Jun 2024', url: 'https://www.cesifo.org/en/event/2024-06-13/7th-doctoral-workshop-economics-digitization' },
+  { year: 2024, title: 'Politicized Scientists', venue: 'QPE Early Career Workshop', location: 'London', date: '16–17 May 2024', url: 'https://sites.google.com/view/kingsqpe/qpe-early-career-workshop' },
+  { year: 2024, title: 'Shocking Views on Climate Action', venue: 'Workshop on Political Economy of Environmental Policy', location: 'Stockholm', date: '19 Apr 2024', url: 'https://www.hhs.se/en/about-us/calendar/site-external-events/2024/freece-workshop-2024/' },
+  { year: 2024, title: 'Who Influences Whom About What?', venue: 'RES Annual Conference', location: 'Belfast', date: '25–27 Mar 2024', url: 'https://res.org.uk/event-listing/res-2024-annual-conference/' },
+  { year: 2024, title: 'Who Influences Whom About What?', venue: 'PhD Workshop in Networks and Political Economy', location: 'Paris', date: '24–25 Jan 2024', url: 'https://ysi.ineteconomics.org/event/phd-workshop-on-networks-and-political-economy-paris-1-pantheon-sorbonne/' },
+
+  // 2023
+  { year: 2023, title: 'Who Influences Whom About What?', venue: '2nd Digital Economy Network', location: 'Cambridge', date: '24 Nov 2023', url: 'https://www.bennettinstitute.cam.ac.uk/events/digecon-workshop/' },
+  { year: 2023, title: 'Who Influences Whom About What?', venue: 'AYEW AI/Text-as-Data Workshop', location: 'Virtual', date: '1 Nov 2023', url: 'https://bsky.app/profile/ayew.bsky.social/post/3kczysthmod2v' },
+  { year: 2023, title: 'Who Influences Whom About What?', venue: '6th MWZ Text-as-Data Workshop', location: 'Virtual', date: '18–19 Sep 2023' },
+  { year: 2023, title: 'Who Influences Whom About What?', venue: 'XII IBEO Workshop in Complexity Economics', location: 'Ibeo', date: '21–23 Jun 2023', url: 'https://crenoslef.wixsite.com/ibeo/corte-program-1' },
+  { year: 2023, title: 'Who Influences Whom About What?', venue: '5th QMUL Economics and Finance Workshop', location: 'London', date: '25 May 2023' },
+  { year: 2023, title: 'Who Influences Whom About What?', venue: 'RES Easter Training School', location: 'Bristol', date: '27–29 Mar 2023', url: 'https://res.org.uk/events/easter-training-school/' },
+  { year: 2023, title: 'Who Influences Whom About What?', venue: 'Warwick PhD Conference', location: 'Warwick', date: '13 Jan 2023', url: 'https://warwick.ac.uk/fac/soc/economics/events/2022/6/economics_phd_conference/' },
+];
+
+/**
+ * Map a talk title to a paper slug (if it presents a paper in `papers`)
+ * or to a topic slug (for in-progress projects without a public paper yet).
+ */
+export interface Topic { slug: string; label: string; paperSlug?: string }
+
+export const topics: Topic[] = [
+  { slug: 'causal-claims-economics',          label: 'Causal Claims in Economics',          paperSlug: 'causal-claims-economics' },
+  { slug: 'ai-production-networks',           label: 'AI-Generated Production Networks',    paperSlug: 'ai-production-networks' },
+  { slug: 'what-should-economics-ask-next',   label: 'What Should Economics Ask Next?',     paperSlug: 'what-should-economics-ask-next' },
+  { slug: 'politicized-scientists',           label: 'Politicized Scientists',              paperSlug: 'politicized-scientists' },
+  { slug: 'political-expression-academics',   label: 'Political Expression of Academics',   paperSlug: 'political-expression-academics' },
+  { slug: 'cross-border-media-disasters',     label: 'Cross-Border Media Coverage of Disasters', paperSlug: 'cross-border-media-disasters' },
+  { slug: 'chatting-about-innovation',        label: 'Chatting About Innovation' },
+  { slug: 'conspiratorial-thinking',          label: 'Conspiratorial Thinking' },
+  { slug: 'llm-tutorial',                     label: 'Retrieving & Generating Data with LLMs' },
+  { slug: 'cross-border-enforcement',         label: 'Cross-Border Enforcement and Product Innovation' },
+  { slug: 'geography-medical-knowledge',      label: 'Geography of Medical Knowledge' },
+  { slug: 'who-influences-whom',              label: 'Who Influences Whom About What?' },
+  { slug: 'climate-views',                    label: 'Shocking Views on Climate Action' },
+];
+
+export function topicForTalk(title: string): Topic {
+  const t = title.toLowerCase();
+  if (t.includes('what should economics ask next')) return topics.find(x => x.slug === 'what-should-economics-ask-next')!;
+  if (t.includes('causal claims'))                  return topics.find(x => x.slug === 'causal-claims-economics')!;
+  if (t.includes('production network'))             return topics.find(x => x.slug === 'ai-production-networks')!;
+  if (t.includes('politicized scientists'))         return topics.find(x => x.slug === 'politicized-scientists')!;
+  if (t.includes('political expression'))           return topics.find(x => x.slug === 'political-expression-academics')!;
+  if (t.includes('cross-border media') || t.includes('network determinants')) return topics.find(x => x.slug === 'cross-border-media-disasters')!;
+  if (t.includes('chatting about innovation'))      return topics.find(x => x.slug === 'chatting-about-innovation')!;
+  if (t.includes('conspiratorial'))                 return topics.find(x => x.slug === 'conspiratorial-thinking')!;
+  if (t.includes('retrieving and generating') || t.includes('llms'))          return topics.find(x => x.slug === 'llm-tutorial')!;
+  if (t.includes('cross-border enforcement'))       return topics.find(x => x.slug === 'cross-border-enforcement')!;
+  if (t.includes('geography of medical'))           return topics.find(x => x.slug === 'geography-medical-knowledge')!;
+  if (t.includes('who influences whom'))            return topics.find(x => x.slug === 'who-influences-whom')!;
+  if (t.includes('shocking views') || t.includes('climate action')) return topics.find(x => x.slug === 'climate-views')!;
+  // Workshops/roundtables without a single paper title
+  return { slug: 'other', label: 'Other talks & workshops' };
+}
+
+export interface LibraryItem {
+  slug: string;
+  title: string;
+  blurb: string;
+  links: PaperLink[];
+  tag: string;
+}
+
+export const library: LibraryItem[] = [
+  {
+    slug: 'llm-guide',
+    title: 'Retrieving and Generating Data using LLMs',
+    blurb:
+      'Open-source notebooks and slides demonstrating how to turn text into structured research data. Two paradigms in one place: retrieval (extracting causal edges, stance labels) and generation (building networks from seed prompts). Covers prompt design, JSON schema validation, batch processing, embedding-based classification, and QA.',
+    tag: 'Code & methods',
+    links: [
+      { label: 'GitHub repository', url: 'https://github.com/prashgarg/LLM-retrieval-generation' },
+      { label: 'VoxEU methods guide', url: 'https://cepr.org/voxeu/columns/leveraging-large-language-models-large-scale-information-retrieval-economics' },
+    ],
+  },
+  {
+    slug: 'dylan',
+    title: 'Mapping Bob Dylan’s Mind',
+    blurb:
+      'A knowledge graph of Bob Dylan’s songs across 1962–2012. Traces a movement from protest themes toward mythic and biblical imagery; uses eigenvector-centrality variance to identify mid-career as the most eclectic period.',
+    tag: 'Essay',
+    links: [
+      { label: 'Aeon essay', url: 'https://aeon.co/essays/can-ai-tell-us-anything-meaningful-about-bob-dylans-songs' },
+      { label: 'Technical paper', url: 'https://arxiv.org/abs/2502.01772' },
+    ],
+  },
+];
