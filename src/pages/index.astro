@@ -1,58 +1,480 @@
 ---
-import Layout from '../layouts/Layout.astro';
-import { site, papers, statusMeta } from '../data/site';
+import Desktop from '../layouts/Desktop.astro';
+import { site } from '../data/site';
 
-const recentPapers = papers.slice(0, 4);
+const leftRail = [
+  { href: '/research', title: 'research.md', label: 'Research',  icon: 'book',     window: true  },
+  { href: '/talks',    title: 'talks.md',    label: 'Talks',     icon: 'mic',      window: true  },
+  { href: '/library',  title: 'library.md',  label: 'Library',   icon: 'archive',  window: true  },
+  { href: '/now',      title: 'now.md',      label: 'Now',       icon: 'clock',    window: true  },
+  { href: site.cv,     title: 'cv.pdf',      label: 'CV',        icon: 'file',     window: false },
+];
+
+const rightRail = [
+  { href: `mailto:${site.email}`, label: 'Email',   icon: 'mail',     window: false },
+  { href: site.scholar,           label: 'Scholar', icon: 'cap',      window: false },
+  { href: site.twitter,           label: 'Twitter', icon: 'twitter',  window: false },
+  { href: site.bluesky,           label: 'Bluesky', icon: 'bluesky',  window: false },
+  { href: site.github,            label: 'GitHub',  icon: 'github',   window: false },
+];
+
+// inline tile-icons (24x24 stroke style)
+const icons: Record<string, string> = {
+  book:    '<path d="M4 19V5a2 2 0 0 1 2-2h12v18H6a2 2 0 0 1-2-2zm0 0a2 2 0 0 1 2-2h12"/>',
+  mic:     '<path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 1 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3M8 22h8"/>',
+  archive: '<path d="M20 8H4v12h16V8zM2 4h20v4H2zM10 12h4"/>',
+  clock:   '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  file:    '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h6"/>',
+  mail:    '<path d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/><path d="M2 6l10 7 10-7"/>',
+  cap:     '<path d="M22 10L12 4 2 10l10 6 10-6z"/><path d="M6 12v5c2 2 4 3 6 3s4-1 6-3v-5"/>',
+  twitter: '<path d="M4 4l7 9-7 7h2.5L12 14.5 17 20h4l-7.5-9.5L20.5 4H18l-4.7 5.5L9 4z"/>',
+  bluesky: '<path d="M7 4c2 1 4 4 5 7 1-3 3-6 5-7 3 0 4 3 3 6-1 2-3 3-4 4 2 0 4 1 4 3 0 2-2 3-4 2-1 0-2-1-4-3-2 2-3 3-4 3-2 1-4 0-4-2 0-2 2-3 4-3-1-1-3-2-4-4-1-3 0-6 3-6z"/>',
+  github:  '<path d="M9 19c-4 1-4-2-6-2m12 5v-3a3 3 0 0 0-1-2c3 0 6-2 6-6 0-1 0-3-1-4 0-2 0-3-1-3 0 0-2 0-4 1-3-1-7-1-10 0-2-1-4-1-4-1-1 0-1 1-1 3-1 1-1 3-1 4 0 4 3 6 6 6a3 3 0 0 0-1 2v3"/>',
+};
+
+function svg(name: string) {
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${icons[name]}</svg>`;
+}
 ---
-<Layout current="home">
-  <!-- HERO -->
-  <section class="border-b-2 border-ink dark:border-cream">
-    <div class="max-w-4xl mx-auto px-4 pt-20 pb-20 grid md:grid-cols-5 gap-10 items-start">
-      <div class="md:col-span-3 space-y-6">
-        <h1 class="font-display text-5xl sm:text-6xl font-bold leading-[1.05] tracking-tight">
-          Prashant Garg
-        </h1>
-        <p class="text-base md:text-lg leading-relaxed text-ink/85 dark:text-cream/85">
-          I'm an economist working on science, innovation, production, and
-          media with machine learning, causal inference, and network science.
-        </p>
-      </div>
+<Desktop>
+  <div class="desktop">
+    <!-- left rail -->
+    <aside class="rail rail-left">
+      {leftRail.map(it => (
+        <button class="tile" type="button"
+                data-window={it.window ? it.href : ''}
+                data-title={it.title}
+                data-href={it.href}
+                data-external={it.window ? '' : 'true'}>
+          <span class="tile-icon" set:html={svg(it.icon)}></span>
+          <span class="tile-label">{it.label}</span>
+        </button>
+      ))}
+    </aside>
 
-      <aside class="md:col-span-2">
-        <div class="card text-sm">
-          <div class="text-[11px] font-bold uppercase tracking-wider text-brand-red mb-2">Now</div>
-          <ul class="space-y-1">
-            <li>Research Associate · <a class="link" href="https://www.econ.cam.ac.uk/" target="_blank" rel="noopener">Cambridge</a></li>
-            <li>Associate Fellow · <a class="link" href="https://www.inet.ox.ac.uk/" target="_blank" rel="noopener">INET Oxford</a></li>
-          </ul>
-          <div class="text-[11px] font-bold uppercase tracking-wider text-brand-blue mt-4 mb-2">From Sept 2026</div>
-          <ul class="space-y-1">
-            <li>Postdoctoral Researcher · <a class="link" href="https://www.unibocconi.it/en" target="_blank" rel="noopener">Bocconi</a></li>
-          </ul>
-        </div>
-      </aside>
-    </div>
-  </section>
+    <!-- main stage -->
+    <main class="stage">
+      <article class="window">
+        <header class="window-bar">
+          <span class="window-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span class="window-title">about.md</span>
+          <span class="window-bar-right" aria-hidden="true"></span>
+        </header>
 
-  <!-- RECENT -->
-  <section>
-    <div class="max-w-4xl mx-auto px-4 py-14">
-      <div class="text-xs font-bold uppercase tracking-wider text-brand-red mb-4">Recent</div>
-      <ul class="divide-y divide-ink/15 dark:divide-cream/15 border-y border-ink/15 dark:border-cream/15">
-        {recentPapers.map(p => (
-          <li>
-            <a href={`/research/${p.slug}`} class="block py-4 -mx-2 px-2 rounded hover:bg-brand-yellow/25 transition-colors">
-              <div class="text-xs text-ink/55 dark:text-cream/55">
-                {statusMeta[p.status].label}{p.venue ? ` · ${p.venue}` : ''}{p.year ? ` · ${p.year}` : ''}
+        <div class="window-body">
+          <div class="bio-grid">
+            <div class="bio-text">
+              <h1>Prashant Garg</h1>
+              <p>
+                I'm an economist working on science, innovation, production,
+                and media with machine learning, causal inference, and network
+                science.
+              </p>
+
+              <div class="now-block">
+                <div class="now-label">Now</div>
+                <ul>
+                  <li>Research Associate · <a href="https://www.econ.cam.ac.uk/" target="_blank" rel="noopener">Cambridge</a></li>
+                  <li>Associate Fellow · <a href="https://www.inet.ox.ac.uk/" target="_blank" rel="noopener">INET Oxford</a></li>
+                </ul>
+                <div class="now-label next">From Sept 2026</div>
+                <ul>
+                  <li>Postdoctoral Researcher · <a href="https://www.unibocconi.it/en" target="_blank" rel="noopener">Bocconi</a></li>
+                </ul>
               </div>
-              <div class="font-display font-semibold mt-1 text-lg leading-snug">{p.title}</div>
-            </a>
-          </li>
-        ))}
-      </ul>
-      <div class="mt-4">
-        <a href="/research" class="text-sm font-semibold underline decoration-2 decoration-brand-red underline-offset-4 hover:bg-brand-yellow/40 px-1">All research &rarr;</a>
-      </div>
-    </div>
-  </section>
-</Layout>
+
+              <p class="hint">
+                Click any icon on the rails to open it in a window.
+              </p>
+            </div>
+
+            <div class="bio-photo">
+              <img src="/photo.jpg" alt="Prashant Garg"
+                   onerror="this.onerror=null;this.src='/photo.svg';" />
+            </div>
+          </div>
+        </div>
+      </article>
+    </main>
+
+    <!-- right rail -->
+    <aside class="rail rail-right">
+      {rightRail.map(it => (
+        <a class="tile" href={it.href} target="_blank" rel="noopener">
+          <span class="tile-icon" set:html={svg(it.icon)}></span>
+          <span class="tile-label">{it.label}</span>
+        </a>
+      ))}
+    </aside>
+  </div>
+
+  <!-- mount point for opened windows -->
+  <div id="window-host" aria-live="polite"></div>
+</Desktop>
+
+<style>
+  body { overflow: auto; }
+
+  .desktop {
+    display: grid;
+    grid-template-columns: 96px minmax(0, 1fr) 96px;
+    min-height: 100vh;
+    align-items: start;
+    gap: 0;
+    padding: 24px 16px;
+  }
+  @media (max-width: 760px) {
+    .desktop {
+      grid-template-columns: 1fr;
+      padding: 16px 12px;
+      gap: 16px;
+    }
+  }
+
+  .rail {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding-top: 12px;
+  }
+  @media (max-width: 760px) {
+    .rail {
+      flex-direction: row;
+      overflow-x: auto;
+      padding: 4px 2px 8px;
+      gap: 12px;
+      scrollbar-width: thin;
+    }
+  }
+
+  .tile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    width: 72px;
+    padding: 8px 4px;
+    background: transparent;
+    border: none;
+    color: var(--color-ink);
+    cursor: pointer;
+    border-radius: 8px;
+    transition: background 120ms ease, transform 120ms ease;
+    text-decoration: none;
+  }
+  .tile:hover { background: rgba(0,0,0,0.06); transform: translateY(-1px); }
+  html.dark .tile { color: var(--color-cream); }
+  html.dark .tile:hover { background: rgba(255,255,255,0.06); }
+
+  .tile-icon {
+    width: 44px; height: 44px;
+    display: flex; align-items: center; justify-content: center;
+    background: #FAF6E9;
+    border: 2px solid var(--color-ink);
+    border-radius: 10px;
+    box-shadow: 2px 2px 0 0 var(--color-ink);
+  }
+  .tile-icon svg { width: 22px; height: 22px; }
+  html.dark .tile-icon {
+    background: var(--color-ink-3);
+    border-color: var(--color-cream);
+    box-shadow: 2px 2px 0 0 var(--color-cream);
+  }
+  .tile-label {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    text-align: center;
+    max-width: 72px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .stage {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 32px 16px 16px;
+  }
+  @media (max-width: 760px) { .stage { padding: 8px 0 16px; } }
+
+  .window {
+    width: 100%;
+    max-width: 760px;
+    background: #FAF6E9;
+    border: 2px solid var(--color-ink);
+    border-radius: 12px;
+    box-shadow: 6px 6px 0 0 var(--color-ink);
+    overflow: hidden;
+  }
+  html.dark .window {
+    background: var(--color-ink-3);
+    border-color: var(--color-cream);
+    box-shadow: 6px 6px 0 0 var(--color-cream);
+  }
+
+  .window-bar {
+    display: grid;
+    grid-template-columns: 60px 1fr 60px;
+    align-items: center;
+    height: 32px;
+    padding: 0 10px;
+    background: #E3DCC7;
+    border-bottom: 2px solid var(--color-ink);
+  }
+  html.dark .window-bar {
+    background: #2A2724;
+    border-bottom-color: var(--color-cream);
+  }
+  .window-dots { display: inline-flex; gap: 6px; }
+  .window-dots i {
+    width: 10px; height: 10px; border-radius: 50%;
+    border: 1px solid rgba(0,0,0,0.35);
+    display: inline-block;
+  }
+  .window-dots i:nth-child(1) { background: #FF5F57; }
+  .window-dots i:nth-child(2) { background: #FFBD2E; }
+  .window-dots i:nth-child(3) { background: #28C840; }
+  .window-title {
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-weight: 600;
+    text-align: center;
+    color: var(--color-ink);
+  }
+  html.dark .window-title { color: var(--color-cream); }
+
+  .window-body { padding: 28px 32px 32px; }
+  @media (max-width: 760px) { .window-body { padding: 20px; } }
+
+  .bio-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+    gap: 28px;
+    align-items: start;
+  }
+  @media (max-width: 640px) {
+    .bio-grid { grid-template-columns: 1fr; }
+  }
+
+  .bio-text h1 {
+    font-family: var(--font-display);
+    font-size: clamp(2rem, 4.5vw, 3rem);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.05;
+    margin: 0 0 16px;
+  }
+  .bio-text p {
+    font-size: 16px;
+    line-height: 1.6;
+    color: rgba(20,17,13,0.85);
+    margin: 0 0 16px;
+  }
+  html.dark .bio-text p { color: rgba(238,239,233,0.85); }
+
+  .now-block {
+    margin: 20px 0 16px;
+    padding: 14px 16px;
+    background: rgba(0,0,0,0.04);
+    border: 1px dashed rgba(0,0,0,0.18);
+    border-radius: 8px;
+    font-size: 14px;
+  }
+  html.dark .now-block {
+    background: rgba(255,255,255,0.04);
+    border-color: rgba(255,255,255,0.18);
+  }
+  .now-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--color-brand-red);
+    margin-bottom: 4px;
+  }
+  .now-label.next { color: var(--color-brand-blue); margin-top: 12px; }
+  .now-block ul { list-style: none; padding: 0; margin: 0; }
+  .now-block li { padding: 2px 0; }
+  .now-block a { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; text-decoration-color: var(--color-brand-red); }
+
+  .hint {
+    font-size: 12px !important;
+    color: rgba(20,17,13,0.5) !important;
+    font-style: italic;
+    margin-top: 12px !important;
+  }
+  html.dark .hint { color: rgba(238,239,233,0.5) !important; }
+
+  .bio-photo {
+    width: 100%;
+    aspect-ratio: 3 / 4;
+    border: 2px solid var(--color-ink);
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 4px 4px 0 0 var(--color-ink);
+    background: #E8E0CB;
+  }
+  html.dark .bio-photo { border-color: var(--color-cream); box-shadow: 4px 4px 0 0 var(--color-cream); }
+  .bio-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+  /* Opened windows (popups) */
+  #window-host {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 50;
+  }
+  .popup {
+    position: absolute;
+    background: #FAF6E9;
+    border: 2px solid var(--color-ink);
+    border-radius: 12px;
+    box-shadow: 8px 8px 0 0 var(--color-ink);
+    pointer-events: auto;
+    max-width: min(900px, calc(100vw - 48px));
+    max-height: calc(100vh - 96px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  html.dark .popup {
+    background: var(--color-ink-3);
+    border-color: var(--color-cream);
+    box-shadow: 8px 8px 0 0 var(--color-cream);
+  }
+  .popup .popup-bar {
+    display: grid;
+    grid-template-columns: 60px 1fr 60px;
+    align-items: center;
+    height: 32px;
+    padding: 0 10px;
+    background: #E3DCC7;
+    border-bottom: 2px solid var(--color-ink);
+    cursor: grab;
+    user-select: none;
+  }
+  html.dark .popup .popup-bar {
+    background: #2A2724;
+    border-bottom-color: var(--color-cream);
+  }
+  .popup .popup-bar.dragging { cursor: grabbing; }
+  .popup .popup-bar .dots { display: inline-flex; gap: 6px; }
+  .popup .popup-bar .dots i {
+    width: 10px; height: 10px; border-radius: 50%;
+    border: 1px solid rgba(0,0,0,0.35);
+    display: inline-block; cursor: pointer;
+  }
+  .popup .popup-bar .dots i:nth-child(1) { background: #FF5F57; }
+  .popup .popup-bar .dots i:nth-child(2) { background: #FFBD2E; }
+  .popup .popup-bar .dots i:nth-child(3) { background: #28C840; }
+  .popup .popup-title {
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-weight: 600;
+    text-align: center;
+  }
+  .popup .popup-actions {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 8px;
+  }
+  .popup .popup-actions a {
+    font-size: 11px;
+    color: rgba(20,17,13,0.6);
+    text-decoration: underline;
+  }
+  html.dark .popup .popup-actions a { color: rgba(238,239,233,0.6); }
+  .popup .popup-body {
+    padding: 20px 24px 24px;
+    overflow-y: auto;
+    background: #FAF6E9;
+  }
+  html.dark .popup .popup-body { background: var(--color-ink-3); }
+</style>
+
+<script is:inline>
+  (function () {
+    const saved = localStorage.getItem('theme');
+    if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      document.documentElement.classList.add('dark');
+    }
+
+    const host = document.getElementById('window-host');
+    let zCounter = 60;
+    let offset = 0;
+
+    function makeWindow(html, title, href) {
+      offset = (offset + 28) % 200;
+      const w = document.createElement('div');
+      w.className = 'popup';
+      w.style.top = (60 + offset) + 'px';
+      w.style.left = 'calc(50% - 380px + ' + offset + 'px)';
+      w.style.width = '760px';
+      w.style.zIndex = ++zCounter;
+      w.innerHTML = `
+        <header class="popup-bar">
+          <span class="dots"><i data-act="close" title="Close"></i><i></i><i></i></span>
+          <span class="popup-title">${title}</span>
+          <span class="popup-actions"><a href="${href}" title="Open as page" target="_self">open</a></span>
+        </header>
+        <div class="popup-body"></div>
+      `;
+      w.querySelector('.popup-body').innerHTML = html;
+      w.addEventListener('mousedown', () => { w.style.zIndex = ++zCounter; });
+      // close
+      w.querySelector('[data-act=close]').addEventListener('click', () => w.remove());
+      // basic drag
+      const bar = w.querySelector('.popup-bar');
+      let dragging = false, sx = 0, sy = 0, ox = 0, oy = 0;
+      bar.addEventListener('mousedown', (e) => {
+        if (e.target.closest('[data-act], a')) return;
+        dragging = true; bar.classList.add('dragging');
+        sx = e.clientX; sy = e.clientY;
+        const r = w.getBoundingClientRect();
+        ox = r.left; oy = r.top;
+        w.style.left = ox + 'px';
+        w.style.top  = oy + 'px';
+      });
+      document.addEventListener('mousemove', (e) => {
+        if (!dragging) return;
+        w.style.left = (ox + e.clientX - sx) + 'px';
+        w.style.top  = (oy + e.clientY - sy) + 'px';
+      });
+      document.addEventListener('mouseup', () => { dragging = false; bar.classList.remove('dragging'); });
+      host.appendChild(w);
+    }
+
+    async function openPath(href, title) {
+      try {
+        const res = await fetch(href);
+        const txt = await res.text();
+        const doc = new DOMParser().parseFromString(txt, 'text/html');
+        const main = doc.querySelector('main');
+        const content = main ? main.innerHTML : doc.body.innerHTML;
+        makeWindow(content, title, href);
+      } catch (e) {
+        // fall back to navigation if fetch fails
+        location.href = href;
+      }
+    }
+
+    document.querySelectorAll('.tile').forEach(el => {
+      el.addEventListener('click', (e) => {
+        const path = el.dataset.window;
+        const href = el.dataset.href;
+        const title = el.dataset.title || el.textContent.trim();
+        if (!path) {
+          // external — let the anchor or open default
+          if (el.tagName === 'A') return;
+          window.open(href, '_blank', 'noopener');
+          return;
+        }
+        e.preventDefault();
+        openPath(path, title);
+      });
+    });
+  })();
+</script>
