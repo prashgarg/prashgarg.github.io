@@ -1,5 +1,4 @@
 ---
-import Search from './Search.astro';
 const { current = '' } = Astro.props;
 const items = [
   { href: '/',        label: 'Home',     id: 'home' },
@@ -28,7 +27,6 @@ const items = [
     </nav>
 
     <div class="flex items-center gap-2">
-      <Search />
       <button id="theme-toggle" aria-label="Toggle theme"
               class="w-9 h-9 inline-flex items-center justify-center rounded-md border-2 border-ink dark:border-cream bg-white dark:bg-ink-3 shadow-[2px_2px_0_0_var(--color-ink)] dark:shadow-[2px_2px_0_0_var(--color-cream)] hover:-translate-x-0.5 hover:-translate-y-0.5 transition-transform">
         <svg class="w-4 h-4 hidden dark:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
@@ -67,6 +65,11 @@ const items = [
       const t = e.target.closest('#mobile-toggle');
       if (!t) return;
       document.getElementById('mobile-nav').classList.toggle('hidden');
+    });
+    document.addEventListener('click', (e) => {
+      const link = e.target.closest('#mobile-nav a');
+      if (!link) return;
+      document.getElementById('mobile-nav').classList.add('hidden');
     });
   })();
 </script>

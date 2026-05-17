@@ -27,28 +27,6 @@ const myTalks: Talk[] = talks
   .filter(t => topicForTalk(t.title).paperSlug === paper.slug)
   .sort((a, b) => sortValue(b) - sortValue(a));
 
-const years = Array.from(new Set(myTalks.map(t => t.year))).sort();
-
-// Branching viz layout
-function layout(n: number) {
-  const ROW = 30;
-  const TOP = 16;
-  const BOT = 16;
-  const H   = Math.max(220, TOP + BOT + n * ROW);
-  return {
-    H,
-    ANCHOR_X: 14,
-    ANCHOR_Y: H / 2,
-    DOT_X: 90,
-    positions: Array.from({ length: n }, (_, i) => ({
-      x: 90,
-      y: TOP + (n === 1 ? (H - TOP - BOT) / 2 : (i * (H - TOP - BOT)) / (n - 1)),
-    })),
-  };
-}
-const L = layout(myTalks.length);
-const accent = '#F54E00';
-function shortVenue(v: string): string { return v.length <= 48 ? v : v.slice(0, 46).trimEnd() + '…'; }
 ---
 <Layout title={`${paper.title} — Prashant Garg`} description={paper.blurb} current="research">
   <article class="max-w-4xl mx-auto px-4 pt-10 pb-20">
@@ -90,7 +68,7 @@ function shortVenue(v: string): string { return v.length <= 48 ? v : v.slice(0, 
 
     {tool && (
       <section class="mt-8">
-        <a href={tool.url} target="_blank" rel="noopener" class="card flex items-center justify-between gap-4 hover:-translate-x-0.5 hover:-translate-y-0.5 transition-transform">
+        <a href={tool.url} target="_blank" rel="noopener" class="card flex items-center justify-between gap-4 hover:bg-brand-yellow/20 transition-colors">
           <div>
             <div class="text-xs font-bold uppercase tracking-wider text-brand-red">Companion site</div>
             <div class="font-display font-bold text-xl mt-1">{tool.name}</div>
@@ -114,56 +92,34 @@ function shortVenue(v: string): string { return v.length <= 48 ? v : v.slice(0, 
     )}
 
     {myTalks.length > 0 && (
-      <section class="mt-12 pt-10 border-t-2 border-ink/15 dark:border-cream/15">
-        <div class="flex items-end justify-between gap-3 flex-wrap mb-5">
-          <div>
-            <div class="text-xs font-bold uppercase tracking-wider text-brand-red">Talks</div>
-            <h2 class="font-display text-2xl md:text-3xl font-bold mt-1">Where this paper has travelled.</h2>
-          </div>
-          <div class="text-sm text-ink/60 dark:text-cream/60">{myTalks.length} talks · {years[0]}{years.length > 1 ? `–${years[years.length - 1]}` : ''}</div>
-        </div>
-
-        <div class="card !p-5">
-          <svg viewBox={`0 0 720 ${L.H}`} class="w-full" style={`max-height:${L.H + 8}px`}>
-            <circle cx={L.ANCHOR_X} cy={L.ANCHOR_Y} r="6" fill={accent}/>
-            <line x1={L.ANCHOR_X} y1="8" x2={L.ANCHOR_X} y2={L.H - 8} stroke={accent} stroke-opacity="0.18" stroke-width="1.5"/>
-            {myTalks.map((t, i) => {
-              const p = L.positions[i];
-              const c1x = L.ANCHOR_X + 30;
-              const c2x = p.x - 30;
-              return (
-                <g>
-                  <path d={`M ${L.ANCHOR_X} ${L.ANCHOR_Y} C ${c1x} ${L.ANCHOR_Y}, ${c2x} ${p.y}, ${p.x} ${p.y}`}
-                        fill="none" stroke={accent} stroke-opacity="0.35" stroke-width="1.5"/>
-                  <a href={t.url ?? '#'} target={t.url ? '_blank' : undefined} rel="noopener">
-                    <circle cx={p.x} cy={p.y} r="5" fill={accent} stroke="white" stroke-width="1.5">
-                      <title>{`${t.venue} · ${t.location}\n${t.date}`}</title>
-                    </circle>
-                    <text x={p.x + 12} y={p.y + 4} font-size="13" fill="currentColor" fill-opacity="0.92" class="font-medium">
-                      {shortVenue(t.venue)}
-                    </text>
-                    <text x={p.x + 12} y={p.y + 18} font-size="11" fill="currentColor" fill-opacity="0.55">
-                      {t.location} · {t.date}
-                    </text>
-                  </a>
-                </g>
-              );
-            })}
-          </svg>
-        </div>
+      <section class="mt-10 pt-8 border-t border-ink/15 dark:border-cream/15">
+        <div class="text-xs font-bold uppercase tracking-wider text-ink/50 dark:text-cream/50 mb-3">Presented at</div>
+        <ul class="space-y-1 text-sm text-ink/80 dark:text-cream/80">
+          {myTalks.map(t => (
+            <li class="flex gap-3">
+              <span class="shrink-0 w-24 text-xs font-mono text-ink/55 dark:text-cream/55">{t.date}</span>
+              <span class="min-w-0">
+                {t.url
+                  ? <a href={t.url} target="_blank" rel="noopener" class="hover:underline">{t.venue}</a>
+                  : <span>{t.venue}</span>}
+                <span class="text-ink/45 dark:text-cream/45"> · {t.location}</span>
+              </span>
+            </li>
+          ))}
+        </ul>
       </section>
     )}
 
     <!-- Sibling nav -->
     <nav class="mt-16 pt-8 border-t border-ink/15 dark:border-cream/15 grid sm:grid-cols-2 gap-3">
       {prev ? (
-        <a href={`/research/${prev.slug}`} class="card hover:-translate-x-0.5 hover:-translate-y-0.5 transition-transform block">
+        <a href={`/research/${prev.slug}`} class="card hover:bg-brand-yellow/20 transition-colors block">
           <div class="text-xs font-bold uppercase tracking-wider text-ink/50 dark:text-cream/50">Previous</div>
           <div class="font-display font-semibold mt-1">{prev.title}</div>
         </a>
       ) : <span></span>}
       {next ? (
-        <a href={`/research/${next.slug}`} class="card hover:-translate-x-0.5 hover:-translate-y-0.5 transition-transform block sm:text-right">
+        <a href={`/research/${next.slug}`} class="card hover:bg-brand-yellow/20 transition-colors block sm:text-right">
           <div class="text-xs font-bold uppercase tracking-wider text-ink/50 dark:text-cream/50">Next</div>
           <div class="font-display font-semibold mt-1">{next.title}</div>
         </a>

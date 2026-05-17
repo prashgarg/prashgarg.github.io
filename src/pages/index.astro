@@ -2,127 +2,62 @@
 import Layout from '../layouts/Layout.astro';
 import { site, papers, statusMeta } from '../data/site';
 
-const recentPapers = papers.slice(0, 3);
+const recentPapers = papers.slice(0, 4);
 ---
 <Layout current="home">
   <!-- HERO -->
-  <section class="relative overflow-hidden border-b-2 border-ink dark:border-cream">
-    <div class="max-w-6xl mx-auto px-4 pt-16 pb-20 grid md:grid-cols-5 gap-10 items-center">
-      <div class="md:col-span-3">
-        <div class="inline-flex items-center gap-2 chip mb-5">
-          <span class="w-2 h-2 rounded-full bg-brand-teal animate-pulse"></span>
-          Available for collaborations · postdoc at Bocconi from Sept 2026
-        </div>
-        <h1 class="font-display text-5xl sm:text-6xl md:text-7xl font-bold leading-[1.05] tracking-tight">
-          Hi, I'm <span class="bg-brand-yellow px-2 -mx-1 inline-block rotate-[-1deg] border-2 border-ink shadow-[3px_3px_0_0_var(--color-ink)] dark:shadow-[3px_3px_0_0_var(--color-cream)]">Prashant</span>.
+  <section class="border-b-2 border-ink dark:border-cream">
+    <div class="max-w-4xl mx-auto px-4 pt-20 pb-20 grid md:grid-cols-5 gap-10 items-start">
+      <div class="md:col-span-3 space-y-6">
+        <h1 class="font-display text-5xl sm:text-6xl font-bold leading-[1.05] tracking-tight">
+          Prashant Garg
         </h1>
-        <p class="mt-6 text-lg md:text-xl text-ink/80 dark:text-cream/80 max-w-2xl">
-          I study how ideas move &mdash; across papers, across products, across people.
-        </p>
-
-        <div class="mt-8 flex flex-wrap gap-3">
-          <a href="/research" class="btn btn-primary">
-            See research
-            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
-          </a>
-          <a href={site.cv} target="_blank" rel="noopener" class="btn">CV</a>
-          <a href={`mailto:${site.email}`} class="btn">Email</a>
+        <div class="space-y-4 text-base md:text-lg leading-relaxed text-ink/85 dark:text-cream/85">
+          <p>
+            I'm an economist working on science, innovation, production, and
+            media with machine learning, causal inference, and network science.
+          </p>
+          <p>
+            Most papers come with a live companion site &mdash; see <a class="link" href="/research">research</a> for the list.
+            Email me at <a class="link" href={`mailto:${site.email}`}>{site.email}</a>.
+          </p>
         </div>
       </div>
 
-      <div class="md:col-span-2">
-        <div class="card">
-          <div>
-            <div class="text-[11px] font-bold uppercase tracking-wider text-brand-red">Now</div>
-            <ul class="mt-2 space-y-1.5 text-sm">
-              <li>Research Associate · <a class="link" href="https://www.econ.cam.ac.uk/" target="_blank" rel="noopener">University of Cambridge</a></li>
-              <li>Associate Fellow · <a class="link" href="https://www.inet.ox.ac.uk/" target="_blank" rel="noopener">INET Oxford</a></li>
-            </ul>
-          </div>
-          <div class="mt-4 pt-4 border-t border-ink/15 dark:border-cream/15">
-            <div class="text-[11px] font-bold uppercase tracking-wider text-brand-blue">Next · From Sept 2026</div>
-            <ul class="mt-2 space-y-1.5 text-sm">
-              <li>Postdoctoral Researcher · <a class="link" href="https://www.unibocconi.it/en" target="_blank" rel="noopener">Bocconi University</a></li>
-            </ul>
-          </div>
-          <div class="mt-4 pt-4 border-t border-ink/15 dark:border-cream/15">
-            <div class="text-[11px] font-bold uppercase tracking-wider text-ink/50 dark:text-cream/50">Before</div>
-            <ul class="mt-2 space-y-1.5 text-sm">
-              <li>PhD Economics · <a class="link" href="https://www.imperial.ac.uk/business-school/" target="_blank" rel="noopener">Imperial College London</a></li>
-            </ul>
-          </div>
+      <aside class="md:col-span-2">
+        <div class="card text-sm">
+          <div class="text-[11px] font-bold uppercase tracking-wider text-brand-red mb-2">Now</div>
+          <ul class="space-y-1">
+            <li>Research Associate · <a class="link" href="https://www.econ.cam.ac.uk/" target="_blank" rel="noopener">Cambridge</a></li>
+            <li>Associate Fellow · <a class="link" href="https://www.inet.ox.ac.uk/" target="_blank" rel="noopener">INET Oxford</a></li>
+          </ul>
+          <div class="text-[11px] font-bold uppercase tracking-wider text-brand-blue mt-4 mb-2">From Sept 2026</div>
+          <ul class="space-y-1">
+            <li>Postdoctoral Researcher · <a class="link" href="https://www.unibocconi.it/en" target="_blank" rel="noopener">Bocconi</a></li>
+          </ul>
         </div>
-      </div>
+      </aside>
     </div>
   </section>
 
-  <!-- BIO -->
-  <section class="border-b-2 border-ink dark:border-cream">
-    <div class="max-w-3xl mx-auto px-4 py-16">
-      <div class="text-xs font-bold uppercase tracking-wider text-brand-red mb-3">About</div>
-      <div class="space-y-5 text-lg leading-relaxed text-ink/90 dark:text-cream/90">
-        <p>
-          I'm an economist working on science, innovation, production, and media. My
-          research uses machine learning, causal inference, and network science to
-          understand how knowledge gets made, moved, and used.
-        </p>
-        <p>
-          A lot of my work pairs a paper with a live, public companion site &mdash; for
-          example, <a class="link" href="https://www.causal.claims" target="_blank" rel="noopener">causal.claims</a>,
-          <a class="link" href="https://frontiergraph.com" target="_blank" rel="noopener">Frontier Graph</a>,
-          <a class="link" href="https://automationatlas.org" target="_blank" rel="noopener">Automation Atlas</a>,
-          and <a class="link" href="https://aipnet.io" target="_blank" rel="noopener">AI Production Network</a>.
-          Each paper card on the <a class="link" href="/research">research page</a> links to its companion site.
-        </p>
-        <p>
-          Reach me by <a class="link" href={`mailto:${site.email}`}>email</a> for
-          coauthoring, invited talks, referee requests, or anything you spot on this site.
-        </p>
-      </div>
-    </div>
-  </section>
-
-  <!-- RECENT RESEARCH -->
-  <section class="border-b-2 border-ink dark:border-cream">
-    <div class="max-w-6xl mx-auto px-4 py-16">
-      <div class="flex items-end justify-between flex-wrap gap-4 mb-8">
-        <div>
-          <div class="text-xs font-bold uppercase tracking-wider text-brand-red">Latest</div>
-          <h2 class="font-display text-3xl md:text-4xl font-bold mt-1">Recent research.</h2>
-        </div>
-        <a href="/research" class="text-sm font-semibold underline decoration-2 decoration-brand-red underline-offset-4 hover:bg-brand-yellow/40 px-1">All papers &rarr;</a>
-      </div>
-
-      <div class="grid gap-5">
-        {recentPapers.map(p => (
-          <a href={`/research/${p.slug}`} class="card hover:-translate-x-0.5 hover:-translate-y-0.5 transition-transform block">
-            <div class="flex items-start gap-3 flex-wrap">
-              <span class={`badge ${statusMeta[p.status].badge}`}>{statusMeta[p.status].label}</span>
-              {p.venue && <span class="text-xs font-medium text-ink/60 dark:text-cream/60">{p.venue}{p.year ? ` · ${p.year}` : ''}</span>}
-            </div>
-            <h3 class="font-display font-bold text-xl mt-2">{p.title}</h3>
-            {p.coauthors.length > 0 && (
-              <div class="mt-1 text-sm text-ink/70 dark:text-cream/70">with {p.coauthors.join(', ')}</div>
-            )}
-            <p class="mt-2 text-sm text-ink/80 dark:text-cream/80">{p.blurb}</p>
-          </a>
-        ))}
-      </div>
-    </div>
-  </section>
-
-  <!-- CONTACT BANNER -->
+  <!-- RECENT -->
   <section>
-    <div class="max-w-6xl mx-auto px-4 py-20 grid md:grid-cols-2 gap-8 items-center">
-      <div>
-        <h2 class="font-display text-3xl md:text-4xl font-bold">Want to talk?</h2>
-        <p class="mt-3 text-ink/70 dark:text-cream/70 max-w-md">Coauthoring, an invited talk, or anything you saw on this site. Email is fastest.</p>
-      </div>
-      <div class="flex flex-wrap gap-3 md:justify-end">
-        <a href={`mailto:${site.email}`} class="btn btn-primary">Email me</a>
-        <a href={site.scholar} target="_blank" rel="noopener" class="btn">Scholar</a>
-        <a href={site.twitter} target="_blank" rel="noopener" class="btn">Twitter</a>
-        <a href={site.bluesky} target="_blank" rel="noopener" class="btn">Bluesky</a>
+    <div class="max-w-4xl mx-auto px-4 py-14">
+      <div class="text-xs font-bold uppercase tracking-wider text-brand-red mb-4">Recent</div>
+      <ul class="divide-y divide-ink/15 dark:divide-cream/15 border-y border-ink/15 dark:border-cream/15">
+        {recentPapers.map(p => (
+          <li>
+            <a href={`/research/${p.slug}`} class="block py-4 -mx-2 px-2 rounded hover:bg-brand-yellow/25 transition-colors">
+              <div class="text-xs text-ink/55 dark:text-cream/55">
+                {statusMeta[p.status].label}{p.venue ? ` · ${p.venue}` : ''}{p.year ? ` · ${p.year}` : ''}
+              </div>
+              <div class="font-display font-semibold mt-1 text-lg leading-snug">{p.title}</div>
+            </a>
+          </li>
+        ))}
+      </ul>
+      <div class="mt-4">
+        <a href="/research" class="text-sm font-semibold underline decoration-2 decoration-brand-red underline-offset-4 hover:bg-brand-yellow/40 px-1">All research &rarr;</a>
       </div>
     </div>
   </section>

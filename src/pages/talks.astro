@@ -9,272 +9,51 @@ function monthIndex(date: string): number {
 }
 function sortValue(t: Talk): number { return t.year * 12 + monthIndex(t.date); }
 
-// Group talks by topic
 const byTopic = new Map<string, { topic: ReturnType<typeof topicForTalk>; items: Talk[] }>();
 for (const talk of talks) {
   const top = topicForTalk(talk.title);
   if (!byTopic.has(top.slug)) byTopic.set(top.slug, { topic: top, items: [] });
   byTopic.get(top.slug)!.items.push(talk);
 }
+
+// Sort talks within a topic newest first, and sort topics by most-recent-talk.
 const grouped = Array.from(byTopic.values())
   .map(g => ({ ...g, items: g.items.slice().sort((a, b) => sortValue(b) - sortValue(a)) }))
-  .sort((a, b) => b.items.length - a.items.length);
-
-const PROMINENT_MIN = 4;
-const prominent = grouped.filter(g => g.items.length >= PROMINENT_MIN);
-const minor     = grouped.filter(g => g.items.length <  PROMINENT_MIN);
-
-const palette = ['#F54E00', '#1D4AFF', '#29DBBB', '#F9BD2B', '#B62AD9', '#15803D', '#0EA5E9', '#E11D48', '#7C3AED', '#0891B2', '#65A30D', '#DB2777', '#6B7280'];
-const colorOf = (slug: string) => {
-  const i = grouped.findIndex(g => g.topic.slug === slug);
-  return palette[i % palette.length];
-};
-
-function yearColor(year: number, base: string): string {
-  const years = talks.map(t => t.year);
-  const yMin = Math.min(...years);
-  const yMax = Math.max(...years);
-  if (yMax === yMin) return base;
-  const opacity = 0.55 + 0.45 * ((year - yMin) / (yMax - yMin));
-  return base + Math.round(opacity * 255).toString(16).padStart(2, '0');
-}
-
-function shortVenue(v: string): string {
-  if (v.length <= 38) return v;
-  return v.slice(0, 36).trimEnd() + '…';
-}
-
-function layout(n: number) {
-  const ROW = 26, TOP = 14, BOT = 14;
-  const H   = Math.max(180, TOP + BOT + n * ROW);
-  return {
-    H, ANCHOR_X: 8, ANCHOR_Y: H / 2, DOT_X: 64,
-    positions: Array.from({ length: n }, (_, i) => ({
-      x: 64,
-      y: TOP + (n === 1 ? (H - TOP - BOT) / 2 : (i * (H - TOP - BOT)) / (n - 1)),
-    })),
-  };
-}
-
-// -- Shared timeline (top viz) -----------------------------------
-const allSort = talks.map(sortValue);
-const minS = Math.min(...allSort);
-const maxS = Math.max(...allSort);
-const TL_W = 820;
-const TL_PAD = 16;
-const TL_ROW = 26;
-const TL_H = grouped.length * TL_ROW + 36;
-function tlx(v: number): number {
-  if (maxS === minS) return TL_W / 2;
-  return TL_PAD + ((v - minS) / (maxS - minS)) * (TL_W - TL_PAD * 2);
-}
-const yMin = Math.floor(minS / 12);
-const yMax = Math.floor(maxS / 12);
-const yearTicks: number[] = [];
-for (let y = yMin; y <= yMax; y++) yearTicks.push(y);
+  .sort((a, b) => sortValue(b.items[0]) - sortValue(a.items[0]));
 ---
 <Layout title="Talks — Prashant Garg" current="talks">
-  <section class="border-b-2 border-ink dark:border-cream">
-    <div class="max-w-6xl mx-auto px-4 pt-14 pb-10">
+  <section>
+    <div class="max-w-3xl mx-auto px-4 pt-14 pb-8">
       <div class="text-xs font-bold uppercase tracking-wider text-brand-red">Talks</div>
-      <h1 class="font-display text-4xl md:text-5xl font-bold mt-2">Each paper, and where it has gone.</h1>
-      <p class="mt-4 text-ink/70 dark:text-cream/70 max-w-2xl">
-        Talks are children of papers. Click a paper to focus its track in the timeline, then scroll for branching detail per paper.
-      </p>
-      <div class="mt-6 flex flex-wrap gap-2 text-sm">
-        <span class="chip">{talks.length} talks</span>
-        <span class="chip">{grouped.length} topics</span>
-        <span class="chip">{prominent.length} featured</span>
-      </div>
+      <h1 class="font-display text-3xl md:text-4xl font-bold mt-2">Where the work has been presented.</h1>
     </div>
   </section>
 
-  <!-- INTERACTIVE SHARED TIMELINE -->
-  <section class="border-b-2 border-ink dark:border-cream bg-cream-dim/40 dark:bg-ink/40">
-    <div class="max-w-6xl mx-auto px-4 py-10" id="timeline-wrap">
-      <div class="flex items-center justify-between gap-4 mb-4">
-        <div class="text-xs font-bold uppercase tracking-wider text-ink/50 dark:text-cream/50">Timeline · all talks, all years</div>
-        <button id="clear-focus" class="text-xs font-semibold underline decoration-2 decoration-brand-red underline-offset-4 hover:bg-brand-yellow/40 px-1 opacity-0 pointer-events-none transition-opacity">Clear focus</button>
-      </div>
-
-      <div class="grid md:grid-cols-[240px_minmax(0,1fr)] gap-4 items-start" id="timeline">
-        <!-- labels (click to focus) -->
-        <div class="space-y-0" id="timeline-labels">
-          {grouped.map((g) => (
-            <button
-              type="button"
-              data-focus-topic={g.topic.slug}
-              data-topic={g.topic.slug}
-              class="w-full flex items-center gap-2 h-[26px] text-sm text-left hover:bg-cream-dim/80 dark:hover:bg-ink-3/60 rounded px-1 transition-opacity">
-              <span class="w-2.5 h-2.5 rounded-full shrink-0" style={`background:${colorOf(g.topic.slug)}`}></span>
-              <span class="font-medium truncate">{g.topic.label}</span>
-              <span class="ml-auto text-xs text-ink/40 dark:text-cream/40 shrink-0">{g.items.length}</span>
-            </button>
-          ))}
-          <div class="h-[36px]"></div>
-        </div>
-
-        <!-- svg viz -->
-        <div class="overflow-x-auto -mx-2 px-2">
-          <svg viewBox={`0 0 ${TL_W} ${TL_H}`} class="w-full" style={`min-width:${TL_W}px;max-height:${TL_H + 12}px`}>
-            {yearTicks.map((y) => (
-              <g>
-                <line x1={tlx(y * 12)} y1={0} x2={tlx(y * 12)} y2={TL_H - 30} stroke="currentColor" stroke-opacity="0.10" stroke-dasharray="2 4"/>
-                <text x={tlx(y * 12)} y={TL_H - 12} text-anchor="middle" font-size="11" fill="currentColor" fill-opacity="0.6">{y}</text>
-              </g>
-            ))}
-            {grouped.map((g, i) => {
-              const cy = i * TL_ROW + TL_ROW / 2;
-              const color = colorOf(g.topic.slug);
-              const xs = g.items.map(t => tlx(sortValue(t))).sort((a, b) => a - b);
-              const x0 = xs[0], x1 = xs[xs.length - 1];
-              return (
-                <g data-topic={g.topic.slug} data-focus-topic={g.topic.slug} class="cursor-pointer">
-                  <rect x="0" y={i * TL_ROW + 2} width={TL_W} height={TL_ROW - 4} fill="transparent"/>
-                  <line x1={x0} y1={cy} x2={x1} y2={cy} stroke={color} stroke-width="2" stroke-opacity="0.32"/>
-                  {g.items.map(t => (
-                    <circle cx={tlx(sortValue(t))} cy={cy} r="4.5" fill={yearColor(t.year, color)} stroke="white" stroke-width="1.25">
-                      <title>{`${t.venue} · ${t.location}\n${t.date}`}</title>
-                    </circle>
-                  ))}
-                </g>
-              );
-            })}
-          </svg>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- PROMINENT PAPERS — branching diagram per paper -->
-  <section class="max-w-6xl mx-auto px-4 py-12 grid lg:grid-cols-2 gap-6" id="paper-cards">
-    {prominent.map((g) => {
+  <section class="max-w-3xl mx-auto px-4 pb-20 space-y-10">
+    {grouped.map((g) => {
       const paper = g.topic.paperSlug ? papers.find(p => p.slug === g.topic.paperSlug) : undefined;
-      const color = colorOf(g.topic.slug);
-      const L = layout(g.items.length);
-      const years = Array.from(new Set(g.items.map(t => t.year))).sort();
       return (
-        <article id={g.topic.slug} data-topic={g.topic.slug} class="card !p-5 transition-opacity">
-          <div class="flex items-start justify-between gap-3 flex-wrap mb-3">
-            <div class="min-w-0">
-              <h2 class="font-display font-bold text-lg leading-tight flex items-center gap-2">
-                <span class="w-2.5 h-2.5 rounded-full shrink-0" style={`background:${color}`}></span>
-                {paper
-                  ? <a href={`/research/${paper.slug}`} class="hover:underline">{g.topic.label}</a>
-                  : <span>{g.topic.label}</span>}
-              </h2>
-              <div class="text-xs text-ink/60 dark:text-cream/60 mt-1">
-                {g.items.length} talks · {years[0]}{years.length > 1 ? `–${years[years.length-1]}` : ''}
-              </div>
-            </div>
-            {paper && <a href={`/research/${paper.slug}`} class="text-xs font-semibold underline decoration-2 decoration-brand-red underline-offset-4 hover:bg-brand-yellow/40 px-1">paper &rarr;</a>}
-          </div>
-
-          <div class="relative">
-            <svg viewBox={`0 0 480 ${L.H}`} class="w-full" style={`max-height:${L.H + 8}px`}>
-              <circle cx={L.ANCHOR_X} cy={L.ANCHOR_Y} r="5" fill={color}/>
-              <line x1={L.ANCHOR_X} y1="6" x2={L.ANCHOR_X} y2={L.H - 6} stroke={color} stroke-opacity="0.18" stroke-width="1.5"/>
-
-              {g.items.map((t, i) => {
-                const p = L.positions[i];
-                const c1x = L.ANCHOR_X + 24;
-                const c2x = p.x - 22;
-                return (
-                  <g>
-                    <path d={`M ${L.ANCHOR_X} ${L.ANCHOR_Y} C ${c1x} ${L.ANCHOR_Y}, ${c2x} ${p.y}, ${p.x} ${p.y}`}
-                          fill="none" stroke={color} stroke-opacity="0.35" stroke-width="1.5"/>
-                    <a href={t.url ?? '#'} target={t.url ? '_blank' : undefined} rel="noopener">
-                      <circle cx={p.x} cy={p.y} r="4" fill={yearColor(t.year, color)} stroke="white" stroke-width="1.25">
-                        <title>{`${t.venue} · ${t.location}\n${t.date}`}</title>
-                      </circle>
-                      <text x={p.x + 9} y={p.y + 3.5} font-size="11" fill="currentColor" fill-opacity="0.92" class="font-medium">
-                        {shortVenue(t.venue)}
-                      </text>
-                      <text x="472" y={p.y + 3.5} font-size="10" text-anchor="end" fill="currentColor" fill-opacity="0.5" class="font-mono">
-                        {`'${String(t.year).slice(2)}`}
-                      </text>
-                    </a>
-                  </g>
-                );
-              })}
-            </svg>
-          </div>
-        </article>
+        <div id={g.topic.slug}>
+          <h2 class="font-display text-base font-semibold leading-snug">
+            {paper
+              ? <a href={`/research/${paper.slug}`} class="hover:underline">{g.topic.label}</a>
+              : <span>{g.topic.label}</span>}
+          </h2>
+          <ul class="mt-2 space-y-1 text-sm text-ink/80 dark:text-cream/80">
+            {g.items.map(t => (
+              <li class="flex gap-3">
+                <span class="shrink-0 w-24 text-xs font-mono text-ink/55 dark:text-cream/55">{t.date}</span>
+                <span class="min-w-0">
+                  {t.url
+                    ? <a href={t.url} target="_blank" rel="noopener" class="hover:underline">{t.venue}</a>
+                    : <span>{t.venue}</span>}
+                  <span class="text-ink/45 dark:text-cream/45"> · {t.location}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
       );
     })}
   </section>
-
-  {minor.length > 0 && (
-    <section class="border-t-2 border-ink dark:border-cream bg-cream-dim/40 dark:bg-ink/40">
-      <div class="max-w-6xl mx-auto px-4 py-12">
-        <div class="text-xs font-bold uppercase tracking-wider text-ink/50 dark:text-cream/50 mb-4">Other talks (1–3 each)</div>
-        <ul class="grid sm:grid-cols-2 gap-2" id="minor-cards">
-          {minor.map((g) => {
-            const color = colorOf(g.topic.slug);
-            return (
-              <li id={g.topic.slug} data-topic={g.topic.slug} class="card !p-3 flex items-start gap-3 transition-opacity">
-                <span class="mt-1.5 w-2 h-2 rounded-full shrink-0" style={`background:${color}`}></span>
-                <div class="min-w-0 flex-1">
-                  <div class="text-sm font-semibold leading-tight">
-                    {g.topic.paperSlug
-                      ? <a href={`/research/${g.topic.paperSlug}`} class="hover:underline">{g.topic.label}</a>
-                      : <span>{g.topic.label}</span>}
-                  </div>
-                  <div class="mt-1 flex flex-wrap gap-1.5">
-                    {g.items.map(t => (
-                      t.url
-                        ? <a href={t.url} target="_blank" rel="noopener" class="chip hover:bg-brand-yellow/60">{t.venue} · '{String(t.year).slice(2)}</a>
-                        : <span class="chip">{t.venue} · '{String(t.year).slice(2)}</span>
-                    ))}
-                  </div>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-      </div>
-    </section>
-  )}
 </Layout>
-
-<script is:inline>
-  (function () {
-    let focused = null;
-    const labels    = () => document.querySelectorAll('#timeline-labels [data-topic]');
-    const tracks    = () => document.querySelectorAll('#timeline svg [data-topic]');
-    const papers    = () => document.querySelectorAll('#paper-cards [data-topic]');
-    const minors    = () => document.querySelectorAll('#minor-cards [data-topic]');
-    const clearBtn  = document.getElementById('clear-focus');
-
-    function apply() {
-      const setOpacity = (el, on) => { el.style.opacity = on ? '' : '0.18'; };
-      const groups = [labels(), tracks(), papers(), minors()];
-      groups.forEach(g => g.forEach(el => {
-        if (!focused) setOpacity(el, true);
-        else setOpacity(el, el.dataset.topic === focused);
-      }));
-      if (clearBtn) {
-        clearBtn.classList.toggle('opacity-0', !focused);
-        clearBtn.classList.toggle('pointer-events-none', !focused);
-      }
-    }
-
-    document.addEventListener('click', (e) => {
-      if (clearBtn && e.target.closest('#clear-focus')) {
-        focused = null; apply();
-        return;
-      }
-      const trigger = e.target.closest('[data-focus-topic]');
-      if (trigger) {
-        const slug = trigger.dataset.focusTopic;
-        focused = (focused === slug) ? null : slug;
-        apply();
-        return;
-      }
-      // click outside the viz clears focus
-      if (focused && !e.target.closest('#timeline-wrap, #paper-cards, #minor-cards')) {
-        focused = null; apply();
-      }
-    });
-  })();
-</script>
