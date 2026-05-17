@@ -4,12 +4,8 @@ import { library } from '../data/site';
 ---
 <Layout title="Library — Prashant Garg" current="library">
   <section class="border-b-2 border-ink dark:border-cream">
-    <div class="max-w-6xl mx-auto px-4 pt-14 pb-10">
-      <div class="text-xs font-bold uppercase tracking-wider text-brand-red">Library</div>
-      <h1 class="font-display text-4xl md:text-5xl font-bold mt-2">Code, notes, and the occasional essay.</h1>
-      <p class="mt-4 text-ink/70 dark:text-cream/70 max-w-2xl">
-        Public goods: open-source code, methods notes, and writing that doesn't fit a paper.
-      </p>
+    <div class="max-w-6xl mx-auto px-4 pt-14 pb-8">
+      <h1 class="font-display text-3xl md:text-4xl font-bold">Library</h1>
     </div>
   </section>
 
@@ -32,7 +28,9 @@ import { library } from '../data/site';
             <span class="badge badge-cream">{it.tag}</span>
           </div>
           <h2 class="font-display text-2xl md:text-3xl font-bold mt-3">{it.title}</h2>
-          <p class="mt-3 text-ink/85 dark:text-cream/85 leading-relaxed">{it.blurb}</p>
+          <div class="mt-3 space-y-3 text-ink/85 dark:text-cream/85 leading-relaxed">
+            {it.blurb.map(p => <p>{p}</p>)}
+          </div>
           <div class="mt-5 flex flex-wrap gap-2">
             {it.links.map(l => (
               <a href={l.url} target="_blank" rel="noopener"
@@ -44,11 +42,6 @@ import { library } from '../data/site';
           </div>
         </article>
       ))}
-
-      <article class="card bg-brand-yellow !border-ink">
-        <h2 class="font-display text-xl font-bold">More coming.</h2>
-        <p class="mt-2 text-sm text-ink/80">This is where future essays, teaching notes, and reading lists will land.</p>
-      </article>
     </div>
   </section>
 </Layout>

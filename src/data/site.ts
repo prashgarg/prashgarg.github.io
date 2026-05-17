@@ -66,7 +66,7 @@ export const papers: Paper[] = [
     year: 2025,
     coauthors: ['Thiemo Fetzer'],
     blurb:
-      'Analyses social media content from more than 100,000 scholars to map politically salient academic expression on climate, cultural, and economic topics.',
+      "Academics have traditionally played a vital role in both the generation and dissemination of knowledge, ideas and narratives. Social media, relative to traditional media, provides for new and more direct ways of science communication. Yet, since not all academics may engage with social media, the sample that does so may have an outsize influence on shaping public perceptions of academia more broadly through at least two channels: the set topics they engage with and through the particular style and tone of communication. This paper describes patterns in academics' expression online found in a newly constructed global dataset covering over 100,000 scholars linking their social media content to academic record. We document large and systematic variation in politically salient academic expression concerning climate action, cultural, and economic concepts. We show that these appear to often diverge from general public opinion in both topic focus and style.",
     links: [
       { label: 'Paper (open access)', url: 'https://www.nature.com/articles/s41562-025-02199-1' },
       { label: 'Project site', url: 'https://sites.google.com/view/politics-in-academia/' },
@@ -91,7 +91,7 @@ export const papers: Paper[] = [
     year: 2025,
     coauthors: ['Thiemo Fetzer', 'Jacob Edenhofer'],
     blurb:
-      'Links 83,000 high-street vacancies in England and Wales to support for the UK Independence Party (UKIP) over 2009–2019.',
+      "Support for right-wing populist parties is characterised by considerable regional heterogeneity and especially concentrated in regions that have experienced economic decline. It remains unclear, however, whether the spatial externalities of local decline, including homelessness and crime, boost support for populist parties, even among those not directly affected by such decline. In this paper, we contribute to filling this gap in two ways. First, we gather novel data on a particularly visible form of local decline, high-street vacancies, that comprise 83,000 premises in England and Wales. Second, we investigate the influence of local decline on support for the right-wing populist UK Independence Party (UKIP) between 2009 and 2019. We find a significant positive association between high-street vacancy rates and UKIP support. These results enhance our understanding of how changes in the lived environment shape political preferences and behaviour, particularly in relation to right-wing populism.",
     links: [
       { label: 'Paper (open access)', url: 'https://www.sciencedirect.com/science/article/pii/S0165176525001971' },
       { label: 'Twitter thread', url: 'https://twitter.com/edenhofer_jacob/status/1816157318255644977' },
@@ -112,7 +112,7 @@ export const papers: Paper[] = [
     venue: 'Nature Human Behaviour (Acceptance-in-Principle)',
     coauthors: ['Thiemo Fetzer'],
     blurb:
-      'Studies 466 news sources across 123 countries and 135 million articles since 2016 to map which disasters cross borders and which do not.',
+      "Climate change is increasing the frequency and severity of natural disasters worldwide. Media coverage of these events may be vital to generate empathy and mobilize global populations to address the common threat posed by climate change. Using a dataset of 466 news sources from 123 countries, covering 135 million news articles since 2016, we apply an event study framework to measure cross-border media activity following natural disasters. Our results shows that while media attention rises after disasters, it is heavily skewed towards certain events, notably earthquakes, accidents, and wildfires. In contrast, climatologically salient events such as floods, droughts, or extreme temperatures receive less coverage. This cross-border disaster reporting is strongly related to the number of deaths associated with the event, especially when the affected populations share strong social ties or genetic similarities with those in the reporting country. Achieving more balanced media coverage across different types of natural disasters may be essential to counteract skewed perceptions. Further, fostering closer social connections between countries may enhance empathy and mobilize the resources necessary to confront the global threat of climate change.",
     links: [
       { label: 'Preprint', url: 'https://www.researchsquare.com/article/rs-6057848/v1' },
     ],
@@ -123,7 +123,7 @@ export const papers: Paper[] = [
     status: 'working',
     coauthors: ['Tommaso Crosta', 'Jasmin Baier'],
     blurb:
-      'Task-based, country-specific automation exposure across 124 countries, separating labor-substituting from labor-augmenting automation. 2.33M task–country labels covering ~99% of global GDP and population.',
+      "Automation affects the labour content of work differently across different contexts. Yet, most existing exposure measures assign fixed scores to tasks or occupations, limiting comparisons of automation exposure across countries. We develop a task-based and country-specific approach to classify automation exposure across the world to disentangle labor-substituting from labor-augmenting automation, the relevant technology channel, and the material role of AI. Our measure spans 124 countries, generating an atlas of 2.33 million task-country labels for economies covering 99% of world population and GDP. We present five descriptive results. First, exposure is highly uneven, ranging from 3.3% of tasks in South Sudan to 61.6% in China, and rises strongly with income, although substantial variation remains within income groups. Second, across countries, exposed tasks are skewed towards substitution rather than augmentation, but low-income countries are disproportionately exposed to substitution, whereas middle-income countries are more heterogeneous. Third, less technologically advanced forms of automation account for more than half of exposed tasks in low-income countries but about one quarter in high-income countries; while other more complex channels generally rise with income levels. Fourth, AI tends to be less prevalent in simpler channels of automation, but also more prevalent in labour-substituting margins in lower income settings and to augment labour in higher income settings. Fifth, we find that females seem to be disproportionately more exposed to labour-substituting automation than males. Our methodology provides a basis for comparing automation exposure across development stages, linking it with cross-country data and allowing us to treat exposure levels, labour margins, technological channels and AI involvement as separate dimensions.",
     links: [
       { label: 'Live paper', url: 'https://automationatlas.org/paper/' },
       { label: 'Interactive explorer', url: 'https://automationatlas.org/' },
@@ -136,7 +136,7 @@ export const papers: Paper[] = [
     status: 'working',
     coauthors: ['Thiemo Fetzer'],
     blurb:
-      'Builds evidence-annotated claim graphs over 44,852 economics papers (1980–2023), turning prose into standardized networks of concepts with causal and non-causal relationships labelled.',
+      "As economics scales, a key bottleneck is representing what papers claim in a comparable, aggregable form. We introduce evidence-annotated claim graphs that map each paper into a directed network of standardized economic concepts (nodes) and stated relationships (edges), with each edge labeled by evidentiary basis, including whether it is supported by causal inference designs or by non-causal evidence. Using a structured multi-stage AI workflow, we construct claim graphs for 44,852 economics papers from 1980–2023. The share of causal edges rises from 7.7% in 1990 to 31.7% in 2020. Measures of causal narrative structure and causal novelty are positively associated with top-five publication and long-run citations, whereas non-causal counterparts are weakly related or negative.",
     links: [
       { label: 'Paper', url: 'https://arxiv.org/abs/2501.06873' },
       { label: 'Project site', url: 'http://www.causal.claims' },
@@ -164,7 +164,7 @@ export const papers: Paper[] = [
     status: 'working',
     coauthors: [],
     blurb:
-      'A literature graph over 242,595 papers (1976–2026) that ranks open research questions by their propensity to be pursued next.',
+      "Choosing what to work on is one of the least formalized decisions in science. I study whether the local structure of past research helps screen which still-open questions are worth reading first. I build a directed literature graph from 242,595 published economics-facing papers from 1976 to 2026, rank open questions using only the literature available at each date, and test those rankings against which questions later enter published work. On realistic shortlists, graph-based screening outperforms ranking by popularity alone, and a second-stage model built on the same graph improves further. The gains differ across two broad kinds of question. Questions that deepen existing claims with clearer mechanisms produce more later realizations per inspected shortlist, while questions that close missing direct relations cover a larger share of the links the literature eventually adds. More broadly, the historical record suggests that economics more often adds mechanisms around existing claims than closes locally implied direct relations. The paper therefore contributes in two ways. Practically, it shows that local literature structure contains useful screening information. Descriptively, it uses that screen to characterize how economics more often moves.",
     links: [
       { label: 'Live paper', url: 'https://frontiergraph.com/paper/' },
       { label: 'Frontier Graph', url: 'https://frontiergraph.com/' },
@@ -180,7 +180,7 @@ export const papers: Paper[] = [
     status: 'working',
     coauthors: ['Eleonora Alabrese', 'Francesco Capozza'],
     blurb:
-      'Studies 98,000 scientists active on Twitter (2016–2022) plus survey experiments with 6,000 US respondents and 135 journalists to estimate credibility penalties from political expression.',
+      "As social media becomes prominent within academia, we examine its reputational costs for academics. Analyzing Twitter posts from 98,000 scientists (2016–22), we uncover substantial political expression. Online experiments with 6,000 U.S. respondents and 135 journalists, rating synthetic academic profiles with different political affiliations, reveal that politically neutral scientists are seen as the most credible. Strikingly, political expressions result in monotonic penalties: Stronger posts reduce perceived credibility of scientists and their research and audience engagement more, particularly among oppositely aligned respondents. Two surveys with scientists highlight their awareness to penalties, their perceived benefits, and a consensus on limiting political expression outside their expertise.",
     links: [
       { label: 'Preprint', url: 'https://www.researchsquare.com/article/rs-9354892/v1' },
       { label: 'CESifo working paper', url: 'https://www.cesifo.org/en/publications/2024/working-paper/politicized-scientists-credibility-cost-political-expression' },
@@ -199,7 +199,7 @@ export const papers: Paper[] = [
     status: 'working',
     coauthors: ['Thiemo Fetzer', 'Peter John Lambert', 'Bennet Feld'],
     blurb:
-      'Uses generative AI to build a production network across 5,000 product nodes and applies it to study the 2017 Qatar blockade as a natural experiment in trade-network shocks.',
+      "This paper leverages generative AI to build a network structure over 5,000 product nodes, where directed edges represent input-output relationships in production. We layout a two-step 'build-prune' approach using an ensemble of prompt-tuned generative AI classifications. The 'build' step provides an initial distribution of edge predictions, the 'prune' step then re-evaluates all edges. With our AI-generated Production Network (AIPNET) in toe, we document a host of shifts in the network position of products and countries during the 21st century. Finally, we study production network spillovers using the natural experiment presented by the 2017 blockade of Qatar. We find strong evidence of such spill-overs, suggestive of on-shoring of critical production. This descriptive and causal evidence demonstrates some of the many research possibilities opened up by our granular measurement of product linkages, including studies of on-shoring, industrial policy, and other recent shifts in global trade.",
     links: [
       { label: 'Paper (CEPR DP19708)', url: 'https://cepr.org/publications/dp19708' },
       { label: 'Interactive site', url: 'https://aipnet.io/' },
@@ -218,7 +218,7 @@ export const papers: Paper[] = [
     status: 'working',
     coauthors: ['Dorian Quelle', 'Frederic Denker', 'Alexandre Bovet'],
     blurb:
-      'Links 276,431 scholars from Twitter/X to Bluesky and uses Brazil’s X suspension as exogenous variation. Best Student Paper at NetSciSci 2025.',
+      "Social media platforms mediate professional communication, political expression, and community formation, making the rare instances when users collectively abandon an incumbent platform particularly consequential. Strong network effects raise switching costs and strengthen incumbents' positions, making coordinated exit difficult. Here we link 276,431 scholars on Twitter/X to their respective new profiles among the universe of all 16.7 million Bluesky accounts, tracked from January 2023 to December 2024, using a scalable, high-precision cross-platform matching pipeline. Exploiting exogenous variation from Brazil's court-ordered suspension of Twitter/X and a dynamic matching design, we show that adoption is peer-driven, treatment effects are short-lived and dose-dependent, and contagion is simple, not complex. Three patterns characterize adoption and retention. Adoption concentrates among users deeply embedded in Twitter's social graph. Public political expression predicts migration, consistent with homophilous inflows into a largely left-of-center Bluesky information space. Early reconnection with prior contacts predicts longer tenure and engagement. Our findings provide the first population-scale causal evidence of peer influence in a social media platform migration by exploiting exogenous exposure variation in a natural experiment and using daily dynamic matching. Rather than the complex contagion mechanism often emphasized in the literature, contagion is predominantly simple. Our findings recast migration as a multi-homing strategy that insures against governance uncertainty and show that users who quickly reconnect with prior contacts remain active longer on Bluesky.",
     links: [
       { label: 'Paper', url: 'https://arxiv.org/abs/2505.24801' },
     ],
@@ -234,7 +234,7 @@ export const papers: Paper[] = [
     status: 'working',
     coauthors: ['Hongyu Zhou', 'Thiemo Fetzer'],
     blurb:
-      'Builds a global disease-location panel for 204 countries (1990–2021) and uses event studies around outbreak alerts to study how science reallocates toward emerging health needs.',
+      "We examine whether research systems reallocate scientific effort as health needs change. We assemble a global disease-location panel for 204 countries and territories (1990-2021) by linking disease-specific publication output to disease burden in the same place and year. Using large language models, we extract diseases from article text, map them into a standardized disease classification, and classify research funders by type. Empirically, we estimate how publication output co-moves with disease burden within countries and diseases over time, and we use event-study difference-in-differences designs that exploit plausibly exogenous variation from the timing of outbreak alerts. We find that responsiveness to endemic burden has increased over time but remains highly uneven across locations; outbreak alerts trigger rapid, statistically significant research surges that have strengthened in recent years; and funding composition is strongly associated with adjustment dynamics, with philanthropic and government-supported research contributing disproportionately to responsiveness growth in lower-income settings.",
     links: [
       { label: 'Paper (CEPR DP21230)', url: 'https://cepr.org/publications/dp21230' },
     ],
@@ -246,7 +246,7 @@ export const papers: Paper[] = [
     venue: 'BMJ Health & Care Informatics (R&R)',
     coauthors: ['Thiemo Fetzer'],
     blurb:
-      'Benchmarks seven large language models across 21 languages on ~9,100 journalist-vetted health assertions, showing where AI health advice degrades.',
+      "Using basic health statements authorized by UK and EU registers and ~9,100 journalist-vetted public-health assertions on topics such as abortion, COVID-19 and politics from sources ranging from peer-reviewed journals and government advisories to social media and news across the political spectrum, we benchmark seven leading large language models in 21 languages. We find that, despite high accuracy on English-centric textbook claims, performance falls in multiple non-European languages and fluctuates by topic and source. This highlights the urgency of comprehensive multilingual, domain-aware validation before deploying AI in global health communication.",
     links: [
       { label: 'Preprint', url: 'https://www.researchsquare.com/article/rs-7460273/v1' },
     ],
@@ -258,7 +258,7 @@ export const papers: Paper[] = [
     venue: 'Aeon · arXiv',
     coauthors: [],
     blurb:
-      'A knowledge graph of Bob Dylan’s songs across six decades, used to trace thematic evolution, conceptual reach, and stylistic shifts.',
+      "For six decades, Bob Dylan has challenged listeners with songs that reward interpretation. Critics and fans have long pored over his words, treating them as literary texts worthy of a slow, devotional reading, line by line, image by image. In 2016, Dylan even won the Nobel Prize in Literature. As the Swedish Academy put it, the prize honoured him for 'having created new poetic expressions within the great American song tradition'. But what more might we discover if, instead of a human scholar, we asked an artificial intelligence to sift through every word Dylan ever wrote? What patterns, connections or evolution in Dylan's massive body of lyrics might reveal themselves to a machine's analysis, and what could that tell us about the man and his music?",
     links: [
       { label: 'Aeon essay', url: 'https://aeon.co/essays/can-ai-tell-us-anything-meaningful-about-bob-dylans-songs' },
       { label: 'Technical paper', url: 'https://arxiv.org/abs/2502.01772' },
@@ -465,7 +465,7 @@ export function topicForTalk(title: string): Topic {
 export interface LibraryItem {
   slug: string;
   title: string;
-  blurb: string;
+  blurb: string[];
   links: PaperLink[];
   tag: string;
 }
@@ -474,8 +474,14 @@ export const library: LibraryItem[] = [
   {
     slug: 'llm-guide',
     title: 'Retrieving and Generating Data using LLMs',
-    blurb:
-      'Open-source notebooks and slides demonstrating how to turn text into structured research data. Two paradigms in one place: retrieval (extracting causal edges, stance labels) and generation (building networks from seed prompts). Covers prompt design, JSON schema validation, batch processing, embedding-based classification, and QA.',
+    blurb: [
+      "Python code notebooks and slides to use API to access LLMs.",
+      "This open-source notebook collection and slides demonstrate two complementary LLM paradigms, retrieval and generation, for turning raw text into structured, research-ready data.",
+      "Retrieval notebooks show how to mine large document corpora to extract causal edges, stance labels, demographic attributes and other key fields (e.g., the pipeline powering www.causal.claims).",
+      "Generation notebooks start from minimal seed prompts and leverage the model's prior to build production networks, innovation profiles and context-aware keyword dictionaries (see aipnet.io and www.academicexpression.online).",
+      "Across both strands you will find hands-on modules for prompt engineering, JSON-schema enforcement, cost-efficient batch calling, embedding-based code mapping (HS6 / JEL) and validation routines such as modal voting and cosine sanity checks.",
+      "By the end, users can scale or adapt each workflow — whether analysing messy policy PDFs or constructing supply-chain graphs — while keeping costs predictable and outputs auditable.",
+    ],
     tag: 'Code & methods',
     links: [
       { label: 'GitHub repository', url: 'https://github.com/prashgarg/LLM-retrieval-generation' },
@@ -484,9 +490,14 @@ export const library: LibraryItem[] = [
   },
   {
     slug: 'dylan',
-    title: 'Mapping Bob Dylan’s Mind',
-    blurb:
-      'A knowledge graph of Bob Dylan’s songs across 1962–2012. Traces a movement from protest themes toward mythic and biblical imagery; uses eigenvector-centrality variance to identify mid-career as the most eclectic period.',
+    title: "Mapping Bob Dylan's mind",
+    blurb: [
+      "I construct a Knowledge Graph from Dylan's lyrics (1962–2012).",
+      "I tracked the evolution of key themes over time — from protest/political to mythic/biblical and movement/travel. The trends align closely with pivotal moments in Dylan's career.",
+      "Next, I mapped transitions between different concept types (like person → abstract) and color-coded them by sentiment. This alluvial diagram uncovers the emotional dynamics woven into Dylan's lyrical connections.",
+      "Dylan's lyrics shift from literal expression to an increasingly metaphorical style over the decades. This trend highlights his growing reliance on symbolic, emotionally charged language in his 70s.",
+      "Finally, by measuring the variance in eigenvector centrality, I quantified \"dishabituation\" — the mix of mainstream vs. peripheral concepts. The mid-career peak reveals Dylan's most eclectic and disruptive phase. Note, this is relative to his dishabituation state in the 60s.",
+    ],
     tag: 'Essay',
     links: [
       { label: 'Aeon essay', url: 'https://aeon.co/essays/can-ai-tell-us-anything-meaningful-about-bob-dylans-songs' },
