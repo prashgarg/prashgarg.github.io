@@ -93,6 +93,19 @@ function svg(name: string) {
                    onerror="this.onerror=null;this.src='/photo.svg';" />
             </div>
           </div>
+
+          <!-- Mobile-only dock: same actions as the rails on desktop -->
+          <div id="mobile-dock">
+            {[...leftRail, ...rightRail].map(it => (
+              <button class="tile" type="button"
+                      data-window={it.window ? it.href : ''}
+                      data-title={('title' in it ? it.title : '') as string}
+                      data-href={it.href}>
+                <span class="tile-icon" set:html={svg(it.icon)}></span>
+                <span class="tile-label">{it.label}</span>
+              </button>
+            ))}
+          </div>
         </div>
       </article>
     </main>
@@ -126,9 +139,10 @@ function svg(name: string) {
   @media (max-width: 760px) {
     .desktop {
       grid-template-columns: 1fr;
-      padding: 16px 12px;
-      gap: 16px;
+      padding: 12px 8px;
+      gap: 0;
     }
+    .rail { display: none; }
   }
 
   .rail {
@@ -137,14 +151,23 @@ function svg(name: string) {
     gap: 14px;
     padding-top: 12px;
   }
+
+  /* Mobile dock — rendered inside the window on small screens */
+  #mobile-dock { display: none; }
   @media (max-width: 760px) {
-    .rail {
-      flex-direction: row;
-      overflow-x: auto;
-      padding: 4px 2px 8px;
-      gap: 12px;
-      scrollbar-width: thin;
+    #mobile-dock {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 10px;
+      margin-top: 24px;
+      padding-top: 18px;
+      border-top: 1px dashed rgba(0,0,0,0.18);
     }
+    html.dark #mobile-dock { border-top-color: rgba(255,255,255,0.18); }
+    #mobile-dock .tile { width: auto; gap: 4px; padding: 6px 0; }
+    #mobile-dock .tile-icon { width: 38px; height: 38px; border-radius: 8px; }
+    #mobile-dock .tile-icon svg { width: 18px; height: 18px; }
+    #mobile-dock .tile-label { font-size: 10px; }
   }
 
   .tile {
@@ -254,8 +277,9 @@ function svg(name: string) {
     gap: 28px;
     align-items: start;
   }
-  @media (max-width: 640px) {
-    .bio-grid { grid-template-columns: 1fr; }
+  @media (max-width: 760px) {
+    .bio-grid { grid-template-columns: 1fr; gap: 18px; }
+    .bio-photo { order: -1; max-width: 200px; margin: 0 auto; }
   }
 
   .bio-text h1 {
@@ -317,7 +341,7 @@ function svg(name: string) {
     background: #E8E0CB;
   }
   html.dark .bio-photo { border-color: var(--color-cream); box-shadow: 4px 4px 0 0 var(--color-cream); }
-  .bio-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .bio-photo img { width: 100%; height: 100%; object-fit: cover; object-position: center 25%; display: block; }
 
   /* Opened windows (popups) */
   #window-host {
@@ -406,13 +430,29 @@ function svg(name: string) {
     let zCounter = 60;
     let offset = 0;
 
+    function clampPos(left, top, width, height) {
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const maxLeft = Math.max(8, vw - width - 8);
+      const maxTop  = Math.max(8, vh - 48); // keep title bar visible
+      return {
+        left: Math.max(8, Math.min(maxLeft, left)),
+        top:  Math.max(8, Math.min(maxTop,  top)),
+      };
+    }
+
     function makeWindow(html, title, href) {
       offset = (offset + 28) % 200;
       const w = document.createElement('div');
       w.className = 'popup';
-      w.style.top = (60 + offset) + 'px';
-      w.style.left = 'calc(50% - 380px + ' + offset + 'px)';
-      w.style.width = '760px';
+      const vw = window.innerWidth;
+      const desiredW = Math.min(760, vw - 32);
+      const desiredLeft = Math.max(8, (vw - desiredW) / 2 + offset - 40);
+      const desiredTop = 60 + offset;
+      const clamped = clampPos(desiredLeft, desiredTop, desiredW, 400);
+      w.style.top = clamped.top + 'px';
+      w.style.left = clamped.left + 'px';
+      w.style.width = desiredW + 'px';
       w.style.zIndex = ++zCounter;
       w.innerHTML = `
         <header class="popup-bar">
@@ -440,8 +480,9 @@ function svg(name: string) {
       });
       document.addEventListener('mousemove', (e) => {
         if (!dragging) return;
-        w.style.left = (ox + e.clientX - sx) + 'px';
-        w.style.top  = (oy + e.clientY - sy) + 'px';
+        const c = clampPos(ox + e.clientX - sx, oy + e.clientY - sy, w.offsetWidth, w.offsetHeight);
+        w.style.left = c.left + 'px';
+        w.style.top  = c.top  + 'px';
       });
       document.addEventListener('mouseup', () => { dragging = false; bar.classList.remove('dragging'); });
       host.appendChild(w);
@@ -452,11 +493,21 @@ function svg(name: string) {
         const res = await fetch(href);
         const txt = await res.text();
         const doc = new DOMParser().parseFromString(txt, 'text/html');
-        const main = doc.querySelector('main');
-        const content = main ? main.innerHTML : doc.body.innerHTML;
-        makeWindow(content, title, href);
+        const main = doc.querySelector('main') || doc.body;
+        // Remove scripts from the cloned content; we'll re-create them after mount
+        const scripts = Array.from(main.querySelectorAll('script'));
+        scripts.forEach(s => s.remove());
+        makeWindow(main.innerHTML, title, href);
+        const popup = host.lastElementChild;
+        const body = popup.querySelector('.popup-body');
+        // Recreate scripts so they actually execute
+        scripts.forEach(oldScript => {
+          const s = document.createElement('script');
+          for (const a of oldScript.attributes) s.setAttribute(a.name, a.value);
+          s.textContent = oldScript.textContent;
+          body.appendChild(s);
+        });
       } catch (e) {
-        // fall back to navigation if fetch fails
         location.href = href;
       }
     }
