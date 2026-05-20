@@ -282,7 +282,7 @@ function Chimney() {
   );
 }
 
-function Smoke() {
+function Smoke({ position = [0.85, 3.30, -0.4] as [number, number, number] }) {
   const ref = useRef<THREE.Group>(null!);
   const N = 4;
   useFrame((_, dt) => {
@@ -301,13 +301,63 @@ function Smoke() {
     });
   });
   return (
-    <group ref={ref} position={[0.85, 3.30, -0.4]}>
+    <group ref={ref} position={position}>
       {Array.from({ length: N }, (_, i) => (
         <mesh key={i} position={[0, i * 0.65, 0]} scale={[0.20 + i * 0.05, 0.20 + i * 0.05, 0.20 + i * 0.05]}>
           <sphereGeometry args={[0.30, 14, 10]} />
           <meshStandardMaterial color={C.smoke} transparent opacity={0.65} flatShading />
         </mesh>
       ))}
+    </group>
+  );
+}
+
+/* ---------- assembled cottage (Quaternius Medieval Village pieces) ---- */
+const COTTAGE_RECOLOR: Record<string, string> = {
+  'MI_Plaster':       C.body,    // butter plaster walls
+  'MI_WoodTrim':      '#7A4E2E', // warm wood trim
+  'MI_WoodTrim_Wear': '#7A4E2E',
+  'MI_RockTrim':      '#B9A88A', // soft warm stone
+  'MI_Brick':         '#D9826F', // terracotta brick / chimney
+  'MI_WindowGlass':   C.window,  // sky-blue glazing
+  'MI_RoundTiles':    C.roof,    // mint roof tiles
+};
+
+/** A Quaternius modular piece, placed at local position + rotation. */
+function CottagePiece({ url, position = [0, 0, 0] as [number, number, number], rotation = [0, 0, 0] as [number, number, number] }) {
+  return (
+    <group position={position} rotation={rotation}>
+      <Model url={url} fallback={null} recolor={COTTAGE_RECOLOR} />
+    </group>
+  );
+}
+
+function Cottage() {
+  /* Modular pieces in Medieval Village are 4 units wide × 4 tall × ~0.4 thick.
+     We arrange four walls into a 4×4 footprint, drop a 4×4 roof on top, and
+     park the chimney on the back-left of the roof. */
+  return (
+    <group scale={[0.55, 0.55, 0.55]} position={[0, 0, 0]}>
+      {/* walls — front (with door cutout), two sides (windows), back (plain) */}
+      <CottagePiece url="/models/cottage-wall-door.glb"   position={[ 0,    0,  2]} rotation={[0, 0,             0]} />
+      <CottagePiece url="/models/cottage-wall-window.glb" position={[ 2,    0,  0]} rotation={[0, -Math.PI / 2,  0]} />
+      <CottagePiece url="/models/cottage-wall-window.glb" position={[-2,    0,  0]} rotation={[0,  Math.PI / 2,  0]} />
+      <CottagePiece url="/models/cottage-wall-plain.glb"  position={[ 0,    0, -2]} rotation={[0,  Math.PI,      0]} />
+
+      {/* roof tiles centred on the walls */}
+      <CottagePiece url="/models/cottage-roof.glb"        position={[ 0,    4,  0]} rotation={[0, 0,             0]} />
+
+      {/* the door, inset slightly proud of the front-wall cutout */}
+      <CottagePiece url="/models/cottage-door.glb"        position={[ 0,    0,  2.05]} />
+
+      {/* the window glazing + open shutters for each side wall */}
+      <CottagePiece url="/models/cottage-window.glb"      position={[ 2.05, 0,  0]} rotation={[0, -Math.PI / 2,  0]} />
+      <CottagePiece url="/models/cottage-shutters.glb"    position={[ 2.10, 0,  0]} rotation={[0, -Math.PI / 2,  0]} />
+      <CottagePiece url="/models/cottage-window.glb"      position={[-2.05, 0,  0]} rotation={[0,  Math.PI / 2,  0]} />
+      <CottagePiece url="/models/cottage-shutters.glb"    position={[-2.10, 0,  0]} rotation={[0,  Math.PI / 2,  0]} />
+
+      {/* chimney on the rear-left roof */}
+      <CottagePiece url="/models/cottage-chimney.glb"     position={[-1.4,  4.0, -1.2]} />
     </group>
   );
 }
@@ -339,8 +389,8 @@ function House({ onEnter }: { onEnter?: () => void }) {
       onPointerOut={() => { setHovered(false); document.body.style.cursor = 'default'; }}
       onClick={(e) => { e.stopPropagation(); onEnter?.(); }}
     >
-      <Model url="/models/house.glb" fallback={primitive} modelScale={0.6} />
-      <Smoke />
+      <Cottage />
+      <Smoke position={[-0.77, 2.55, -0.66]} />
     </group>
   );
 }
