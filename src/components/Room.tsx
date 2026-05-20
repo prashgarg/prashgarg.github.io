@@ -373,8 +373,31 @@ function Cottage() {
       <CottagePiece url="/models/cottage-window.glb"      position={[-1.07, 0.4, 0  ]} rotation={[0,  Math.PI / 2,  0]} />
       <CottagePiece url="/models/cottage-shutters.glb"    position={[-1.10, 0.4, 0  ]} rotation={[0,  Math.PI / 2,  0]} />
 
-      {/* chimney rising through the roof at the rear */}
-      <CottagePiece url="/models/cottage-chimney.glb"     position={[-0.6,  0.8, -0.5]} />
+      {/* chimney — primitive stack so we have full control over height and
+          position. Sits at cottage-local y=4.0 so the 2-tall stack pokes
+          well above the gable peak (which is at cottage-local y≈4.56). */}
+      <group position={[-0.45, 4.0, -0.45]}>
+        <mesh castShadow>
+          <boxGeometry args={[0.45, 2.0, 0.45]} />
+          <meshStandardMaterial color="#D9826F" roughness={0.9} flatShading />
+        </mesh>
+        {/* terracotta cap */}
+        <mesh position={[0, 1.05, 0]} castShadow>
+          <boxGeometry args={[0.55, 0.10, 0.55]} />
+          <meshStandardMaterial color="#A85C4A" roughness={0.85} flatShading />
+        </mesh>
+        {/* a thin brick band at the bottom for character */}
+        <mesh position={[0, -0.85, 0]} castShadow>
+          <boxGeometry args={[0.50, 0.12, 0.50]} />
+          <meshStandardMaterial color="#A85C4A" roughness={0.85} flatShading />
+        </mesh>
+      </group>
+
+      {/* interior darkness so the doorway doesn't show through */}
+      <mesh position={[0, 1.5, 0]}>
+        <boxGeometry args={[1.6, 2.6, 1.6]} />
+        <meshStandardMaterial color="#2A1F14" roughness={1} />
+      </mesh>
     </group>
   );
 }
@@ -407,7 +430,7 @@ function House({ onEnter }: { onEnter?: () => void }) {
       onClick={(e) => { e.stopPropagation(); onEnter?.(); }}
     >
       <Cottage />
-      <Smoke position={[-0.42, 3.75, -0.35]} />
+      <Smoke position={[-0.32, 3.75, -0.32]} />
     </group>
   );
 }
