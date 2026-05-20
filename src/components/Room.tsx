@@ -108,13 +108,21 @@ const C = {
 };
 
 /* ---------- camera rig: 3/4 on the house + mouse parallax ------------- */
-const CAM_POS = new THREE.Vector3(4.0, 2.8, 5.0);
-const CAM_TGT = new THREE.Vector3(0.0, 1.2, 0.0);
+const CAM_POS = new THREE.Vector3(5.2, 3.4, 6.4);
+const CAM_TGT = new THREE.Vector3(0.0, 1.6, 0.0);
 
-function CameraRig() {
+/* Where the camera flies to when the door is clicked. Just in front of the
+   front door, eye-level, looking at the door cutout. */
+const DOLLY_POS = new THREE.Vector3(0.0, 1.4, 1.7);
+const DOLLY_TGT = new THREE.Vector3(0.0, 0.7, 0.7);
+
+type Phase = 'idle' | 'dollying' | 'boot';
+
+function CameraRig({ phase, onDollyDone }: { phase: Phase; onDollyDone: () => void }) {
   const { camera } = useThree();
   const mouse = useRef({ x: 0, y: 0 });
   const tgt = useRef(CAM_TGT.clone());
+  const doneFired = useRef(false);
 
   useEffect(() => {
     const onMove = (e: PointerEvent) => {
@@ -130,11 +138,34 @@ function CameraRig() {
     };
   }, []);
 
+  // Reset done-fired when phase leaves dollying (e.g. on remount or rewind)
+  useEffect(() => { if (phase !== 'dollying') doneFired.current = false; }, [phase]);
+
   useFrame(() => {
+    if (phase === 'dollying') {
+      // Damped approach to the door
+      camera.position.lerp(DOLLY_POS, 0.045);
+      tgt.current.lerp(DOLLY_TGT, 0.06);
+      camera.lookAt(tgt.current);
+      if (!doneFired.current && camera.position.distanceTo(DOLLY_POS) < 0.18) {
+        doneFired.current = true;
+        onDollyDone();
+      }
+      return;
+    }
+    if (phase === 'boot') {
+      // Hold steady on the door while the boot overlay covers the screen
+      camera.position.lerp(DOLLY_POS, 0.05);
+      tgt.current.lerp(DOLLY_TGT, 0.05);
+      camera.lookAt(tgt.current);
+      return;
+    }
+    // idle: mouse parallax
     const wantX = CAM_POS.x - mouse.current.x * 0.45;
     const wantY = CAM_POS.y + mouse.current.y * 0.28;
     camera.position.x += (wantX - camera.position.x) * 0.06;
     camera.position.y += (wantY - camera.position.y) * 0.06;
+    camera.position.z += (CAM_POS.z - camera.position.z) * 0.06;
     const tx = CAM_TGT.x + mouse.current.x * 0.15;
     const ty = CAM_TGT.y - mouse.current.y * 0.10;
     tgt.current.x += (tx - tgt.current.x) * 0.08;
@@ -972,17 +1003,22 @@ function BootOverlay({ onDone }: { onDone: () => void }) {
 
 /* ---------- top-level component --------------------------------------- */
 export default function Room() {
-  const [entering, setEntering] = useState(false);
-  const handleEnter = () => setEntering(true);
-  const handleBootDone = () => setEntering(false);
+  const [phase, setPhase] = useState<Phase>('idle');
+  const handleEnter    = () => { if (phase === 'idle') setPhase('dollying'); };
+  const handleDollyEnd = () => { setPhase('boot'); };
+  const handleBootDone = () => {
+    // After the boot terminal finishes, navigate inside the cottage to the
+    // actual site content. The Home link in the inner nav comes back to '/'.
+    if (typeof window !== 'undefined') window.location.href = '/research';
+  };
   return (
     <div style={{ position: 'fixed', inset: 0, background: C.sky }}>
       <Canvas shadows dpr={[1, 1.75]} gl={{ antialias: true }}>
         <PerspectiveCamera makeDefault position={[CAM_POS.x, CAM_POS.y, CAM_POS.z]} fov={36} />
-        <CameraRig />
+        <CameraRig phase={phase} onDollyDone={handleDollyEnd} />
         <Scene onEnter={handleEnter} />
       </Canvas>
-      {entering && <BootOverlay onDone={handleBootDone} />}
+      {phase === 'boot' && <BootOverlay onDone={handleBootDone} />}
     </div>
   );
 }
