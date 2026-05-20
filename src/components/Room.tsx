@@ -111,17 +111,25 @@ const C = {
 const CAM_POS = new THREE.Vector3(5.2, 3.4, 6.4);
 const CAM_TGT = new THREE.Vector3(0.0, 1.6, 0.0);
 
-/* Where the camera flies to when the door is clicked. Just in front of the
-   front door, eye-level, looking at the door cutout. */
-const DOLLY_POS = new THREE.Vector3(0.0, 1.4, 1.7);
-const DOLLY_TGT = new THREE.Vector3(0.0, 0.7, 0.7);
+/* Where the camera flies to when the door is clicked. Stops short of the
+   door so the user reads as 'walking up to it' rather than 'pressed against
+   the panel'. */
+const DOLLY_POS = new THREE.Vector3(0.0, 1.8, 3.4);
+const DOLLY_TGT = new THREE.Vector3(0.0, 0.9, 0.7);
 
 type Phase = 'idle' | 'dollying' | 'boot';
+
+const DOLLY_DURATION = 1.4; // seconds
+
+function easeOutCubic(t: number) { return 1 - Math.pow(1 - t, 3); }
 
 function CameraRig({ phase, onDollyDone }: { phase: Phase; onDollyDone: () => void }) {
   const { camera } = useThree();
   const mouse = useRef({ x: 0, y: 0 });
   const tgt = useRef(CAM_TGT.clone());
+  const dollyStart = useRef<number | null>(null);
+  const dollyFrom  = useRef<THREE.Vector3>(CAM_POS.clone());
+  const dollyTgtFrom = useRef<THREE.Vector3>(CAM_TGT.clone());
   const doneFired = useRef(false);
 
   useEffect(() => {
@@ -138,25 +146,30 @@ function CameraRig({ phase, onDollyDone }: { phase: Phase; onDollyDone: () => vo
     };
   }, []);
 
-  // Reset done-fired when phase leaves dollying (e.g. on remount or rewind)
-  useEffect(() => { if (phase !== 'dollying') doneFired.current = false; }, [phase]);
+  // Snapshot the starting pose when dolly begins; reset done-flag on phase change
+  useEffect(() => {
+    if (phase === 'dollying') {
+      dollyStart.current = performance.now();
+      dollyFrom.current.copy(camera.position);
+      dollyTgtFrom.current.copy(tgt.current);
+      doneFired.current = false;
+    }
+  }, [phase, camera]);
 
   useFrame(() => {
     if (phase === 'dollying') {
-      // Damped approach to the door
-      camera.position.lerp(DOLLY_POS, 0.045);
-      tgt.current.lerp(DOLLY_TGT, 0.06);
+      const startMs = dollyStart.current ?? performance.now();
+      const t = Math.min(1, (performance.now() - startMs) / (DOLLY_DURATION * 1000));
+      const k = easeOutCubic(t);
+      camera.position.lerpVectors(dollyFrom.current,    DOLLY_POS, k);
+      tgt.current.lerpVectors    (dollyTgtFrom.current, DOLLY_TGT, k);
       camera.lookAt(tgt.current);
-      if (!doneFired.current && camera.position.distanceTo(DOLLY_POS) < 0.18) {
-        doneFired.current = true;
-        onDollyDone();
-      }
+      if (!doneFired.current && t >= 1) { doneFired.current = true; onDollyDone(); }
       return;
     }
     if (phase === 'boot') {
-      // Hold steady on the door while the boot overlay covers the screen
-      camera.position.lerp(DOLLY_POS, 0.05);
-      tgt.current.lerp(DOLLY_TGT, 0.05);
+      camera.position.lerp(DOLLY_POS, 0.06);
+      tgt.current.lerp(DOLLY_TGT, 0.06);
       camera.lookAt(tgt.current);
       return;
     }
@@ -969,14 +982,11 @@ function BootOverlay({ onDone }: { onDone: () => void }) {
 
   useEffect(() => {
     const script = [
-      { line: 'prashantgarg.org · v2.0',       typeMs: 22, pauseMs: 220 },
-      { line: 'booting…',                       typeMs: 38, pauseMs: 260 },
-      { line: '> mounting research      [ ok ]',typeMs: 14, pauseMs: 90  },
-      { line: '> mounting talks         [ ok ]',typeMs: 14, pauseMs: 90  },
-      { line: '> mounting library       [ ok ]',typeMs: 14, pauseMs: 90  },
-      { line: '> warming the kettle     [ ok ]',typeMs: 14, pauseMs: 140 },
-      { line: '',                                typeMs: 0,  pauseMs: 220 },
-      { line: 'welcome, prashant.',              typeMs: 55, pauseMs: 600 },
+      { line: 'prashantgarg.org', typeMs: 14, pauseMs: 120 },
+      { line: '> mounting research, talks, library  [ ok ]', typeMs: 8,  pauseMs: 140 },
+      { line: '> warming the kettle  [ ok ]',                 typeMs: 8,  pauseMs: 220 },
+      { line: '',                                              typeMs: 0,  pauseMs: 80  },
+      { line: 'welcome.',                                      typeMs: 40, pauseMs: 360 },
     ];
 
     let cancelled = false;
