@@ -806,13 +806,85 @@ function Scene({ onEnter }: { onEnter?: () => void }) {
   );
 }
 
+/* ---------- boot overlay (door click → terminal typing) -------------- */
+function BootOverlay({ onDone }: { onDone: () => void }) {
+  const [text, setText] = useState('');
+  const [done, setDone] = useState(false);
+  const skipped = useRef(false);
+
+  useEffect(() => {
+    const script = [
+      { line: 'prashantgarg.org · v2.0',       typeMs: 22, pauseMs: 220 },
+      { line: 'booting…',                       typeMs: 38, pauseMs: 260 },
+      { line: '> mounting research      [ ok ]',typeMs: 14, pauseMs: 90  },
+      { line: '> mounting talks         [ ok ]',typeMs: 14, pauseMs: 90  },
+      { line: '> mounting library       [ ok ]',typeMs: 14, pauseMs: 90  },
+      { line: '> warming the kettle     [ ok ]',typeMs: 14, pauseMs: 140 },
+      { line: '',                                typeMs: 0,  pauseMs: 220 },
+      { line: 'welcome, prashant.',              typeMs: 55, pauseMs: 600 },
+    ];
+
+    let cancelled = false;
+    let buf = '';
+
+    async function run() {
+      for (const step of script) {
+        for (let i = 0; i < step.line.length; i++) {
+          if (cancelled || skipped.current) return;
+          buf += step.line[i];
+          setText(buf);
+          await new Promise(r => setTimeout(r, step.typeMs));
+        }
+        buf += '\n';
+        setText(buf);
+        if (cancelled || skipped.current) return;
+        await new Promise(r => setTimeout(r, step.pauseMs));
+      }
+      if (!cancelled) setDone(true);
+    }
+    run();
+
+    function onKey() { skipped.current = true; setText(script.map(s => s.line).join('\n')); setDone(true); }
+    window.addEventListener('keydown', onKey);
+    return () => { cancelled = true; window.removeEventListener('keydown', onKey); };
+  }, []);
+
+  useEffect(() => {
+    if (!done) return;
+    const t = setTimeout(onDone, 700);
+    return () => clearTimeout(t);
+  }, [done, onDone]);
+
+  return (
+    <div
+      onClick={() => { skipped.current = true; setDone(true); }}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 9999,
+        background: '#0E0D0B', color: '#E8E0CB',
+        fontFamily: "ui-monospace, 'SF Mono', Menlo, Monaco, Consolas, monospace",
+        display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
+        paddingTop: '12vh', cursor: 'pointer',
+        animation: done ? 'bootFade 600ms ease forwards' : 'none',
+      }}
+    >
+      <div style={{ width: 'min(92vw, 560px)', padding: 24 }}>
+        <pre style={{ margin: 0, fontSize: 13, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+          {text}<span style={{ color: '#F9BD2B' }}>▋</span>
+        </pre>
+        <div style={{ marginTop: 36, fontSize: 11, color: 'rgba(232,224,203,0.35)' }}>
+          press any key · click to skip
+        </div>
+      </div>
+      <style>{`@keyframes bootFade { to { opacity: 0; } }`}</style>
+    </div>
+  );
+}
+
 /* ---------- top-level component --------------------------------------- */
 export default function Room() {
-  const handleEnter = () => {
-    // Future: trigger boot sequence + inner OS. For now, just log.
-    // eslint-disable-next-line no-console
-    console.log('door opened');
-  };
+  const [entering, setEntering] = useState(false);
+  const handleEnter = () => setEntering(true);
+  const handleBootDone = () => setEntering(false);
   return (
     <div style={{ position: 'fixed', inset: 0, background: C.sky }}>
       <Canvas shadows dpr={[1, 1.75]} gl={{ antialias: true }}>
@@ -820,6 +892,7 @@ export default function Room() {
         <CameraRig />
         <Scene onEnter={handleEnter} />
       </Canvas>
+      {entering && <BootOverlay onDone={handleBootDone} />}
     </div>
   );
 }
