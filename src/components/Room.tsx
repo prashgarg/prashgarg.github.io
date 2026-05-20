@@ -1,602 +1,62 @@
-import { Suspense, useEffect, useMemo, useRef } from 'react';
+/**
+ * Home scene: a small chibi house exterior, Animal Crossing register.
+ * Pastel candy palette. Built from primitives + RoundedBox (chamfered) so
+ * everything reads as deliberately stylised, not "tried to be realistic".
+ * The front door is the click target — clicking it will eventually trigger
+ * the boot sequence and reveal the inner site.
+ */
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { PerspectiveCamera, ContactShadows } from '@react-three/drei';
+import { PerspectiveCamera, RoundedBox, ContactShadows } from '@react-three/drei';
 import * as THREE from 'three';
 
-/* ---------- materials --------------------------------------------------- */
-const WOOD_FLOOR  = '#5A4028';   // lifted from near-black to warm walnut
-const WALL_BEIGE  = '#D6B98C';   // lifted cream-tan
-const WALL_DEEP   = '#A98358';   // softer warm
-const WALNUT      = '#5A3E27';   // shelf wood, lighter than before
-const BRASS       = '#C99551';
-const SHADE_GREEN = '#235C46';
-const PAPER_CREAM = '#F1E6C4';
-const CARPET_RED  = '#7C2A21';   // Persian rug base
-const CARPET_GOLD = '#C8985A';   // Persian rug accent
-const CEIL_WARM   = '#9C7A52';
-const LEATHER     = '#5E2C1E';
+/* ---------- palette (pastel candy) ------------------------------------ */
+const C = {
+  sky:        '#AEDDEF',
+  skyTop:     '#7FC6E5',
+  ground:     '#B5DD9A',
+  grass:      '#8FCB7C',
+  pathStone:  '#F1E3BD',
+  body:       '#FCE6A8',  // butter walls
+  bodyTrim:   '#F5C26F',
+  roof:       '#A4DDC5',  // mint roof
+  roofTrim:   '#6FB89B',
+  door:       '#FF9EC0',  // pink door
+  doorTrim:   '#C45C82',
+  knob:       '#FFD66D',
+  window:     '#C0E5F3',
+  windowFrame:'#FFFFFF',
+  chimney:    '#E48267',
+  smoke:      '#FFFFFF',
+  trunk:      '#A07550',
+  leaves:     '#B5E0A1',
+  leavesDark: '#8FC885',
+  bush:       '#8FC988',
+  flowerPink: '#FF9EC9',
+  flowerYel:  '#FFE08A',
+  flowerRed:  '#FF7A7A',
+  mailbox:    '#B788E0',
+  flag:       '#FF6B6B',
+  sign:       '#FFFAEC',
+  fence:      '#FFFFFF',
+  cloud:      '#FFFFFF',
+};
 
-/* ---------- floor ------------------------------------------------------- */
-function Floor() {
-  return (
-    <mesh rotation-x={-Math.PI / 2} receiveShadow>
-      <planeGeometry args={[24, 24]} />
-      <meshStandardMaterial color={WOOD_FLOOR} roughness={0.85} metalness={0.0} />
-    </mesh>
-  );
-}
-
-/* ---------- walls + ceiling -------------------------------------------- */
-function Walls() {
-  return (
-    <group>
-      {/* back wall */}
-      <mesh position={[0, 3, -5]} receiveShadow>
-        <planeGeometry args={[22, 6]} />
-        <meshStandardMaterial color={WALL_BEIGE} roughness={1} />
-      </mesh>
-      {/* left wall (we'll cover with bookshelves) */}
-      <mesh position={[-7, 3, 0]} rotation-y={Math.PI / 2} receiveShadow>
-        <planeGeometry args={[10, 6]} />
-        <meshStandardMaterial color={WALL_DEEP} roughness={1} />
-      </mesh>
-      {/* right wall */}
-      <mesh position={[7, 3, 0]} rotation-y={-Math.PI / 2} receiveShadow>
-        <planeGeometry args={[10, 6]} />
-        <meshStandardMaterial color={WALL_BEIGE} roughness={1} />
-      </mesh>
-      {/* ceiling */}
-      <mesh position={[0, 6, 0]} rotation-x={Math.PI / 2}>
-        <planeGeometry args={[22, 12]} />
-        <meshStandardMaterial color={CEIL_WARM} roughness={1} />
-      </mesh>
-    </group>
-  );
-}
-
-/* ---------- bookshelf wall (the library nook signature) --------------- */
-function BookshelfWall() {
-  /* shelves: 5 rows. each row holds 24 varied book spines. */
-  const palette = useMemo(
-    () => ['#5C2D1F', '#3B2A14', '#243A2A', '#2D2A4A', '#5A4421', '#3A1F1F', '#22344A', '#4A3320', '#36223A'],
-    [],
-  );
-
-  const shelves: number[] = [0.4, 1.4, 2.4, 3.4, 4.4]; // y positions
-  const SHELF_W = 9.4; // along z
-  const SHELF_X = -6.85; // just in front of left wall
-
-  function Books({ y }: { y: number }) {
-    const seed = y * 17.3;
-    const books: { z: number; w: number; h: number; lean: number; color: string }[] = [];
-    let z = -SHELF_W / 2 + 0.12;
-    let i = 0;
-    while (z < SHELF_W / 2 - 0.12) {
-      const r1 = ((Math.sin(seed + i * 3.13) + 1) / 2);
-      const r2 = ((Math.sin(seed + i * 7.91) + 1) / 2);
-      const r3 = ((Math.sin(seed + i * 1.77) + 1) / 2);
-      const w = 0.08 + r1 * 0.06;
-      const h = 0.55 + r2 * 0.25;
-      const lean = (r3 - 0.5) * 0.12; // tilt some books
-      const color = palette[(i + Math.floor(seed * 11)) % palette.length];
-      books.push({ z: z + w / 2, w, h, lean, color });
-      z += w + 0.005;
-      i++;
-    }
-    return (
-      <>
-        {books.map((b, idx) => (
-          <mesh
-            key={idx}
-            position={[SHELF_X + 0.2, y + b.h / 2, b.z]}
-            rotation-x={b.lean}
-            castShadow
-          >
-            <boxGeometry args={[0.28, b.h, b.w]} />
-            <meshStandardMaterial color={b.color} roughness={0.85} />
-          </mesh>
-        ))}
-      </>
-    );
-  }
-
-  return (
-    <group>
-      {/* shelf planks */}
-      {shelves.map((y, i) => (
-        <mesh key={i} position={[SHELF_X, y, 0]} castShadow receiveShadow>
-          <boxGeometry args={[0.6, 0.05, SHELF_W + 0.3]} />
-          <meshStandardMaterial color={WALNUT} roughness={0.75} />
-        </mesh>
-      ))}
-      {/* vertical posts */}
-      {[-SHELF_W / 2 - 0.05, SHELF_W / 2 + 0.05].map((z, i) => (
-        <mesh key={i} position={[SHELF_X, 2.5, z]} castShadow>
-          <boxGeometry args={[0.6, 5, 0.1]} />
-          <meshStandardMaterial color={WALNUT} roughness={0.75} />
-        </mesh>
-      ))}
-      {/* back panel */}
-      <mesh position={[SHELF_X - 0.32, 2.5, 0]} castShadow>
-        <boxGeometry args={[0.04, 5, SHELF_W]} />
-        <meshStandardMaterial color="#1F1208" roughness={1} />
-      </mesh>
-      {/* books per shelf */}
-      {shelves.map((y, i) => <Books key={i} y={y} />)}
-    </group>
-  );
-}
-
-/* ---------- desk -------------------------------------------------------- */
-function Desk() {
-  return (
-    <group position={[1.5, 0, -1.5]}>
-      {/* top */}
-      <mesh position={[0, 1.0, 0]} castShadow receiveShadow>
-        <boxGeometry args={[3.2, 0.08, 1.6]} />
-        <meshStandardMaterial color={WALNUT} roughness={0.55} />
-      </mesh>
-      {/* legs */}
-      {[
-        [-1.45, 0.5, -0.7],
-        [ 1.45, 0.5, -0.7],
-        [-1.45, 0.5,  0.7],
-        [ 1.45, 0.5,  0.7],
-      ].map((p, i) => (
-        <mesh key={i} position={p as [number, number, number]} castShadow>
-          <boxGeometry args={[0.12, 1.0, 0.12]} />
-          <meshStandardMaterial color={WALNUT} roughness={0.7} />
-        </mesh>
-      ))}
-      {/* paper stack on desk */}
-      <mesh position={[-1.0, 1.07, 0.3]} castShadow>
-        <boxGeometry args={[0.6, 0.06, 0.45]} />
-        <meshStandardMaterial color={PAPER_CREAM} roughness={1} />
-      </mesh>
-      <mesh position={[-1.05, 1.105, 0.25]} rotation-y={0.12} castShadow>
-        <boxGeometry args={[0.55, 0.02, 0.42]} />
-        <meshStandardMaterial color="#F0E5C2" roughness={1} />
-      </mesh>
-      {/* coffee mug */}
-      <mesh position={[1.1, 1.18, 0.45]} castShadow>
-        <cylinderGeometry args={[0.09, 0.085, 0.22, 24]} />
-        <meshStandardMaterial color="#3a2a20" roughness={0.6} />
-      </mesh>
-      <mesh position={[1.21, 1.18, 0.45]} castShadow>
-        <torusGeometry args={[0.06, 0.018, 12, 24, Math.PI]} />
-        <meshStandardMaterial color="#3a2a20" roughness={0.6} />
-      </mesh>
-    </group>
-  );
-}
-
-/* ---------- monitor (CRT-ish portal to inner OS) ----------------------- */
-function Monitor() {
-  return (
-    <group position={[1.5, 1.04, -2.0]}>
-      {/* base */}
-      <mesh position={[0, 0.05, 0]} castShadow>
-        <boxGeometry args={[0.7, 0.1, 0.4]} />
-        <meshStandardMaterial color="#3A332B" roughness={0.7} />
-      </mesh>
-      {/* neck */}
-      <mesh position={[0, 0.15, 0]} castShadow>
-        <boxGeometry args={[0.18, 0.1, 0.18]} />
-        <meshStandardMaterial color="#3A332B" roughness={0.7} />
-      </mesh>
-      {/* body */}
-      <mesh position={[0, 0.65, -0.05]} castShadow>
-        <boxGeometry args={[1.5, 1.0, 0.95]} />
-        <meshStandardMaterial color="#D8C49E" roughness={0.6} />
-      </mesh>
-      {/* screen bezel (slightly inset) */}
-      <mesh position={[0, 0.65, 0.43]}>
-        <boxGeometry args={[1.32, 0.85, 0.04]} />
-        <meshStandardMaterial color="#1F1A14" roughness={0.4} />
-      </mesh>
-      {/* glowing screen surface */}
-      <mesh position={[0, 0.65, 0.46]}>
-        <planeGeometry args={[1.18, 0.74]} />
-        <meshStandardMaterial
-          color="#0E160D"
-          emissive="#1B7A4E"
-          emissiveIntensity={0.65}
-          roughness={0.3}
-        />
-      </mesh>
-    </group>
-  );
-}
-
-/* ---------- library lamp (banker's lamp) ------------------------------ */
-function Lamp() {
-  return (
-    <group position={[-0.4, 1.04, -1.6]}>
-      {/* base disc */}
-      <mesh position={[0, 0.03, 0]} castShadow>
-        <cylinderGeometry args={[0.16, 0.18, 0.06, 24]} />
-        <meshStandardMaterial color={BRASS} roughness={0.35} metalness={0.7} />
-      </mesh>
-      {/* upright */}
-      <mesh position={[0, 0.30, 0]} castShadow>
-        <cylinderGeometry args={[0.025, 0.025, 0.55, 16]} />
-        <meshStandardMaterial color={BRASS} roughness={0.35} metalness={0.7} />
-      </mesh>
-      {/* shade */}
-      <mesh position={[0, 0.55, 0]} rotation-z={Math.PI / 2} castShadow>
-        <cylinderGeometry args={[0.18, 0.18, 0.6, 24, 1, true]} />
-        <meshStandardMaterial
-          color={SHADE_GREEN}
-          roughness={0.55}
-          side={THREE.DoubleSide}
-          emissive={SHADE_GREEN}
-          emissiveIntensity={0.18}
-        />
-      </mesh>
-      {/* warm bulb light inside the shade */}
-      <pointLight
-        position={[0, 0.5, 0]}
-        intensity={4.5}
-        distance={5.5}
-        decay={2}
-        color="#FFB870"
-        castShadow
-        shadow-mapSize-width={1024}
-        shadow-mapSize-height={1024}
-      />
-    </group>
-  );
-}
-
-/* ---------- reading chair (suggestive, low-poly) ---------------------- */
-function Chair() {
-  return (
-    <group position={[-2.5, 0, 1.5]} rotation-y={0.6}>
-      {/* seat cushion */}
-      <mesh position={[0, 0.5, 0]} castShadow>
-        <boxGeometry args={[1.1, 0.25, 1.0]} />
-        <meshStandardMaterial color="#5A2E20" roughness={0.85} />
-      </mesh>
-      {/* backrest */}
-      <mesh position={[0, 1.1, -0.4]} castShadow>
-        <boxGeometry args={[1.1, 1.1, 0.2]} />
-        <meshStandardMaterial color="#4F2818" roughness={0.85} />
-      </mesh>
-      {/* arms */}
-      {[-0.55, 0.55].map((x, i) => (
-        <mesh key={i} position={[x, 0.8, 0]} castShadow>
-          <boxGeometry args={[0.12, 0.4, 1.0]} />
-          <meshStandardMaterial color="#4F2818" roughness={0.85} />
-        </mesh>
-      ))}
-      {/* feet */}
-      {[
-        [-0.45, 0.18, -0.4],
-        [ 0.45, 0.18, -0.4],
-        [-0.45, 0.18,  0.4],
-        [ 0.45, 0.18,  0.4],
-      ].map((p, i) => (
-        <mesh key={i} position={p as [number, number, number]} castShadow>
-          <boxGeometry args={[0.1, 0.36, 0.1]} />
-          <meshStandardMaterial color="#1F140C" roughness={0.7} />
-        </mesh>
-      ))}
-    </group>
-  );
-}
-
-/* ---------- window with warm beam -------------------------------------- */
-function Window() {
-  /* a tall window on the right wall, with warm directional light coming in */
-  return (
-    <group position={[6.95, 3, 1.5]} rotation-y={-Math.PI / 2}>
-      <mesh>
-        <planeGeometry args={[2.4, 3.2]} />
-        <meshStandardMaterial color="#F2C078" emissive="#F2C078" emissiveIntensity={0.45} />
-      </mesh>
-      {/* muntin cross */}
-      <mesh position={[0, 0, 0.01]}>
-        <boxGeometry args={[2.4, 0.04, 0.02]} />
-        <meshStandardMaterial color={WALNUT} />
-      </mesh>
-      <mesh position={[0, 0, 0.01]}>
-        <boxGeometry args={[0.04, 3.2, 0.02]} />
-        <meshStandardMaterial color={WALNUT} />
-      </mesh>
-    </group>
-  );
-}
-
-/* ---------- floating dust motes --------------------------------------- */
-function Dust() {
-  const ref = useRef<THREE.Points>(null!);
-  const positions = useMemo(() => {
-    const arr = new Float32Array(140 * 3);
-    for (let i = 0; i < 140; i++) {
-      arr[i * 3 + 0] = (Math.random() - 0.5) * 10;
-      arr[i * 3 + 1] = Math.random() * 5;
-      arr[i * 3 + 2] = (Math.random() - 0.5) * 8;
-    }
-    return arr;
-  }, []);
-  useFrame((s, dt) => {
-    const arr = ref.current.geometry.attributes.position.array as Float32Array;
-    for (let i = 0; i < arr.length; i += 3) {
-      arr[i + 1] += dt * 0.04;
-      if (arr[i + 1] > 5) arr[i + 1] = 0;
-    }
-    ref.current.geometry.attributes.position.needsUpdate = true;
-  });
-  return (
-    <points ref={ref}>
-      <bufferGeometry>
-        <bufferAttribute attach="attributes-position" args={[positions, 3]} />
-      </bufferGeometry>
-      <pointsMaterial color="#F3D9A3" size={0.025} sizeAttenuation transparent opacity={0.65} />
-    </points>
-  );
-}
-
-/* ---------- Persian rug ------------------------------------------------ */
-function Rug() {
-  return (
-    <group position={[0.3, 0.012, 0.6]}>
-      {/* outer field */}
-      <mesh rotation-x={-Math.PI / 2} receiveShadow>
-        <planeGeometry args={[5.4, 3.6]} />
-        <meshStandardMaterial color={CARPET_RED} roughness={1} />
-      </mesh>
-      {/* gold border */}
-      <mesh position={[0, 0.001, 0]} rotation-x={-Math.PI / 2}>
-        <ringGeometry args={[1.65, 1.85, 4, 1]} />
-        <meshStandardMaterial color={CARPET_GOLD} roughness={1} side={THREE.DoubleSide} />
-      </mesh>
-      {/* inner cream medallion */}
-      <mesh position={[0, 0.002, 0]} rotation-x={-Math.PI / 2}>
-        <circleGeometry args={[0.55, 24]} />
-        <meshStandardMaterial color="#E0C58A" roughness={1} />
-      </mesh>
-      {/* central dark anchor */}
-      <mesh position={[0, 0.003, 0]} rotation-x={-Math.PI / 2}>
-        <circleGeometry args={[0.22, 24]} />
-        <meshStandardMaterial color="#3A1812" roughness={1} />
-      </mesh>
-      {/* corner medallions */}
-      {[
-        [-2.0,  1.2],
-        [ 2.0,  1.2],
-        [-2.0, -1.2],
-        [ 2.0, -1.2],
-      ].map((p, i) => (
-        <mesh key={i} position={[p[0], 0.002, p[1]]} rotation-x={-Math.PI / 2}>
-          <circleGeometry args={[0.32, 16]} />
-          <meshStandardMaterial color={CARPET_GOLD} roughness={1} />
-        </mesh>
-      ))}
-    </group>
-  );
-}
-
-/* ---------- rolling library ladder ------------------------------------- */
-function Ladder() {
-  /* leans slightly against the bookshelf wall */
-  return (
-    <group position={[-6.2, 0, -2.4]} rotation={[0, 0.05, -0.06]}>
-      {/* rails */}
-      {[-0.28, 0.28].map((x, i) => (
-        <mesh key={i} position={[x, 1.9, 0]} castShadow>
-          <cylinderGeometry args={[0.035, 0.035, 3.8, 12]} />
-          <meshStandardMaterial color={WALNUT} roughness={0.6} metalness={0.05} />
-        </mesh>
-      ))}
-      {/* rungs */}
-      {Array.from({ length: 9 }, (_, i) => 0.35 + i * 0.42).map((y, i) => (
-        <mesh key={i} position={[0, y, 0]} rotation-z={Math.PI / 2} castShadow>
-          <cylinderGeometry args={[0.022, 0.022, 0.56, 10]} />
-          <meshStandardMaterial color={WALNUT} roughness={0.6} />
-        </mesh>
-      ))}
-      {/* brass top hardware suggesting a rolling carriage */}
-      {[-0.28, 0.28].map((x, i) => (
-        <mesh key={i} position={[x, 3.85, 0]} castShadow>
-          <cylinderGeometry args={[0.05, 0.05, 0.12, 16]} />
-          <meshStandardMaterial color={BRASS} roughness={0.3} metalness={0.7} />
-        </mesh>
-      ))}
-      {/* small wheels at the foot */}
-      {[-0.28, 0.28].map((x, i) => (
-        <mesh key={i} position={[x, 0.05, 0.05]} rotation={[0, 0, Math.PI / 2]} castShadow>
-          <cylinderGeometry args={[0.05, 0.05, 0.04, 16]} />
-          <meshStandardMaterial color={BRASS} roughness={0.4} metalness={0.6} />
-        </mesh>
-      ))}
-    </group>
-  );
-}
-
-/* ---------- oil painting on the back wall ----------------------------- */
-function Painting() {
-  /* an abstract landscape suggested with stacked colour bands */
-  return (
-    <group position={[3.4, 3.4, -4.92]}>
-      {/* outer gilded frame */}
-      <mesh castShadow>
-        <boxGeometry args={[1.7, 1.25, 0.08]} />
-        <meshStandardMaterial color="#8C6A2E" roughness={0.4} metalness={0.5} />
-      </mesh>
-      {/* inner relief */}
-      <mesh position={[0, 0, 0.05]}>
-        <boxGeometry args={[1.55, 1.10, 0.02]} />
-        <meshStandardMaterial color="#3A2A14" roughness={0.7} />
-      </mesh>
-      {/* sky band */}
-      <mesh position={[0, 0.30, 0.07]}>
-        <planeGeometry args={[1.46, 0.45]} />
-        <meshStandardMaterial color="#D9A06A" roughness={1} />
-      </mesh>
-      {/* horizon band */}
-      <mesh position={[0, 0.03, 0.07]}>
-        <planeGeometry args={[1.46, 0.12]} />
-        <meshStandardMaterial color="#7D4A26" roughness={1} />
-      </mesh>
-      {/* foreground band */}
-      <mesh position={[0, -0.27, 0.07]}>
-        <planeGeometry args={[1.46, 0.50]} />
-        <meshStandardMaterial color="#3A2A18" roughness={1} />
-      </mesh>
-      {/* tiny suggested moon */}
-      <mesh position={[-0.45, 0.40, 0.08]}>
-        <circleGeometry args={[0.06, 16]} />
-        <meshStandardMaterial color="#F1E1B5" emissive="#F1E1B5" emissiveIntensity={0.2} />
-      </mesh>
-    </group>
-  );
-}
-
-/* ---------- globe on a brass arc ------------------------------------- */
-function Globe({ position = [2.45, 1.04, -1.55] as [number, number, number] }) {
-  return (
-    <group position={position}>
-      {/* wood base */}
-      <mesh position={[0, 0.04, 0]} castShadow>
-        <cylinderGeometry args={[0.13, 0.15, 0.06, 24]} />
-        <meshStandardMaterial color={WALNUT} roughness={0.55} />
-      </mesh>
-      {/* brass arc */}
-      <mesh position={[0, 0.27, 0]} rotation-z={Math.PI / 2}>
-        <torusGeometry args={[0.20, 0.012, 8, 32, Math.PI]} />
-        <meshStandardMaterial color={BRASS} roughness={0.35} metalness={0.7} />
-      </mesh>
-      {/* globe sphere */}
-      <mesh position={[0, 0.27, 0]} castShadow>
-        <sphereGeometry args={[0.18, 24, 24]} />
-        <meshStandardMaterial color="#B98955" roughness={0.7} />
-      </mesh>
-      {/* a few suggested continents as offset spots */}
-      {[
-        [0.10, 0.32, 0.10],
-        [-0.05, 0.40, 0.13],
-        [0.07, 0.20, -0.14],
-        [-0.13, 0.27, 0.05],
-      ].map((p, i) => (
-        <mesh key={i} position={p as [number, number, number]} scale={[0.05, 0.04, 0.045]}>
-          <sphereGeometry args={[1, 8, 8]} />
-          <meshStandardMaterial color="#3D2A14" roughness={1} />
-        </mesh>
-      ))}
-    </group>
-  );
-}
-
-/* ---------- side table + teapot --------------------------------------- */
-function SideTable() {
-  return (
-    <group position={[-3.7, 0, 2.6]}>
-      {/* top */}
-      <mesh position={[0, 0.72, 0]} castShadow receiveShadow>
-        <cylinderGeometry args={[0.42, 0.42, 0.05, 28]} />
-        <meshStandardMaterial color={WALNUT} roughness={0.55} />
-      </mesh>
-      {/* legs */}
-      {[
-        [ 0.30, 0.36,  0.00],
-        [-0.15, 0.36,  0.26],
-        [-0.15, 0.36, -0.26],
-      ].map((p, i) => (
-        <mesh key={i} position={p as [number, number, number]} castShadow>
-          <cylinderGeometry args={[0.025, 0.04, 0.72, 10]} />
-          <meshStandardMaterial color={WALNUT} roughness={0.6} />
-        </mesh>
-      ))}
-      {/* teapot on top */}
-      <Teapot position={[0.05, 0.78, 0.05]} />
-      {/* a small stack of books on the table */}
-      <mesh position={[-0.18, 0.78, -0.05]} castShadow>
-        <boxGeometry args={[0.18, 0.04, 0.24]} />
-        <meshStandardMaterial color="#3A1F1F" roughness={0.85} />
-      </mesh>
-      <mesh position={[-0.18, 0.82, -0.05]} castShadow>
-        <boxGeometry args={[0.17, 0.03, 0.23]} />
-        <meshStandardMaterial color="#243A2A" roughness={0.85} />
-      </mesh>
-      <mesh position={[-0.18, 0.85, -0.05]} castShadow>
-        <boxGeometry args={[0.18, 0.035, 0.235]} />
-        <meshStandardMaterial color="#2D2A4A" roughness={0.85} />
-      </mesh>
-    </group>
-  );
-}
-
-function Teapot({ position }: { position: [number, number, number] }) {
-  return (
-    <group position={position}>
-      {/* body */}
-      <mesh castShadow>
-        <sphereGeometry args={[0.12, 24, 18]} />
-        <meshStandardMaterial color="#E8DBB6" roughness={0.5} />
-      </mesh>
-      {/* lid */}
-      <mesh position={[0, 0.10, 0]} castShadow>
-        <cylinderGeometry args={[0.06, 0.07, 0.025, 18]} />
-        <meshStandardMaterial color="#E8DBB6" roughness={0.5} />
-      </mesh>
-      {/* knob */}
-      <mesh position={[0, 0.125, 0]} castShadow>
-        <sphereGeometry args={[0.022, 12, 10]} />
-        <meshStandardMaterial color={BRASS} roughness={0.4} metalness={0.6} />
-      </mesh>
-      {/* spout */}
-      <mesh position={[0.11, 0.02, 0]} rotation-z={-0.7} castShadow>
-        <cylinderGeometry args={[0.018, 0.03, 0.13, 14]} />
-        <meshStandardMaterial color="#E8DBB6" roughness={0.5} />
-      </mesh>
-      {/* handle */}
-      <mesh position={[-0.12, 0.02, 0]} rotation-z={Math.PI / 2} castShadow>
-        <torusGeometry args={[0.06, 0.014, 10, 24, Math.PI]} />
-        <meshStandardMaterial color="#E8DBB6" roughness={0.5} />
-      </mesh>
-    </group>
-  );
-}
-
-/* ---------- draped throw blanket on the armchair --------------------- */
-function ChairThrow() {
-  /* a flat plane bent over the chair's arm; not real cloth, just suggestive */
-  return (
-    <group position={[-2.5, 0, 1.5]} rotation-y={0.6}>
-      {/* over the right arm + dangling */}
-      <mesh position={[0.55, 0.85, 0.05]} rotation={[0.12, 0, -0.05]} castShadow>
-        <boxGeometry args={[0.22, 0.05, 1.05]} />
-        <meshStandardMaterial color="#C49157" roughness={0.95} />
-      </mesh>
-      <mesh position={[0.66, 0.70, 0.20]} rotation={[0, 0, -1.45]} castShadow>
-        <boxGeometry args={[0.55, 0.04, 0.35]} />
-        <meshStandardMaterial color="#C49157" roughness={0.95} />
-      </mesh>
-      {/* a folded edge on the seat */}
-      <mesh position={[0.10, 0.65, 0.30]} rotation={[0.04, 0.3, 0]} castShadow>
-        <boxGeometry args={[0.70, 0.05, 0.45]} />
-        <meshStandardMaterial color="#A8773F" roughness={0.95} />
-      </mesh>
-    </group>
-  );
-}
-
-/* ---------- camera rig: wide establishing + mouse parallax ------------ */
-const BASE_POS = new THREE.Vector3(6.5, 3.2, 5.6);
-const BASE_TGT = new THREE.Vector3(0.5, 1.6, -1.0);
+/* ---------- camera rig: 3/4 on the house + mouse parallax ------------- */
+const CAM_POS = new THREE.Vector3(4.0, 2.8, 5.0);
+const CAM_TGT = new THREE.Vector3(0.0, 1.2, 0.0);
 
 function CameraRig() {
   const { camera } = useThree();
   const mouse = useRef({ x: 0, y: 0 });
-  const target = useRef(BASE_TGT.clone());
+  const tgt = useRef(CAM_TGT.clone());
 
   useEffect(() => {
-    function onMove(e: PointerEvent) {
+    const onMove = (e: PointerEvent) => {
       mouse.current.x = (e.clientX / window.innerWidth) * 2 - 1;
       mouse.current.y = (e.clientY / window.innerHeight) * 2 - 1;
-    }
-    function onLeave() { mouse.current.x = 0; mouse.current.y = 0; }
+    };
+    const onLeave = () => { mouse.current.x = 0; mouse.current.y = 0; };
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerleave', onLeave);
     return () => {
@@ -606,78 +66,532 @@ function CameraRig() {
   }, []);
 
   useFrame(() => {
-    /* push the camera slightly opposite to the mouse to create a 'look around' parallax */
-    const wantX = BASE_POS.x - mouse.current.x * 0.55;
-    const wantY = BASE_POS.y + mouse.current.y * 0.35;
-    const wantZ = BASE_POS.z;
+    const wantX = CAM_POS.x - mouse.current.x * 0.45;
+    const wantY = CAM_POS.y + mouse.current.y * 0.28;
     camera.position.x += (wantX - camera.position.x) * 0.06;
     camera.position.y += (wantY - camera.position.y) * 0.06;
-    camera.position.z += (wantZ - camera.position.z) * 0.06;
-
-    /* and shift the target subtly in the same direction so the room stays anchored */
-    const tx = BASE_TGT.x + mouse.current.x * 0.20;
-    const ty = BASE_TGT.y - mouse.current.y * 0.10;
-    target.current.x += (tx - target.current.x) * 0.08;
-    target.current.y += (ty - target.current.y) * 0.08;
-    camera.lookAt(target.current);
+    const tx = CAM_TGT.x + mouse.current.x * 0.15;
+    const ty = CAM_TGT.y - mouse.current.y * 0.10;
+    tgt.current.x += (tx - tgt.current.x) * 0.08;
+    tgt.current.y += (ty - tgt.current.y) * 0.08;
+    camera.lookAt(tgt.current);
   });
   return null;
 }
 
-/* ---------- scene ------------------------------------------------------ */
-function Scene() {
+/* ---------- ground ---------------------------------------------------- */
+function Ground() {
+  return (
+    <group>
+      {/* circular grass island */}
+      <mesh rotation-x={-Math.PI / 2} position={[0, -0.01, 0]} receiveShadow>
+        <circleGeometry args={[9, 48]} />
+        <meshStandardMaterial color={C.ground} roughness={1} flatShading />
+      </mesh>
+      {/* darker rim to suggest a hill edge */}
+      <mesh rotation-x={-Math.PI / 2} position={[0, -0.05, 0]}>
+        <ringGeometry args={[8.9, 9.4, 48]} />
+        <meshStandardMaterial color={C.grass} roughness={1} flatShading side={THREE.DoubleSide} />
+      </mesh>
+    </group>
+  );
+}
+
+/* ---------- house ----------------------------------------------------- */
+function HouseBody() {
+  return (
+    <group>
+      {/* main box */}
+      <RoundedBox args={[2.8, 2.0, 2.4]} radius={0.10} smoothness={4} position={[0, 1.0, 0]} castShadow receiveShadow>
+        <meshStandardMaterial color={C.body} roughness={0.9} flatShading />
+      </RoundedBox>
+      {/* base trim */}
+      <RoundedBox args={[2.95, 0.18, 2.55]} radius={0.06} smoothness={3} position={[0, 0.09, 0]} castShadow>
+        <meshStandardMaterial color={C.bodyTrim} roughness={0.9} flatShading />
+      </RoundedBox>
+    </group>
+  );
+}
+
+function Roof() {
+  const shape = useMemo(() => {
+    const s = new THREE.Shape();
+    s.moveTo(-1.62, 0);
+    s.lineTo( 1.62, 0);
+    s.lineTo( 0,    1.20);
+    s.closePath();
+    return s;
+  }, []);
+  return (
+    <>
+      <mesh position={[0, 2.0, 1.25]} rotation-x={Math.PI / 2} castShadow>
+        <extrudeGeometry args={[shape, { depth: 2.5, bevelEnabled: true, bevelSize: 0.04, bevelThickness: 0.04 }]} />
+        <meshStandardMaterial color={C.roof} roughness={0.9} flatShading />
+      </mesh>
+      {/* ridge cap */}
+      <mesh position={[0, 3.18, 0]} castShadow>
+        <boxGeometry args={[0.16, 0.10, 2.6]} />
+        <meshStandardMaterial color={C.roofTrim} roughness={0.9} flatShading />
+      </mesh>
+    </>
+  );
+}
+
+function Door({ onEnter }: { onEnter?: () => void }) {
+  const [hovered, setHovered] = useState(false);
+  const ref = useRef<THREE.Group>(null!);
+  useFrame((_, dt) => {
+    if (!ref.current) return;
+    const target = hovered ? 1.05 : 1.0;
+    const s = ref.current.scale.x;
+    const next = s + (target - s) * Math.min(1, dt * 8);
+    ref.current.scale.set(next, next, next);
+  });
+  return (
+    <group
+      ref={ref}
+      position={[0, 0.75, 1.23]}
+      onPointerOver={(e) => { e.stopPropagation(); setHovered(true);  document.body.style.cursor = 'pointer'; }}
+      onPointerOut={()  => { setHovered(false); document.body.style.cursor = 'default'; }}
+      onClick={() => onEnter?.()}
+    >
+      {/* frame */}
+      <RoundedBox args={[0.85, 1.45, 0.05]} radius={0.06} smoothness={3} position={[0, 0, -0.04]} castShadow>
+        <meshStandardMaterial color={C.doorTrim} roughness={0.8} flatShading />
+      </RoundedBox>
+      {/* door */}
+      <RoundedBox args={[0.72, 1.32, 0.10]} radius={0.05} smoothness={3} castShadow>
+        <meshStandardMaterial color={C.door} roughness={0.7} flatShading />
+      </RoundedBox>
+      {/* small heart-ish pane */}
+      <mesh position={[0, 0.35, 0.055]}>
+        <circleGeometry args={[0.10, 18]} />
+        <meshStandardMaterial color={C.window} emissive={C.window} emissiveIntensity={0.25} />
+      </mesh>
+      <mesh position={[0, 0.35, 0.062]}>
+        <ringGeometry args={[0.10, 0.115, 18]} />
+        <meshStandardMaterial color={C.windowFrame} side={THREE.DoubleSide} />
+      </mesh>
+      {/* doorknob */}
+      <mesh position={[0.24, -0.04, 0.06]}>
+        <sphereGeometry args={[0.045, 14, 10]} />
+        <meshStandardMaterial color={C.knob} roughness={0.4} metalness={0.5} />
+      </mesh>
+    </group>
+  );
+}
+
+function Window({ position }: { position: [number, number, number] }) {
+  return (
+    <group position={position}>
+      <RoundedBox args={[0.62, 0.62, 0.08]} radius={0.07} smoothness={3} castShadow>
+        <meshStandardMaterial color={C.windowFrame} roughness={0.8} flatShading />
+      </RoundedBox>
+      <mesh position={[0, 0, 0.045]}>
+        <planeGeometry args={[0.48, 0.48]} />
+        <meshStandardMaterial color={C.window} emissive={C.window} emissiveIntensity={0.20} />
+      </mesh>
+      {/* mullion + sill */}
+      <mesh position={[0, 0, 0.06]}><boxGeometry args={[0.50, 0.025, 0.01]} /><meshStandardMaterial color={C.windowFrame} /></mesh>
+      <mesh position={[0, 0, 0.06]}><boxGeometry args={[0.025, 0.50, 0.01]} /><meshStandardMaterial color={C.windowFrame} /></mesh>
+      <mesh position={[0, -0.36, 0.06]}><boxGeometry args={[0.72, 0.06, 0.04]} /><meshStandardMaterial color={C.bodyTrim} flatShading /></mesh>
+      {/* flower box */}
+      <mesh position={[0, -0.45, 0.10]} castShadow>
+        <boxGeometry args={[0.68, 0.10, 0.12]} />
+        <meshStandardMaterial color={C.doorTrim} flatShading />
+      </mesh>
+      {[-0.20, 0, 0.20].map((x, i) => (
+        <group key={i} position={[x, -0.35, 0.16]}>
+          <mesh><sphereGeometry args={[0.045, 10, 8]} /><meshStandardMaterial color={[C.flowerPink, C.flowerYel, C.flowerRed][i]} flatShading /></mesh>
+        </group>
+      ))}
+    </group>
+  );
+}
+
+function Chimney() {
+  return (
+    <RoundedBox args={[0.34, 0.78, 0.34]} radius={0.05} smoothness={3} position={[0.85, 2.85, -0.4]} castShadow>
+      <meshStandardMaterial color={C.chimney} roughness={0.9} flatShading />
+    </RoundedBox>
+  );
+}
+
+function Smoke() {
+  const ref = useRef<THREE.Group>(null!);
+  const N = 4;
+  useFrame((_, dt) => {
+    if (!ref.current) return;
+    ref.current.children.forEach((p) => {
+      p.position.y += dt * 0.25;
+      const s = (p.scale.x as number) + dt * 0.05;
+      p.scale.set(s, s, s);
+      const m = (p as any).material as THREE.MeshStandardMaterial;
+      if (m) m.opacity = Math.max(0, 0.7 - (p.position.y / 2.6));
+      if (p.position.y > 2.6) {
+        p.position.y = 0;
+        p.scale.setScalar(0.20);
+        if (m) m.opacity = 0.7;
+      }
+    });
+  });
+  return (
+    <group ref={ref} position={[0.85, 3.30, -0.4]}>
+      {Array.from({ length: N }, (_, i) => (
+        <mesh key={i} position={[0, i * 0.65, 0]} scale={[0.20 + i * 0.05, 0.20 + i * 0.05, 0.20 + i * 0.05]}>
+          <sphereGeometry args={[0.30, 14, 10]} />
+          <meshStandardMaterial color={C.smoke} transparent opacity={0.65} flatShading />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+function House({ onEnter }: { onEnter?: () => void }) {
+  return (
+    <group>
+      <HouseBody />
+      <Roof />
+      <Door onEnter={onEnter} />
+      <Window position={[-0.85, 1.25, 1.22]} />
+      <Window position={[ 0.85, 1.25, 1.22]} />
+      <Chimney />
+      <Smoke />
+    </group>
+  );
+}
+
+/* ---------- plants ---------------------------------------------------- */
+function Tree({ position, scale = 1 }: { position: [number, number, number]; scale?: number }) {
+  return (
+    <group position={position} scale={[scale, scale, scale]}>
+      <mesh position={[0, 0.80, 0]} castShadow>
+        <cylinderGeometry args={[0.16, 0.20, 1.6, 12]} />
+        <meshStandardMaterial color={C.trunk} roughness={0.95} flatShading />
+      </mesh>
+      {[
+        [0,     1.85, 0,     0.90, C.leaves],
+        [0.50,  2.10, 0,     0.55, C.leavesDark],
+        [-0.45, 2.10, 0,     0.55, C.leaves],
+        [0,     2.20, 0.45,  0.50, C.leavesDark],
+        [0,     2.25, -0.35, 0.50, C.leaves],
+        [0.25,  2.50, 0.10,  0.42, C.leaves],
+        [-0.20, 2.50, -0.05, 0.40, C.leavesDark],
+      ].map(([x, y, z, r, col], i) => (
+        <mesh key={i} position={[x as number, y as number, z as number]} castShadow>
+          <sphereGeometry args={[r as number, 16, 12]} />
+          <meshStandardMaterial color={col as string} roughness={0.95} flatShading />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+function Bush({ position, scale = 1 }: { position: [number, number, number]; scale?: number }) {
+  return (
+    <group position={position} scale={[scale, scale, scale]}>
+      {[
+        [0,     0.22, 0,     0.27],
+        [0.20,  0.18, 0.06,  0.20],
+        [-0.18, 0.18, -0.04, 0.22],
+        [0.05,  0.32, 0.12,  0.16],
+      ].map(([x, y, z, r], i) => (
+        <mesh key={i} position={[x as number, y as number, z as number]} castShadow>
+          <sphereGeometry args={[r as number, 12, 10]} />
+          <meshStandardMaterial color={C.bush} roughness={0.95} flatShading />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+function Flower({ position, color }: { position: [number, number, number]; color: string }) {
+  return (
+    <group position={position}>
+      <mesh position={[0, 0.10, 0]}>
+        <cylinderGeometry args={[0.012, 0.012, 0.20, 6]} />
+        <meshStandardMaterial color="#7DBA73" />
+      </mesh>
+      {/* petals as 5 small spheres around centre */}
+      {[0, 1, 2, 3, 4].map((i) => {
+        const a = (i / 5) * Math.PI * 2;
+        return (
+          <mesh key={i} position={[Math.cos(a) * 0.04, 0.22, Math.sin(a) * 0.04]}>
+            <sphereGeometry args={[0.035, 8, 6]} />
+            <meshStandardMaterial color={color} flatShading />
+          </mesh>
+        );
+      })}
+      <mesh position={[0, 0.22, 0]}>
+        <sphereGeometry args={[0.025, 8, 6]} />
+        <meshStandardMaterial color={C.flowerYel} flatShading />
+      </mesh>
+    </group>
+  );
+}
+
+/* ---------- path ------------------------------------------------------ */
+function Path() {
+  const stones: [number, number][] = [
+    [0,  3.2], [0,  2.6], [0,  2.0], [0,  1.5],
+  ];
+  return (
+    <>
+      {stones.map(([x, z], i) => (
+        <group key={i} position={[x, 0.02, z]}>
+          <mesh rotation-x={-Math.PI / 2} receiveShadow>
+            <circleGeometry args={[0.42, 24]} />
+            <meshStandardMaterial color={C.pathStone} roughness={1} flatShading />
+          </mesh>
+          <mesh rotation-x={-Math.PI / 2} position={[0, 0.005, 0]}>
+            <ringGeometry args={[0.42, 0.46, 24]} />
+            <meshStandardMaterial color={C.bodyTrim} roughness={1} flatShading side={THREE.DoubleSide} />
+          </mesh>
+        </group>
+      ))}
+    </>
+  );
+}
+
+/* ---------- mailbox + sign ------------------------------------------- */
+function Mailbox() {
+  return (
+    <group position={[-2.0, 0, 1.6]}>
+      <mesh position={[0, 0.55, 0]} castShadow>
+        <cylinderGeometry args={[0.05, 0.05, 1.10, 10]} />
+        <meshStandardMaterial color={C.trunk} flatShading />
+      </mesh>
+      <RoundedBox args={[0.36, 0.26, 0.50]} radius={0.10} smoothness={3} position={[0, 1.20, 0]} castShadow>
+        <meshStandardMaterial color={C.mailbox} roughness={0.85} flatShading />
+      </RoundedBox>
+      {/* flag pole */}
+      <mesh position={[0.22, 1.28, 0]}>
+        <boxGeometry args={[0.02, 0.22, 0.02]} />
+        <meshStandardMaterial color={C.flag} />
+      </mesh>
+      <mesh position={[0.26, 1.35, 0]}>
+        <boxGeometry args={[0.14, 0.10, 0.01]} />
+        <meshStandardMaterial color={C.flag} flatShading />
+      </mesh>
+    </group>
+  );
+}
+
+function Sign() {
+  return (
+    <group position={[2.0, 0, 2.0]} rotation-y={-0.35}>
+      <mesh position={[0, 0.45, 0]} castShadow>
+        <boxGeometry args={[0.05, 0.90, 0.05]} />
+        <meshStandardMaterial color={C.trunk} />
+      </mesh>
+      <RoundedBox args={[0.66, 0.42, 0.05]} radius={0.06} smoothness={3} position={[0, 0.85, 0]} castShadow>
+        <meshStandardMaterial color={C.sign} roughness={0.9} flatShading />
+      </RoundedBox>
+      {/* a couple of strokes hinting at handwriting */}
+      <mesh position={[-0.10, 0.93, 0.03]}><boxGeometry args={[0.36, 0.05, 0.005]} /><meshStandardMaterial color={C.trunk} /></mesh>
+      <mesh position={[ 0.05, 0.83, 0.03]}><boxGeometry args={[0.42, 0.04, 0.005]} /><meshStandardMaterial color={C.trunk} /></mesh>
+    </group>
+  );
+}
+
+/* ---------- fence (white picket) ------------------------------------- */
+function Fence({ angle, radius = 6.5, count = 26 }: { angle: [number, number]; radius?: number; count?: number }) {
+  const posts = useMemo(() => {
+    const arr: { x: number; z: number; ry: number }[] = [];
+    const [a0, a1] = angle;
+    for (let i = 0; i <= count; i++) {
+      const t = a0 + (a1 - a0) * (i / count);
+      arr.push({ x: Math.cos(t) * radius, z: Math.sin(t) * radius, ry: -t + Math.PI / 2 });
+    }
+    return arr;
+  }, [angle, radius, count]);
+  return (
+    <>
+      {posts.map((p, i) => (
+        <group key={i} position={[p.x, 0, p.z]} rotation-y={p.ry}>
+          <mesh position={[0, 0.30, 0]} castShadow>
+            <boxGeometry args={[0.06, 0.60, 0.04]} />
+            <meshStandardMaterial color={C.fence} flatShading />
+          </mesh>
+          {/* picket point */}
+          <mesh position={[0, 0.66, 0]} castShadow>
+            <coneGeometry args={[0.045, 0.10, 4]} />
+            <meshStandardMaterial color={C.fence} flatShading />
+          </mesh>
+        </group>
+      ))}
+      {/* horizontal rails (approximated by short bars between adjacent posts) */}
+      {posts.slice(0, -1).map((p, i) => {
+        const n = posts[i + 1];
+        const mx = (p.x + n.x) / 2;
+        const mz = (p.z + n.z) / 2;
+        const dx = n.x - p.x;
+        const dz = n.z - p.z;
+        const len = Math.hypot(dx, dz);
+        const ry = -Math.atan2(dz, dx);
+        return (
+          <mesh key={'r' + i} position={[mx, 0.40, mz]} rotation-y={ry}>
+            <boxGeometry args={[len, 0.05, 0.025]} />
+            <meshStandardMaterial color={C.fence} flatShading />
+          </mesh>
+        );
+      })}
+    </>
+  );
+}
+
+/* ---------- cloud ---------------------------------------------------- */
+function Cloud({ position, scale = 1, speed = 0.02 }: { position: [number, number, number]; scale?: number; speed?: number }) {
+  const ref = useRef<THREE.Group>(null!);
+  useFrame((_, dt) => { if (ref.current) ref.current.position.x += dt * speed; if (ref.current && ref.current.position.x > 14) ref.current.position.x = -14; });
+  return (
+    <group ref={ref} position={position} scale={[scale, scale, scale]}>
+      {[
+        [0,    0, 0,   0.55],
+        [0.7, -0.05, 0, 0.40],
+        [-0.6, -0.05, 0, 0.40],
+        [0.3,  0.10, 0, 0.38],
+        [-0.2, 0.12, 0, 0.36],
+      ].map(([x, y, z, r], i) => (
+        <mesh key={i} position={[x as number, y as number, z as number]}>
+          <sphereGeometry args={[r as number, 16, 12]} />
+          <meshStandardMaterial color={C.cloud} flatShading />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+/* ---------- sky (gradient backdrop) ---------------------------------- */
+function Sky() {
+  const tex = useMemo(() => {
+    const cnv = document.createElement('canvas');
+    cnv.width = 2; cnv.height = 256;
+    const ctx = cnv.getContext('2d')!;
+    const g = ctx.createLinearGradient(0, 0, 0, 256);
+    g.addColorStop(0,    C.skyTop);
+    g.addColorStop(0.65, C.sky);
+    g.addColorStop(1,    '#E8F4FA');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, 2, 256);
+    const t = new THREE.CanvasTexture(cnv);
+    t.colorSpace = THREE.SRGBColorSpace;
+    return t;
+  }, []);
+  return (
+    <mesh scale={[80, 80, 80]}>
+      <sphereGeometry args={[1, 32, 32]} />
+      <meshBasicMaterial map={tex} side={THREE.BackSide} />
+    </mesh>
+  );
+}
+
+/* ---------- butterflies ---------------------------------------------- */
+function Butterfly({ origin, color }: { origin: [number, number, number]; color: string }) {
+  const ref = useRef<THREE.Group>(null!);
+  const left = useRef<THREE.Mesh>(null!);
+  const right = useRef<THREE.Mesh>(null!);
+  const phase = useMemo(() => Math.random() * Math.PI * 2, []);
+  useFrame(({ clock }) => {
+    const t = clock.getElapsedTime() + phase;
+    if (ref.current) {
+      ref.current.position.set(
+        origin[0] + Math.sin(t * 0.6) * 0.6,
+        origin[1] + Math.cos(t * 0.8) * 0.2,
+        origin[2] + Math.cos(t * 0.5) * 0.5,
+      );
+      ref.current.rotation.y = Math.sin(t * 0.7);
+    }
+    const flap = Math.sin(t * 18) * 0.7;
+    if (left.current)  left.current.rotation.y  =  flap;
+    if (right.current) right.current.rotation.y = -flap;
+  });
+  return (
+    <group ref={ref}>
+      <mesh ref={left} position={[-0.04, 0, 0]}>
+        <planeGeometry args={[0.10, 0.08]} />
+        <meshStandardMaterial color={color} side={THREE.DoubleSide} flatShading />
+      </mesh>
+      <mesh ref={right} position={[0.04, 0, 0]}>
+        <planeGeometry args={[0.10, 0.08]} />
+        <meshStandardMaterial color={color} side={THREE.DoubleSide} flatShading />
+      </mesh>
+    </group>
+  );
+}
+
+/* ---------- scene ----------------------------------------------------- */
+function Scene({ onEnter }: { onEnter?: () => void }) {
   return (
     <Suspense fallback={null}>
-      {/* lifted ambient so shadows are no longer murky */}
-      <ambientLight intensity={0.55} color="#F8D6A2" />
-      {/* late-afternoon sun, brighter and warmer */}
+      <Sky />
+      <ambientLight intensity={0.8} color="#FFF6E0" />
+      <hemisphereLight args={['#FFFFFF', '#8FCB7C', 0.55]} />
       <directionalLight
-        position={[7, 5, 2.5]}
-        intensity={1.45}
-        color="#FFC07A"
+        position={[5, 9, 4]}
+        intensity={1.10}
+        color="#FFF1C8"
         castShadow
         shadow-mapSize-width={2048}
         shadow-mapSize-height={2048}
-        shadow-camera-far={22}
+        shadow-camera-far={28}
         shadow-camera-left={-12}
         shadow-camera-right={12}
         shadow-camera-top={12}
         shadow-camera-bottom={-12}
       />
-      {/* a sky-bounce fill from above so the ceiling and walls don't go flat */}
-      <hemisphereLight args={['#FFE8B8', '#3A2A18', 0.55]} />
-      {/* warm fill from behind the camera */}
-      <pointLight position={[2, 3.4, 5.4]} intensity={0.95} color="#FFD89A" distance={14} decay={2} />
 
-      <Floor />
-      <Rug />
-      <Walls />
-      <BookshelfWall />
-      <Ladder />
-      <Window />
-      <Painting />
-      <Desk />
-      <Globe />
-      <Monitor />
-      <Lamp />
-      <Chair />
-      <ChairThrow />
-      <SideTable />
-      <Dust />
-      <ContactShadows position={[0, 0.015, 0]} opacity={0.35} blur={2.6} far={3.5} />
+      <Ground />
+      <Path />
+      <House onEnter={onEnter} />
+
+      <Tree position={[ 3.0, 0, -1.5]} scale={1.05} />
+      <Tree position={[-3.2, 0, -1.0]} scale={0.85} />
+      <Tree position={[-3.6, 0,  2.2]} scale={0.70} />
+
+      <Bush position={[ 1.7, 0, 1.6]} scale={1.0} />
+      <Bush position={[ 2.0, 0, 0.8]} scale={0.85} />
+      <Bush position={[-1.8, 0, 0.6]} scale={1.0} />
+      <Bush position={[-2.1, 0, 2.3]} scale={0.85} />
+
+      <Flower position={[ 1.2, 0,  2.4]} color={C.flowerPink} />
+      <Flower position={[ 1.5, 0,  2.7]} color={C.flowerYel} />
+      <Flower position={[-1.3, 0,  2.5]} color={C.flowerRed} />
+      <Flower position={[-1.6, 0,  2.0]} color={C.flowerPink} />
+      <Flower position={[ 0.8, 0, -2.0]} color={C.flowerYel} />
+      <Flower position={[-0.7, 0, -2.2]} color={C.flowerPink} />
+
+      <Mailbox />
+      <Sign />
+
+      {/* a soft picket fence behind the house */}
+      <Fence angle={[Math.PI * 0.6, Math.PI * 1.4]} radius={5.8} count={22} />
+
+      <Cloud position={[-5, 6.0,  -8]} scale={1.0} speed={0.04} />
+      <Cloud position={[ 4, 7.0, -10]} scale={1.3} speed={0.025} />
+      <Cloud position={[ 8, 5.5,  -7]} scale={0.8} speed={0.05} />
+
+      <Butterfly origin={[ 1.6, 1.1, 2.5]} color={C.flowerPink} />
+      <Butterfly origin={[-1.6, 1.0, 2.0]} color={C.flowerYel} />
+
+      <ContactShadows position={[0, 0.005, 0]} opacity={0.30} blur={2.4} far={4} />
     </Suspense>
   );
 }
 
 /* ---------- top-level component --------------------------------------- */
 export default function Room() {
+  const handleEnter = () => {
+    // Future: trigger boot sequence + inner OS. For now, just log.
+    // eslint-disable-next-line no-console
+    console.log('door opened');
+  };
   return (
-    <div style={{ position: 'fixed', inset: 0, background: '#3A2614' }}>
+    <div style={{ position: 'fixed', inset: 0, background: C.sky }}>
       <Canvas shadows dpr={[1, 1.75]} gl={{ antialias: true }}>
-        <PerspectiveCamera makeDefault position={[BASE_POS.x, BASE_POS.y, BASE_POS.z]} fov={40} />
+        <PerspectiveCamera makeDefault position={[CAM_POS.x, CAM_POS.y, CAM_POS.z]} fov={36} />
         <CameraRig />
-        <fog attach="fog" args={['#3A2614', 22, 38]} />
-        <Scene />
+        <Scene onEnter={handleEnter} />
       </Canvas>
     </div>
   );
