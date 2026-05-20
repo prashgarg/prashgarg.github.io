@@ -1,0 +1,39 @@
+---
+import '../styles/global.css';
+interface Props { title?: string; description?: string }
+const { title = 'Prashant Garg', description = 'Personal site of Prashant Garg, economist.' } = Astro.props;
+const path = Astro.url.pathname.replace(/\/$/, '') || '/';
+const ogPath = path === '/' ? '/og/index.png' : `/og${path}.png`;
+const ogImageUrl = Astro.site ? new URL(ogPath, Astro.site).toString() : ogPath;
+const canonical  = Astro.site ? new URL(path, Astro.site).toString() : path;
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content={ogImageUrl} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content={ogImageUrl} />
+    <style>
+      html, body { margin: 0; padding: 0; background: #13100B; color: #E8DBB6; overscroll-behavior: none; }
+      body { overflow: hidden; }
+      #fallback {
+        position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+        font-family: ui-monospace, Menlo, monospace; font-size: 13px;
+        color: rgba(232,219,182,0.6); pointer-events: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="fallback">loading the library…</div>
+    <slot />
+  </body>
+</html>

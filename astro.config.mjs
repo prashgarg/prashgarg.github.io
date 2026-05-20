@@ -5,6 +5,8 @@ import tailwindcss from '@tailwindcss/vite';
 
 import sitemap from '@astrojs/sitemap';
 
+import react from '@astrojs/react';
+
 // https://astro.build/config
 export default defineConfig({
   site: 'https://www.prashantgarg.org',
@@ -14,5 +16,5 @@ export default defineConfig({
   build: {
     format: 'directory',
   },
-  integrations: [sitemap()]
+  integrations: [sitemap(), react()]
 });
