@@ -1,6 +1,6 @@
-import { Suspense, useMemo, useRef } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls, PerspectiveCamera, ContactShadows } from '@react-three/drei';
+import { Suspense, useEffect, useMemo, useRef } from 'react';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { PerspectiveCamera, ContactShadows } from '@react-three/drei';
 import * as THREE from 'three';
 
 /* ---------- materials --------------------------------------------------- */
@@ -333,6 +333,48 @@ function Dust() {
   );
 }
 
+/* ---------- camera rig: wide establishing + mouse parallax ------------ */
+const BASE_POS = new THREE.Vector3(6.5, 3.2, 5.6);
+const BASE_TGT = new THREE.Vector3(0.5, 1.6, -1.0);
+
+function CameraRig() {
+  const { camera } = useThree();
+  const mouse = useRef({ x: 0, y: 0 });
+  const target = useRef(BASE_TGT.clone());
+
+  useEffect(() => {
+    function onMove(e: PointerEvent) {
+      mouse.current.x = (e.clientX / window.innerWidth) * 2 - 1;
+      mouse.current.y = (e.clientY / window.innerHeight) * 2 - 1;
+    }
+    function onLeave() { mouse.current.x = 0; mouse.current.y = 0; }
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerleave', onLeave);
+    return () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerleave', onLeave);
+    };
+  }, []);
+
+  useFrame(() => {
+    /* push the camera slightly opposite to the mouse to create a 'look around' parallax */
+    const wantX = BASE_POS.x - mouse.current.x * 0.55;
+    const wantY = BASE_POS.y + mouse.current.y * 0.35;
+    const wantZ = BASE_POS.z;
+    camera.position.x += (wantX - camera.position.x) * 0.06;
+    camera.position.y += (wantY - camera.position.y) * 0.06;
+    camera.position.z += (wantZ - camera.position.z) * 0.06;
+
+    /* and shift the target subtly in the same direction so the room stays anchored */
+    const tx = BASE_TGT.x + mouse.current.x * 0.20;
+    const ty = BASE_TGT.y - mouse.current.y * 0.10;
+    target.current.x += (tx - target.current.x) * 0.08;
+    target.current.y += (ty - target.current.y) * 0.08;
+    camera.lookAt(target.current);
+  });
+  return null;
+}
+
 /* ---------- scene ------------------------------------------------------ */
 function Scene() {
   return (
@@ -375,14 +417,8 @@ export default function Room() {
   return (
     <div style={{ position: 'fixed', inset: 0, background: '#13100B' }}>
       <Canvas shadows dpr={[1, 1.75]} gl={{ antialias: true }}>
-        <PerspectiveCamera makeDefault position={[5.6, 2.6, 4.2]} fov={42} />
-        <OrbitControls
-          target={[1.2, 1.6, -1]}
-          maxPolarAngle={Math.PI * 0.5}
-          minDistance={3}
-          maxDistance={11}
-          enablePan={false}
-        />
+        <PerspectiveCamera makeDefault position={[BASE_POS.x, BASE_POS.y, BASE_POS.z]} fov={40} />
+        <CameraRig />
         <fog attach="fog" args={['#1A130A', 12, 22]} />
         <Scene />
       </Canvas>
