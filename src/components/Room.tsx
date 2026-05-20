@@ -26,30 +26,49 @@ class ModelErrorBoundary extends Component<
   render() { return this.state.hasError ? this.props.fallback : this.props.children; }
 }
 
-function GLTFInner({ url }: { url: string }) {
+function GLTFInner({ url, recolor }: { url: string; recolor?: Record<string, string> }) {
   const { scene } = useGLTF(url);
   // clone so multiple instances of the same model don't fight over the same tree
-  const cloned = useMemo(() => scene.clone(true), [scene]);
-  // ensure shadow flags propagate
-  useEffect(() => {
-    cloned.traverse((o: any) => {
-      if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; }
+  const cloned = useMemo(() => {
+    const s = scene.clone(true);
+    s.traverse((o: any) => {
+      if (!o.isMesh) return;
+      o.castShadow = true;
+      o.receiveShadow = true;
+      const mat = o.material as THREE.MeshStandardMaterial;
+      if (recolor && mat?.name && recolor[mat.name]) {
+        const next = mat.clone();
+        // strip textures so the override colour shows cleanly
+        next.map = null;
+        next.normalMap = null;
+        next.metalnessMap = null;
+        next.roughnessMap = null;
+        next.aoMap = null;
+        next.color = new THREE.Color(recolor[mat.name]);
+        next.flatShading = true;
+        next.metalness = 0;
+        next.roughness = 0.95;
+        next.needsUpdate = true;
+        o.material = next;
+      }
     });
-  }, [cloned]);
+    return s;
+  }, [scene, recolor]);
   return <primitive object={cloned} />;
 }
 
-function Model({ url, fallback, modelScale = 1, modelY = 0 }: {
+function Model({ url, fallback, modelScale = 1, modelY = 0, recolor }: {
   url: string;
   fallback: ReactNode;
   modelScale?: number;
   modelY?: number;
+  recolor?: Record<string, string>;
 }) {
   return (
     <ModelErrorBoundary fallback={fallback}>
       <Suspense fallback={fallback}>
         <group scale={[modelScale, modelScale, modelScale]} position={[0, modelY, 0]}>
-          <GLTFInner url={url} />
+          <GLTFInner url={url} recolor={recolor} />
         </group>
       </Suspense>
     </ModelErrorBoundary>
@@ -352,7 +371,15 @@ function Tree({ position, scale = 1 }: { position: [number, number, number]; sca
   );
   return (
     <group position={position} scale={[scale, scale, scale]}>
-      <Model url="/models/tree.glb" fallback={primitive} modelScale={0.22} />
+      <Model
+        url="/models/tree.glb"
+        fallback={primitive}
+        modelScale={0.22}
+        recolor={{
+          'Bark_NormalTree':   C.trunk,
+          'Leaves_NormalTree': C.leaves,
+        }}
+      />
     </group>
   );
 }
@@ -375,7 +402,15 @@ function Bush({ position, scale = 1 }: { position: [number, number, number]; sca
   );
   return (
     <group position={position} scale={[scale, scale, scale]}>
-      <Model url="/models/bush.glb" fallback={primitive} modelScale={0.22} />
+      <Model
+        url="/models/bush.glb"
+        fallback={primitive}
+        modelScale={0.22}
+        recolor={{
+          'Leaves_NormalTree': C.bush,
+          'Flowers':           C.flowerPink,
+        }}
+      />
     </group>
   );
 }
@@ -408,7 +443,15 @@ function Flower({ position, color }: { position: [number, number, number]; color
   );
   return (
     <group position={position}>
-      <Model url={`/models/flower-${variant}.glb`} fallback={primitive} modelScale={0.12} />
+      <Model
+        url={`/models/flower-${variant}.glb`}
+        fallback={primitive}
+        modelScale={0.12}
+        recolor={{
+          'Leaves':  '#8FCB7C',
+          'Flowers': color,
+        }}
+      />
     </group>
   );
 }
