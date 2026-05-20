@@ -456,26 +456,103 @@ function Flower({ position, color }: { position: [number, number, number]; color
   );
 }
 
-/* ---------- path ------------------------------------------------------ */
+/* ---------- path stones (Quaternius Pebble_Round) -------------------- */
+function PebbleStone({ position, scale = 1, rotation = 0 }: {
+  position: [number, number, number]; scale?: number; rotation?: number;
+}) {
+  const fb = (
+    <mesh rotation-x={-Math.PI / 2} receiveShadow>
+      <circleGeometry args={[0.42, 24]} />
+      <meshStandardMaterial color={C.pathStone} roughness={1} flatShading />
+    </mesh>
+  );
+  return (
+    <group position={position} scale={[scale, scale, scale]} rotation-y={rotation}>
+      <Model
+        url="/models/pebble.glb"
+        fallback={fb}
+        modelScale={0.18}
+        recolor={{ 'PathRocks': C.pathStone }}
+      />
+    </group>
+  );
+}
+
 function Path() {
-  const stones: [number, number][] = [
-    [0,  3.2], [0,  2.6], [0,  2.0], [0,  1.5],
+  const stones: { p: [number, number, number]; s: number; r: number }[] = [
+    { p: [ 0.05, 0.02,  3.30], s: 1.0,  r: 0.20 },
+    { p: [-0.10, 0.02,  2.65], s: 0.85, r: 1.10 },
+    { p: [ 0.10, 0.02,  2.05], s: 1.0,  r: 2.00 },
+    { p: [-0.05, 0.02,  1.50], s: 0.90, r: 0.50 },
   ];
   return (
     <>
-      {stones.map(([x, z], i) => (
-        <group key={i} position={[x, 0.02, z]}>
-          <mesh rotation-x={-Math.PI / 2} receiveShadow>
-            <circleGeometry args={[0.42, 24]} />
-            <meshStandardMaterial color={C.pathStone} roughness={1} flatShading />
-          </mesh>
-          <mesh rotation-x={-Math.PI / 2} position={[0, 0.005, 0]}>
-            <ringGeometry args={[0.42, 0.46, 24]} />
-            <meshStandardMaterial color={C.bodyTrim} roughness={1} flatShading side={THREE.DoubleSide} />
-          </mesh>
-        </group>
+      {stones.map((s, i) => (
+        <PebbleStone key={i} position={s.p} scale={s.s} rotation={s.r} />
       ))}
     </>
+  );
+}
+
+/* ---------- mushroom (two variants, recoloured) ---------------------- */
+function Mushroom({ position, variant = 'a', color, scale = 1 }: {
+  position: [number, number, number]; variant?: 'a' | 'b'; color: string; scale?: number;
+}) {
+  const fb = (
+    <mesh position={[0, 0.12, 0]} castShadow>
+      <sphereGeometry args={[0.10, 12, 8]} />
+      <meshStandardMaterial color={color} flatShading />
+    </mesh>
+  );
+  return (
+    <group position={position} scale={[scale, scale, scale]}>
+      <Model
+        url={`/models/mushroom-${variant}.glb`}
+        fallback={fb}
+        modelScale={0.18}
+        recolor={{ 'Mushrooms': color }}
+      />
+    </group>
+  );
+}
+
+/* ---------- grass tuft (Quaternius Grass_Wispy_Tall) ----------------- */
+function Grass({ position, scale = 1 }: { position: [number, number, number]; scale?: number }) {
+  const fb = (
+    <mesh position={[0, 0.06, 0]}>
+      <cylinderGeometry args={[0.025, 0.025, 0.12, 6]} />
+      <meshStandardMaterial color="#8FCB7C" />
+    </mesh>
+  );
+  return (
+    <group position={position} scale={[scale, scale, scale]}>
+      <Model
+        url="/models/grass.glb"
+        fallback={fb}
+        modelScale={0.22}
+        recolor={{ 'Grass': '#8FCB7C' }}
+      />
+    </group>
+  );
+}
+
+/* ---------- clover patch --------------------------------------------- */
+function Clover({ position, scale = 1 }: { position: [number, number, number]; scale?: number }) {
+  const fb = (
+    <mesh position={[0, 0.01, 0]} rotation-x={-Math.PI / 2}>
+      <circleGeometry args={[0.08, 8]} />
+      <meshStandardMaterial color="#7DBA73" />
+    </mesh>
+  );
+  return (
+    <group position={position} scale={[scale, scale, scale]}>
+      <Model
+        url="/models/clover.glb"
+        fallback={fb}
+        modelScale={0.20}
+        recolor={{ 'Leaves': '#7DBA73' }}
+      />
+    </group>
   );
 }
 
@@ -686,6 +763,30 @@ function Scene({ onEnter }: { onEnter?: () => void }) {
       <Flower position={[-1.6, 0,  2.0]} color={C.flowerPink} />
       <Flower position={[ 0.8, 0, -2.0]} color={C.flowerYel} />
       <Flower position={[-0.7, 0, -2.2]} color={C.flowerPink} />
+
+      {/* mushrooms at the tree bases */}
+      <Mushroom position={[ 3.30, 0, -1.85]} variant="a" color={C.flowerPink} />
+      <Mushroom position={[ 3.50, 0, -1.15]} variant="b" color={C.flowerYel} scale={0.9} />
+      <Mushroom position={[-3.45, 0, -0.65]} variant="a" color={C.flowerRed} scale={0.85} />
+      <Mushroom position={[-3.40, 0,  2.55]} variant="b" color={C.flowerPink} />
+
+      {/* grass tufts scattered across the lawn */}
+      <Grass position={[ 2.30, 0,  1.95]} scale={1.0} />
+      <Grass position={[-2.10, 0,  1.60]} scale={1.2} />
+      <Grass position={[ 1.70, 0,  3.05]} scale={0.8} />
+      <Grass position={[-1.10, 0, -2.55]} scale={0.9} />
+      <Grass position={[ 3.30, 0,  0.90]} scale={1.0} />
+      <Grass position={[-2.90, 0,  0.50]} scale={0.85} />
+      <Grass position={[ 2.80, 0,  2.55]} scale={0.75} />
+      <Grass position={[-0.90, 0,  3.10]} scale={1.0} />
+
+      {/* clover patches as ground detail */}
+      <Clover position={[ 1.30, 0,  2.75]} />
+      <Clover position={[-1.40, 0,  2.65]} scale={1.1} />
+      <Clover position={[ 2.10, 0, -1.50]} />
+      <Clover position={[-2.20, 0, -1.20]} scale={0.9} />
+      <Clover position={[ 0.65, 0, -3.05]} />
+      <Clover position={[-0.50, 0,  3.50]} scale={1.0} />
 
       <Mailbox />
       <Sign />
