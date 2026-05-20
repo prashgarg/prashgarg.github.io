@@ -3,19 +3,19 @@ import Desktop from '../layouts/Desktop.astro';
 import { site } from '../data/site';
 
 const leftRail = [
-  { href: '/research', title: 'research.md', label: 'Research',  icon: 'book',     window: true  },
-  { href: '/talks',    title: 'talks.md',    label: 'Talks',     icon: 'mic',      window: true  },
-  { href: '/library',  title: 'library.md',  label: 'Library',   icon: 'archive',  window: true  },
-  { href: '/now',      title: 'now.md',      label: 'Now',       icon: 'clock',    window: true  },
-  { href: site.cv,     title: 'cv.pdf',      label: 'CV',        icon: 'file',     window: false },
+  { href: '/research', title: 'research.md', label: 'Research',  icon: 'book',     window: true,  color: 'red'    },
+  { href: '/talks',    title: 'talks.md',    label: 'Talks',     icon: 'mic',      window: true,  color: 'blue'   },
+  { href: '/library',  title: 'library.md',  label: 'Library',   icon: 'archive',  window: true,  color: 'teal'   },
+  { href: '/now',      title: 'now.md',      label: 'Now',       icon: 'clock',    window: true,  color: 'yellow' },
+  { href: site.cv,     title: 'cv.pdf',      label: 'CV',        icon: 'file',     window: false, color: 'purple' },
 ];
 
 const rightRail = [
-  { href: `mailto:${site.email}`, label: 'Email',   icon: 'mail',     window: false },
-  { href: site.scholar,           label: 'Scholar', icon: 'cap',      window: false },
-  { href: site.twitter,           label: 'Twitter', icon: 'twitter',  window: false },
-  { href: site.bluesky,           label: 'Bluesky', icon: 'bluesky',  window: false },
-  { href: site.github,            label: 'GitHub',  icon: 'github',   window: false },
+  { href: `mailto:${site.email}`, label: 'Email',   icon: 'mail',     window: false, color: 'red'    },
+  { href: site.scholar,           label: 'Scholar', icon: 'cap',      window: false, color: 'blue'   },
+  { href: site.twitter,           label: 'Twitter', icon: 'twitter',  window: false, color: 'teal'   },
+  { href: site.bluesky,           label: 'Bluesky', icon: 'bluesky',  window: false, color: 'yellow' },
+  { href: site.github,            label: 'GitHub',  icon: 'github',   window: false, color: 'purple' },
 ];
 
 // inline tile-icons (24x24 stroke style)
@@ -42,6 +42,7 @@ function svg(name: string) {
     <aside class="rail rail-left">
       {leftRail.map(it => (
         <button class="tile" type="button"
+                data-color={it.color}
                 data-window={it.window ? it.href : ''}
                 data-title={it.title}
                 data-href={it.href}
@@ -56,9 +57,16 @@ function svg(name: string) {
     <main class="stage">
       <article class="window">
         <header class="window-bar">
-          <span class="window-dots" aria-hidden="true"><i></i><i></i><i></i></span>
-          <span class="window-title">about.md</span>
-          <span class="window-bar-right" aria-hidden="true"></span>
+          <span class="window-file">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+            <span class="window-title">about.md</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="window-chevron" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+          </span>
+          <span class="window-controls" aria-hidden="true">
+            <i class="ctl ctl-min" title="minimise"></i>
+            <i class="ctl ctl-max" title="maximise"></i>
+            <i class="ctl ctl-close" title="close"></i>
+          </span>
         </header>
 
         <div class="window-body">
@@ -98,6 +106,7 @@ function svg(name: string) {
           <div id="mobile-dock">
             {[...leftRail, ...rightRail].map(it => (
               <button class="tile" type="button"
+                      data-color={it.color}
                       data-window={it.window ? it.href : ''}
                       data-title={('title' in it ? it.title : '') as string}
                       data-href={it.href}>
@@ -113,7 +122,7 @@ function svg(name: string) {
     <!-- right rail -->
     <aside class="rail rail-right">
       {rightRail.map(it => (
-        <a class="tile" href={it.href} target="_blank" rel="noopener">
+        <a class="tile" data-color={it.color} href={it.href} target="_blank" rel="noopener">
           <span class="tile-icon" set:html={svg(it.icon)}></span>
           <span class="tile-label">{it.label}</span>
         </a>
@@ -190,19 +199,56 @@ function svg(name: string) {
   html.dark .tile:hover { background: rgba(255,255,255,0.06); }
 
   .tile-icon {
-    width: 44px; height: 44px;
+    width: 46px; height: 46px;
     display: flex; align-items: center; justify-content: center;
     background: #FAF6E9;
     border: 2px solid var(--color-ink);
-    border-radius: 10px;
-    box-shadow: 2px 2px 0 0 var(--color-ink);
+    border-radius: 11px;
+    box-shadow: 2px 2px 0 0 var(--color-ink),
+                inset 0 2px 0 rgba(255,255,255,0.55),
+                inset 0 -3px 0 rgba(0,0,0,0.08);
+    transition: transform 90ms ease, box-shadow 90ms ease;
   }
-  .tile-icon svg { width: 22px; height: 22px; }
+  .tile-icon svg { width: 22px; height: 22px; color: var(--color-ink); }
+  .tile:hover .tile-icon {
+    transform: translate(-1px, -1px);
+    box-shadow: 3px 3px 0 0 var(--color-ink),
+                inset 0 2px 0 rgba(255,255,255,0.55),
+                inset 0 -3px 0 rgba(0,0,0,0.08);
+  }
+  .tile:active .tile-icon {
+    transform: translate(1px, 1px);
+    box-shadow: 1px 1px 0 0 var(--color-ink),
+                inset 0 -2px 0 rgba(255,255,255,0.35),
+                inset 0 2px 0 rgba(0,0,0,0.10);
+  }
+
+  /* Per-tile accent fills */
+  .tile[data-color="red"]    .tile-icon { background: #F8B89A; }
+  .tile[data-color="blue"]   .tile-icon { background: #B5C8FF; }
+  .tile[data-color="yellow"] .tile-icon { background: #FBE08A; }
+  .tile[data-color="teal"]   .tile-icon { background: #9AE5D2; }
+  .tile[data-color="purple"] .tile-icon { background: #DDB4EE; }
+
   html.dark .tile-icon {
     background: var(--color-ink-3);
     border-color: var(--color-cream);
-    box-shadow: 2px 2px 0 0 var(--color-cream);
+    color: var(--color-cream);
+    box-shadow: 2px 2px 0 0 var(--color-cream),
+                inset 0 2px 0 rgba(255,255,255,0.08),
+                inset 0 -3px 0 rgba(0,0,0,0.25);
   }
+  html.dark .tile:hover .tile-icon { box-shadow: 3px 3px 0 0 var(--color-cream),
+                inset 0 2px 0 rgba(255,255,255,0.08),
+                inset 0 -3px 0 rgba(0,0,0,0.25); }
+  html.dark .tile:active .tile-icon { box-shadow: 1px 1px 0 0 var(--color-cream),
+                inset 0 -2px 0 rgba(255,255,255,0.04),
+                inset 0 2px 0 rgba(0,0,0,0.30); }
+  html.dark .tile[data-color="red"]    .tile-icon { background: #6F2E1A; }
+  html.dark .tile[data-color="blue"]   .tile-icon { background: #25356E; }
+  html.dark .tile[data-color="yellow"] .tile-icon { background: #6F551A; }
+  html.dark .tile[data-color="teal"]   .tile-icon { background: #1F5C50; }
+  html.dark .tile[data-color="purple"] .tile-icon { background: #4E2766; }
   .tile-label {
     font-size: 11px;
     font-weight: 500;
@@ -238,11 +284,12 @@ function svg(name: string) {
   }
 
   .window-bar {
-    display: grid;
-    grid-template-columns: 60px 1fr 60px;
+    display: flex;
     align-items: center;
-    height: 32px;
-    padding: 0 10px;
+    justify-content: space-between;
+    gap: 12px;
+    height: 36px;
+    padding: 0 12px;
     background: #E3DCC7;
     border-bottom: 2px solid var(--color-ink);
   }
@@ -250,15 +297,57 @@ function svg(name: string) {
     background: #2A2724;
     border-bottom-color: var(--color-cream);
   }
-  .window-dots { display: inline-flex; gap: 6px; }
-  .window-dots i {
-    width: 10px; height: 10px; border-radius: 50%;
-    border: 1px solid rgba(0,0,0,0.35);
-    display: inline-block;
+  .window-file {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 8px;
+    background: #FAF6E9;
+    border: 1.5px solid var(--color-ink);
+    border-radius: 6px;
+    box-shadow: 1px 1px 0 0 var(--color-ink);
   }
-  .window-dots i:nth-child(1) { background: #FF5F57; }
-  .window-dots i:nth-child(2) { background: #FFBD2E; }
-  .window-dots i:nth-child(3) { background: #28C840; }
+  html.dark .window-file {
+    background: var(--color-ink-3);
+    border-color: var(--color-cream);
+    box-shadow: 1px 1px 0 0 var(--color-cream);
+  }
+  .window-file svg { width: 13px; height: 13px; color: var(--color-ink); }
+  html.dark .window-file svg { color: var(--color-cream); }
+  .window-chevron { opacity: 0.55; }
+
+  .window-controls { display: inline-flex; gap: 8px; }
+  .window-controls .ctl {
+    width: 18px; height: 18px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border: 1.5px solid var(--color-ink);
+    border-radius: 4px;
+    background: #FAF6E9;
+    box-shadow: 1px 1px 0 0 var(--color-ink);
+    position: relative;
+  }
+  html.dark .window-controls .ctl {
+    background: var(--color-ink-3);
+    border-color: var(--color-cream);
+    box-shadow: 1px 1px 0 0 var(--color-cream);
+  }
+  .window-controls .ctl::before,
+  .window-controls .ctl::after {
+    content: '';
+    position: absolute;
+    background: var(--color-ink);
+  }
+  html.dark .window-controls .ctl::before,
+  html.dark .window-controls .ctl::after { background: var(--color-cream); }
+  .window-controls .ctl-min::before { width: 8px; height: 1.5px; bottom: 4px; left: 4px; }
+  .window-controls .ctl-max::before { width: 8px; height: 8px; top: 3px; left: 3px;
+    background: transparent; border: 1.5px solid var(--color-ink);
+  }
+  html.dark .window-controls .ctl-max::before { border-color: var(--color-cream); background: transparent; }
+  .window-controls .ctl-close::before,
+  .window-controls .ctl-close::after { width: 11px; height: 1.5px; top: 8px; left: 2px; }
+  .window-controls .ctl-close::before { transform: rotate(45deg); }
+  .window-controls .ctl-close::after  { transform: rotate(-45deg); }
   .window-title {
     font-family: var(--font-display);
     font-size: 13px;
@@ -350,6 +439,15 @@ function svg(name: string) {
     pointer-events: none;
     z-index: 50;
   }
+  @keyframes window-in {
+    0%   { opacity: 0; transform: scale(0.94) translateY(6px); }
+    60%  { opacity: 1; transform: scale(1.01) translateY(0); }
+    100% { opacity: 1; transform: scale(1)    translateY(0); }
+  }
+  @keyframes window-out {
+    0%   { opacity: 1; transform: scale(1); }
+    100% { opacity: 0; transform: scale(0.96) translateY(4px); }
+  }
   .popup {
     position: absolute;
     background: #FAF6E9;
@@ -362,17 +460,21 @@ function svg(name: string) {
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    transform-origin: top center;
+    animation: window-in 220ms cubic-bezier(0.34, 1.4, 0.4, 1);
   }
+  .popup.closing { animation: window-out 160ms ease-in forwards; }
   html.dark .popup {
     background: var(--color-ink-3);
     border-color: var(--color-cream);
     box-shadow: 8px 8px 0 0 var(--color-cream);
   }
   .popup .popup-bar {
-    display: grid;
-    grid-template-columns: 60px 1fr 60px;
+    display: flex;
     align-items: center;
-    height: 32px;
+    justify-content: space-between;
+    gap: 10px;
+    height: 36px;
     padding: 0 10px;
     background: #E3DCC7;
     border-bottom: 2px solid var(--color-ink);
@@ -384,33 +486,65 @@ function svg(name: string) {
     border-bottom-color: var(--color-cream);
   }
   .popup .popup-bar.dragging { cursor: grabbing; }
-  .popup .popup-bar .dots { display: inline-flex; gap: 6px; }
-  .popup .popup-bar .dots i {
-    width: 10px; height: 10px; border-radius: 50%;
-    border: 1px solid rgba(0,0,0,0.35);
-    display: inline-block; cursor: pointer;
+  .popup .popup-file {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 8px;
+    background: #FAF6E9;
+    border: 1.5px solid var(--color-ink);
+    border-radius: 6px;
+    box-shadow: 1px 1px 0 0 var(--color-ink);
   }
-  .popup .popup-bar .dots i:nth-child(1) { background: #FF5F57; }
-  .popup .popup-bar .dots i:nth-child(2) { background: #FFBD2E; }
-  .popup .popup-bar .dots i:nth-child(3) { background: #28C840; }
+  html.dark .popup .popup-file {
+    background: var(--color-ink-3);
+    border-color: var(--color-cream);
+    box-shadow: 1px 1px 0 0 var(--color-cream);
+  }
+  .popup .popup-file svg { width: 13px; height: 13px; color: var(--color-ink); }
+  html.dark .popup .popup-file svg { color: var(--color-cream); }
   .popup .popup-title {
     font-family: var(--font-display);
     font-size: 13px;
     font-weight: 600;
-    text-align: center;
   }
-  .popup .popup-actions {
-    display: flex;
-    justify-content: flex-end;
-    align-items: center;
-    gap: 8px;
-  }
-  .popup .popup-actions a {
+  .popup .popup-controls { display: inline-flex; align-items: center; gap: 8px; }
+  .popup .popup-open {
     font-size: 11px;
     color: rgba(20,17,13,0.6);
     text-decoration: underline;
+    margin-right: 4px;
   }
-  html.dark .popup .popup-actions a { color: rgba(238,239,233,0.6); }
+  html.dark .popup .popup-open { color: rgba(238,239,233,0.6); }
+  .popup .ctl {
+    width: 18px; height: 18px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border: 1.5px solid var(--color-ink);
+    border-radius: 4px;
+    background: #FAF6E9;
+    box-shadow: 1px 1px 0 0 var(--color-ink);
+    position: relative;
+    cursor: pointer;
+  }
+  html.dark .popup .ctl {
+    background: var(--color-ink-3);
+    border-color: var(--color-cream);
+    box-shadow: 1px 1px 0 0 var(--color-cream);
+  }
+  .popup .ctl:hover { transform: translate(-0.5px, -0.5px); }
+  .popup .ctl:active { transform: translate(0.5px, 0.5px); box-shadow: 0 0 0 0 var(--color-ink); }
+  .popup .ctl::before,
+  .popup .ctl::after { content: ''; position: absolute; background: var(--color-ink); }
+  html.dark .popup .ctl::before,
+  html.dark .popup .ctl::after { background: var(--color-cream); }
+  .popup .ctl-min::before { width: 8px; height: 1.5px; bottom: 4px; left: 4px; }
+  .popup .ctl-max::before { width: 8px; height: 8px; top: 3px; left: 3px;
+    background: transparent; border: 1.5px solid var(--color-ink); }
+  html.dark .popup .ctl-max::before { border-color: var(--color-cream); background: transparent; }
+  .popup .ctl-close::before,
+  .popup .ctl-close::after { width: 11px; height: 1.5px; top: 8px; left: 2px; }
+  .popup .ctl-close::before { transform: rotate(45deg); }
+  .popup .ctl-close::after  { transform: rotate(-45deg); }
   .popup .popup-body {
     padding: 20px 24px 24px;
     overflow-y: auto;
@@ -456,16 +590,46 @@ function svg(name: string) {
       w.style.zIndex = ++zCounter;
       w.innerHTML = `
         <header class="popup-bar">
-          <span class="dots"><i data-act="close" title="Close"></i><i></i><i></i></span>
-          <span class="popup-title">${title}</span>
-          <span class="popup-actions"><a href="${href}" title="Open as page" target="_self">open</a></span>
+          <span class="popup-file">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+            <span class="popup-title">${title}</span>
+          </span>
+          <span class="popup-controls">
+            <a class="popup-open" href="${href}" title="Open as page" target="_self">open</a>
+            <i class="ctl ctl-min" title="minimise" data-act="min"></i>
+            <i class="ctl ctl-max" title="maximise" data-act="max"></i>
+            <i class="ctl ctl-close" title="close" data-act="close"></i>
+          </span>
         </header>
         <div class="popup-body"></div>
       `;
       w.querySelector('.popup-body').innerHTML = html;
       w.addEventListener('mousedown', () => { w.style.zIndex = ++zCounter; });
-      // close
-      w.querySelector('[data-act=close]').addEventListener('click', () => w.remove());
+      // close with closing animation
+      w.querySelector('[data-act=close]').addEventListener('click', () => {
+        w.classList.add('closing');
+        w.addEventListener('animationend', () => w.remove(), { once: true });
+      });
+      // minimise: slide down + fade
+      w.querySelector('[data-act=min]').addEventListener('click', () => {
+        w.classList.add('closing');
+        w.addEventListener('animationend', () => w.remove(), { once: true });
+      });
+      // maximise: expand to fill the viewport
+      w.querySelector('[data-act=max]').addEventListener('click', () => {
+        const max = w.classList.toggle('maxed');
+        if (max) {
+          w.dataset.prev = JSON.stringify({
+            left: w.style.left, top: w.style.top, width: w.style.width
+          });
+          w.style.left = '12px';
+          w.style.top = '12px';
+          w.style.width = (window.innerWidth - 24) + 'px';
+        } else if (w.dataset.prev) {
+          const p = JSON.parse(w.dataset.prev);
+          w.style.left = p.left; w.style.top = p.top; w.style.width = p.width;
+        }
+      });
       // basic drag
       const bar = w.querySelector('.popup-bar');
       let dragging = false, sx = 0, sy = 0, ox = 0, oy = 0;
