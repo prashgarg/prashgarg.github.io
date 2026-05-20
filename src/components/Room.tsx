@@ -39,11 +39,18 @@ function GLTFInner({ url }: { url: string }) {
   return <primitive object={cloned} />;
 }
 
-function Model({ url, fallback }: { url: string; fallback: ReactNode }) {
+function Model({ url, fallback, modelScale = 1, modelY = 0 }: {
+  url: string;
+  fallback: ReactNode;
+  modelScale?: number;
+  modelY?: number;
+}) {
   return (
     <ModelErrorBoundary fallback={fallback}>
       <Suspense fallback={fallback}>
-        <GLTFInner url={url} />
+        <group scale={[modelScale, modelScale, modelScale]} position={[0, modelY, 0]}>
+          <GLTFInner url={url} />
+        </group>
       </Suspense>
     </ModelErrorBoundary>
   );
@@ -313,7 +320,7 @@ function House({ onEnter }: { onEnter?: () => void }) {
       onPointerOut={() => { setHovered(false); document.body.style.cursor = 'default'; }}
       onClick={(e) => { e.stopPropagation(); onEnter?.(); }}
     >
-      <Model url="/models/house.glb" fallback={primitive} />
+      <Model url="/models/house.glb" fallback={primitive} modelScale={0.6} />
       <Smoke />
     </group>
   );
@@ -345,7 +352,7 @@ function Tree({ position, scale = 1 }: { position: [number, number, number]; sca
   );
   return (
     <group position={position} scale={[scale, scale, scale]}>
-      <Model url="/models/tree.glb" fallback={primitive} />
+      <Model url="/models/tree.glb" fallback={primitive} modelScale={0.22} />
     </group>
   );
 }
@@ -368,7 +375,7 @@ function Bush({ position, scale = 1 }: { position: [number, number, number]; sca
   );
   return (
     <group position={position} scale={[scale, scale, scale]}>
-      <Model url="/models/bush.glb" fallback={primitive} />
+      <Model url="/models/bush.glb" fallback={primitive} modelScale={0.22} />
     </group>
   );
 }
@@ -401,7 +408,7 @@ function Flower({ position, color }: { position: [number, number, number]; color
   );
   return (
     <group position={position}>
-      <Model url={`/models/flower-${variant}.glb`} fallback={primitive} />
+      <Model url={`/models/flower-${variant}.glb`} fallback={primitive} modelScale={0.12} />
     </group>
   );
 }
