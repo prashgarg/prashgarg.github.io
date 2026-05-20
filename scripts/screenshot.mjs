@@ -23,12 +23,21 @@ const page    = await ctx.newPage();
 page.on('console',  (msg) => { if (msg.type() === 'error') console.error('PAGE ERROR:', msg.text()); });
 page.on('pageerror',(err) => console.error('PAGE EXCEPTION:', err.message));
 
-await page.goto(url, { waitUntil: 'networkidle' });
+// 'load' rather than 'networkidle': drei's Text fetches a font over the
+// network which keeps it 'busy' forever and trips a Playwright timeout.
+await page.goto(url, { waitUntil: 'load', timeout: 15000 });
 await page.waitForTimeout(settleMs);
 
-// Optional click + wait
+// Optional hover, click + wait
+const hoverMatch = action.match(/hover=(\d+),(\d+)/);
 const clickMatch = action.match(/click=(\d+),(\d+)/);
 const waitMatch  = action.match(/wait=(\d+)/);
+if (hoverMatch) {
+  const [, sx, sy] = hoverMatch;
+  await page.mouse.move(Number(sx), Number(sy));
+  console.log('hovered', sx, sy);
+  await page.waitForTimeout(250);
+}
 if (clickMatch) {
   const [, sx, sy] = clickMatch;
   await page.mouse.click(Number(sx), Number(sy));

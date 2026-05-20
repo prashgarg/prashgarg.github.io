@@ -8,7 +8,7 @@
 import React, { Component, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { PerspectiveCamera, RoundedBox, ContactShadows, useGLTF } from '@react-three/drei';
+import { PerspectiveCamera, RoundedBox, ContactShadows, useGLTF, Text, Billboard } from '@react-three/drei';
 import * as THREE from 'three';
 
 /* ---------- model loader with primitive fallback ----------------------
@@ -48,6 +48,12 @@ function GLTFInner({ url, recolor }: { url: string; recolor?: Record<string, str
         next.flatShading = true;
         next.metalness = 0;
         next.roughness = 0.95;
+        // make window glass glow softly so the cottage looks 'occupied'
+        if (mat.name === 'MI_WindowGlass') {
+          next.emissive = new THREE.Color('#FFE2A8');
+          next.emissiveIntensity = 0.55;
+          next.roughness = 0.45;
+        }
         next.needsUpdate = true;
         o.material = next;
       }
@@ -502,6 +508,22 @@ function House({ onEnter }: { onEnter?: () => void }) {
     >
       <Cottage />
       <Smoke position={[-0.32, 3.75, -0.32]} />
+
+      {/* hover hint — appears above the cottage when the user hovers */}
+      {hovered && (
+        <Billboard position={[0, 3.85, 0]}>
+          <Text
+            fontSize={0.22}
+            color="#14110D"
+            anchorX="center"
+            anchorY="middle"
+            outlineWidth={0.02}
+            outlineColor="#FAF6E9"
+          >
+            click to enter
+          </Text>
+        </Billboard>
+      )}
     </group>
   );
 }
@@ -744,16 +766,35 @@ function Mailbox() {
 function Sign() {
   return (
     <group position={[2.0, 0, 2.0]} rotation-y={-0.35}>
+      {/* post */}
       <mesh position={[0, 0.45, 0]} castShadow>
         <boxGeometry args={[0.05, 0.90, 0.05]} />
         <meshStandardMaterial color={C.trunk} />
       </mesh>
-      <RoundedBox args={[0.66, 0.42, 0.05]} radius={0.06} smoothness={3} position={[0, 0.85, 0]} castShadow>
+      {/* sign board */}
+      <RoundedBox args={[0.78, 0.46, 0.05]} radius={0.06} smoothness={3} position={[0, 0.88, 0]} castShadow>
         <meshStandardMaterial color={C.sign} roughness={0.9} flatShading />
       </RoundedBox>
-      {/* a couple of strokes hinting at handwriting */}
-      <mesh position={[-0.10, 0.93, 0.03]}><boxGeometry args={[0.36, 0.05, 0.005]} /><meshStandardMaterial color={C.trunk} /></mesh>
-      <mesh position={[ 0.05, 0.83, 0.03]}><boxGeometry args={[0.42, 0.04, 0.005]} /><meshStandardMaterial color={C.trunk} /></mesh>
+      {/* real text — Prashant's cottage */}
+      <Text
+        position={[0, 0.96, 0.04]}
+        fontSize={0.10}
+        color={C.trunk}
+        anchorX="center"
+        anchorY="middle"
+        maxWidth={0.7}
+      >
+        Prashant
+      </Text>
+      <Text
+        position={[0, 0.84, 0.04]}
+        fontSize={0.06}
+        color={C.trunk}
+        anchorX="center"
+        anchorY="middle"
+      >
+        Garg
+      </Text>
     </group>
   );
 }
