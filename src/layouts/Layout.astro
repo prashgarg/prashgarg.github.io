@@ -42,6 +42,16 @@ const canonical  = Astro.site ? new URL(path, Astro.site).toString() : path;
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
   </head>
+  <style is:global>
+    @keyframes innerFadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    body { animation: innerFadeIn 520ms ease-out both; }
+    @media (prefers-reduced-motion: reduce) {
+      body { animation: none; }
+    }
+  </style>
   <body class="min-h-screen flex flex-col">
     <Nav current={current} />
     <main class="flex-1">
