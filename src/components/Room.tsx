@@ -352,6 +352,7 @@ const COTTAGE_RECOLOR: Record<string, string> = {
   'MI_Brick':         '#D9826F', // terracotta brick / chimney
   'MI_WindowGlass':   C.window,  // sky-blue glazing
   'MI_RoundTiles':    C.roof,    // mint roof tiles
+  'MI_Vine':          C.leaves,  // leafy vines
 };
 
 /** A Quaternius modular piece, placed at local position + rotation + scale. */
@@ -429,6 +430,32 @@ function Cottage() {
         <boxGeometry args={[1.6, 2.6, 1.6]} />
         <meshStandardMaterial color="#2A1F14" roughness={1} />
       </mesh>
+    </group>
+  );
+}
+
+/* ---------- wagon (Quaternius Prop_Wagon, recoloured) ----------------- */
+function Wagon({ position, rotation = 0, scale = 1 }: {
+  position: [number, number, number]; rotation?: number; scale?: number;
+}) {
+  const fb = (
+    <mesh position={[0, 0.3, 0]} castShadow>
+      <boxGeometry args={[1.0, 0.45, 1.8]} />
+      <meshStandardMaterial color="#7A4E2E" flatShading />
+    </mesh>
+  );
+  return (
+    <group position={position} rotation-y={rotation} scale={[scale, scale, scale]}>
+      <Model url="/models/wagon.glb" fallback={fb} modelScale={1} recolor={COTTAGE_RECOLOR} />
+    </group>
+  );
+}
+
+/* ---------- vines (Quaternius Prop_Vine1, recoloured to leafy green) -- */
+function Vine({ position, scale = 1 }: { position: [number, number, number]; scale?: number }) {
+  return (
+    <group position={position} scale={[scale, scale, scale]}>
+      <Model url="/models/vine.glb" fallback={null} modelScale={1} recolor={COTTAGE_RECOLOR} />
     </group>
   );
 }
@@ -911,6 +938,13 @@ function Scene({ onEnter }: { onEnter?: () => void }) {
 
       <Mailbox />
       <Sign />
+
+      {/* a small cart parked to the side of the cottage */}
+      <Wagon position={[-2.4, 0, 1.4]} rotation={0.4} scale={0.45} />
+
+      {/* a couple of vines draping down from the cottage corners */}
+      <Vine position={[ 0.72, 2.05,  0.72]} scale={0.50} />
+      <Vine position={[-0.72, 2.05, -0.72]} scale={0.45} />
 
       {/* a soft picket fence behind the house */}
       <Fence angle={[Math.PI * 0.6, Math.PI * 1.4]} radius={5.8} count={22} />
