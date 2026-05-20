@@ -5,10 +5,49 @@
  * The front door is the click target — clicking it will eventually trigger
  * the boot sequence and reveal the inner site.
  */
-import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import React, { Component, Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { PerspectiveCamera, RoundedBox, ContactShadows } from '@react-three/drei';
+import { PerspectiveCamera, RoundedBox, ContactShadows, useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
+
+/* ---------- model loader with primitive fallback ----------------------
+ * Drop CC0 .glb files into /public/models/. If a file isn't there yet
+ * (or fails to load), the primitive fallback renders instead — so the
+ * scene always shows *something* and quality lifts as assets land.
+ * ---------------------------------------------------------------------- */
+class ModelErrorBoundary extends Component<
+  { fallback: ReactNode; children: ReactNode },
+  { hasError: boolean }
+> {
+  state = { hasError: false };
+  static getDerivedStateFromError() { return { hasError: true }; }
+  componentDidCatch() { /* swallow — fallback renders */ }
+  render() { return this.state.hasError ? this.props.fallback : this.props.children; }
+}
+
+function GLTFInner({ url }: { url: string }) {
+  const { scene } = useGLTF(url);
+  // clone so multiple instances of the same model don't fight over the same tree
+  const cloned = useMemo(() => scene.clone(true), [scene]);
+  // ensure shadow flags propagate
+  useEffect(() => {
+    cloned.traverse((o: any) => {
+      if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; }
+    });
+  }, [cloned]);
+  return <primitive object={cloned} />;
+}
+
+function Model({ url, fallback }: { url: string; fallback: ReactNode }) {
+  return (
+    <ModelErrorBoundary fallback={fallback}>
+      <Suspense fallback={fallback}>
+        <GLTFInner url={url} />
+      </Suspense>
+    </ModelErrorBoundary>
+  );
+}
 
 /* ---------- palette (pastel candy) ------------------------------------ */
 const C = {
@@ -248,14 +287,33 @@ function Smoke() {
 }
 
 function House({ onEnter }: { onEnter?: () => void }) {
-  return (
-    <group>
+  const [hovered, setHovered] = useState(false);
+  const ref = useRef<THREE.Group>(null!);
+  useFrame((_, dt) => {
+    if (!ref.current) return;
+    const target = hovered ? 1.025 : 1.0;
+    const s = ref.current.scale.x;
+    const next = s + (target - s) * Math.min(1, dt * 8);
+    ref.current.scale.set(next, next, next);
+  });
+  const primitive = (
+    <>
       <HouseBody />
       <Roof />
       <Door onEnter={onEnter} />
       <Window position={[-0.85, 1.25, 1.22]} />
       <Window position={[ 0.85, 1.25, 1.22]} />
       <Chimney />
+    </>
+  );
+  return (
+    <group
+      ref={ref}
+      onPointerOver={(e) => { e.stopPropagation(); setHovered(true); document.body.style.cursor = 'pointer'; }}
+      onPointerOut={() => { setHovered(false); document.body.style.cursor = 'default'; }}
+      onClick={(e) => { e.stopPropagation(); onEnter?.(); }}
+    >
+      <Model url="/models/house.glb" fallback={primitive} />
       <Smoke />
     </group>
   );
@@ -263,8 +321,8 @@ function House({ onEnter }: { onEnter?: () => void }) {
 
 /* ---------- plants ---------------------------------------------------- */
 function Tree({ position, scale = 1 }: { position: [number, number, number]; scale?: number }) {
-  return (
-    <group position={position} scale={[scale, scale, scale]}>
+  const primitive = (
+    <>
       <mesh position={[0, 0.80, 0]} castShadow>
         <cylinderGeometry args={[0.16, 0.20, 1.6, 12]} />
         <meshStandardMaterial color={C.trunk} roughness={0.95} flatShading />
@@ -283,13 +341,18 @@ function Tree({ position, scale = 1 }: { position: [number, number, number]; sca
           <meshStandardMaterial color={col as string} roughness={0.95} flatShading />
         </mesh>
       ))}
+    </>
+  );
+  return (
+    <group position={position} scale={[scale, scale, scale]}>
+      <Model url="/models/tree.glb" fallback={primitive} />
     </group>
   );
 }
 
 function Bush({ position, scale = 1 }: { position: [number, number, number]; scale?: number }) {
-  return (
-    <group position={position} scale={[scale, scale, scale]}>
+  const primitive = (
+    <>
       {[
         [0,     0.22, 0,     0.27],
         [0.20,  0.18, 0.06,  0.20],
@@ -301,18 +364,26 @@ function Bush({ position, scale = 1 }: { position: [number, number, number]; sca
           <meshStandardMaterial color={C.bush} roughness={0.95} flatShading />
         </mesh>
       ))}
+    </>
+  );
+  return (
+    <group position={position} scale={[scale, scale, scale]}>
+      <Model url="/models/bush.glb" fallback={primitive} />
     </group>
   );
 }
 
 function Flower({ position, color }: { position: [number, number, number]; color: string }) {
-  return (
-    <group position={position}>
+  const variant =
+    color === C.flowerPink ? 'pink' :
+    color === C.flowerYel  ? 'yellow' :
+    color === C.flowerRed  ? 'red' : 'pink';
+  const primitive = (
+    <>
       <mesh position={[0, 0.10, 0]}>
         <cylinderGeometry args={[0.012, 0.012, 0.20, 6]} />
         <meshStandardMaterial color="#7DBA73" />
       </mesh>
-      {/* petals as 5 small spheres around centre */}
       {[0, 1, 2, 3, 4].map((i) => {
         const a = (i / 5) * Math.PI * 2;
         return (
@@ -326,6 +397,11 @@ function Flower({ position, color }: { position: [number, number, number]; color
         <sphereGeometry args={[0.025, 8, 6]} />
         <meshStandardMaterial color={C.flowerYel} flatShading />
       </mesh>
+    </>
+  );
+  return (
+    <group position={position}>
+      <Model url={`/models/flower-${variant}.glb`} fallback={primitive} />
     </group>
   );
 }

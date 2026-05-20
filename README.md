@@ -4,6 +4,15 @@ Personal website for Prashant Garg.
 
 Built with [Astro](https://astro.build), [Tailwind CSS](https://tailwindcss.com),
 [Pagefind](https://pagefind.app) (search), and [astro-og-canvas](https://github.com/delucis/astro-og-canvas) (per-page social images).
+
+The home page is a 3D scene built with [React Three Fiber](https://r3f.docs.pmnd.rs/) and
+[drei](https://github.com/pmndrs/drei). It loads CC0 stylised models from
+[Quaternius](https://quaternius.com) (Stylized Nature MegaKit etc.) when present in
+`/public/models/` — see [`public/models/README.md`](public/models/README.md) for the
+turnkey setup. The architectural pattern of "boot → camera into monitor → inner site" is
+inspired by [Henry Heffernan's portfolio](https://henryheffernan.com); none of his code
+or assets are reproduced.
+
 Visual design tips its hat to [PostHog](https://posthog.com).
 
 ## Local development
