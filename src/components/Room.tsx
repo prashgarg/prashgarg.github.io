@@ -323,41 +323,58 @@ const COTTAGE_RECOLOR: Record<string, string> = {
   'MI_RoundTiles':    C.roof,    // mint roof tiles
 };
 
-/** A Quaternius modular piece, placed at local position + rotation. */
-function CottagePiece({ url, position = [0, 0, 0] as [number, number, number], rotation = [0, 0, 0] as [number, number, number] }) {
+/** A Quaternius modular piece, placed at local position + rotation + scale. */
+function CottagePiece({
+  url,
+  position = [0, 0, 0] as [number, number, number],
+  rotation = [0, 0, 0] as [number, number, number],
+  scale    = [1, 1, 1] as [number, number, number],
+}) {
   return (
-    <group position={position} rotation={rotation}>
+    <group position={position} rotation={rotation} scale={scale}>
       <Model url={url} fallback={null} recolor={COTTAGE_RECOLOR} />
     </group>
   );
 }
 
 function Cottage() {
-  /* Modular pieces in Medieval Village are 4 units wide × 4 tall × ~0.4 thick.
-     We arrange four walls into a 4×4 footprint, drop a 4×4 roof on top, and
-     park the chimney on the back-left of the roof. */
+  /* Real Quaternius bounds:
+       wall   = 2 wide × 3.12 tall × 0.4 thick
+       roof   = 5.14 wide × 3.72 tall × 5.49 deep
+       door   = 1.12 wide × 2.32 tall  (origin off-centre +0.5 X)
+       chimney= 0.89 wide × 0.34 tall  (Y origin already at 2.84)
+     Footprint chosen: 2×2 (one wall piece per side). Roof scaled
+     down to ~2.8 wide to give a small overhang past the walls.
+     Outer scale 1.05 puts the cottage at ~2.1m wide × ~3.5m tall
+     including roof — proportional to a 2m tree. */
   return (
-    <group scale={[0.55, 0.55, 0.55]} position={[0, 0, 0]}>
+    <group scale={[0.70, 0.70, 0.70]} position={[0, 0, 0]}>
       {/* walls — front (with door cutout), two sides (windows), back (plain) */}
-      <CottagePiece url="/models/cottage-wall-door.glb"   position={[ 0,    0,  2]} rotation={[0, 0,             0]} />
-      <CottagePiece url="/models/cottage-wall-window.glb" position={[ 2,    0,  0]} rotation={[0, -Math.PI / 2,  0]} />
-      <CottagePiece url="/models/cottage-wall-window.glb" position={[-2,    0,  0]} rotation={[0,  Math.PI / 2,  0]} />
-      <CottagePiece url="/models/cottage-wall-plain.glb"  position={[ 0,    0, -2]} rotation={[0,  Math.PI,      0]} />
+      <CottagePiece url="/models/cottage-wall-door.glb"   position={[ 0,    0,  1.0 ]} rotation={[0, 0,             0]} />
+      <CottagePiece url="/models/cottage-wall-window.glb" position={[ 1.0,  0,  0   ]} rotation={[0, -Math.PI / 2,  0]} />
+      <CottagePiece url="/models/cottage-wall-window.glb" position={[-1.0,  0,  0   ]} rotation={[0,  Math.PI / 2,  0]} />
+      <CottagePiece url="/models/cottage-wall-plain.glb"  position={[ 0,    0, -1.0 ]} rotation={[0,  Math.PI,      0]} />
 
-      {/* roof tiles centred on the walls */}
-      <CottagePiece url="/models/cottage-roof.glb"        position={[ 0,    4,  0]} rotation={[0, 0,             0]} />
+      {/* roof tiles — sits on top of walls (y = 3.12), scaled to a
+          2.8-wide footprint with slight overhang. Y squash 0.45 to
+          keep the gable cute rather than cathedral-steep. */}
+      <CottagePiece url="/models/cottage-roof.glb"
+                    position={[ 0,    3.12,  0   ]}
+                    rotation={[0, 0,             0]}
+                    scale   ={[0.55, 0.45, 0.55]} />
 
-      {/* the door, inset slightly proud of the front-wall cutout */}
-      <CottagePiece url="/models/cottage-door.glb"        position={[ 0,    0,  2.05]} />
+      {/* the door, centred in the front wall cutout (the piece itself
+          is asymmetric so we offset X by -0.5 to centre it) */}
+      <CottagePiece url="/models/cottage-door.glb"        position={[-0.5,  0,  1.05]} />
 
-      {/* the window glazing + open shutters for each side wall */}
-      <CottagePiece url="/models/cottage-window.glb"      position={[ 2.05, 0,  0]} rotation={[0, -Math.PI / 2,  0]} />
-      <CottagePiece url="/models/cottage-shutters.glb"    position={[ 2.10, 0,  0]} rotation={[0, -Math.PI / 2,  0]} />
-      <CottagePiece url="/models/cottage-window.glb"      position={[-2.05, 0,  0]} rotation={[0,  Math.PI / 2,  0]} />
-      <CottagePiece url="/models/cottage-shutters.glb"    position={[-2.10, 0,  0]} rotation={[0,  Math.PI / 2,  0]} />
+      {/* window glazing + open shutters in each side wall */}
+      <CottagePiece url="/models/cottage-window.glb"      position={[ 1.07, 0.4, 0  ]} rotation={[0, -Math.PI / 2,  0]} />
+      <CottagePiece url="/models/cottage-shutters.glb"    position={[ 1.10, 0.4, 0  ]} rotation={[0, -Math.PI / 2,  0]} />
+      <CottagePiece url="/models/cottage-window.glb"      position={[-1.07, 0.4, 0  ]} rotation={[0,  Math.PI / 2,  0]} />
+      <CottagePiece url="/models/cottage-shutters.glb"    position={[-1.10, 0.4, 0  ]} rotation={[0,  Math.PI / 2,  0]} />
 
-      {/* chimney on the rear-left roof */}
-      <CottagePiece url="/models/cottage-chimney.glb"     position={[-1.4,  4.0, -1.2]} />
+      {/* chimney rising through the roof at the rear */}
+      <CottagePiece url="/models/cottage-chimney.glb"     position={[-0.6,  0.8, -0.5]} />
     </group>
   );
 }
@@ -390,7 +407,7 @@ function House({ onEnter }: { onEnter?: () => void }) {
       onClick={(e) => { e.stopPropagation(); onEnter?.(); }}
     >
       <Cottage />
-      <Smoke position={[-0.77, 2.55, -0.66]} />
+      <Smoke position={[-0.42, 3.75, -0.35]} />
     </group>
   );
 }

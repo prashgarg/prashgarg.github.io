@@ -28,5 +28,8 @@
     "react-dom": "^19.2.6",
     "tailwindcss": "^4.3.0",
     "three": "^0.184.0"
+  },
+  "devDependencies": {
+    "playwright": "^1.60.0"
   }
 }
