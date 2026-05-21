@@ -26,9 +26,9 @@ import InnerDesktop from './InnerDesktop';
 const C = {
   floor:        '#2a1a10',   // dark stained oak floorboards
   floorTrim:    '#1a0e07',
-  wall:         '#1e2a2d',   // deep slate-teal — picks up shadow
-  wallShadow:   '#16201f',
-  ceiling:      '#181818',
+  wall:         '#263438',   // slightly lifted slate-teal (was #1e2a2d)
+  wallShadow:   '#1c2a28',
+  ceiling:      '#201c1c',
   windowGlow:   '#f4a958',   // late sun (warmer, less yellow)
   windowSky:    '#3a4856',   // dusk
   desk:         '#4f2e16',   // honey walnut desk
@@ -283,7 +283,10 @@ function Desk() {
 /* ---------- chair ---------------------------------------------------- */
 function Chair() {
   return (
-    <group position={[0, 0, -0.3]}>
+    // pushed back and offset left so it clears the CRT sightline
+    // (camera sits at x≈2.8, so moving the chair to x=-0.45 puts it
+    // out of the direct view of the monitor from the idle camera angle)
+    <group position={[-0.45, 0, -0.95]}>
       {/* seat */}
       <mesh position={[0, 0.48, 0]} castShadow>
         <boxGeometry args={[0.55, 0.06, 0.55]} />
@@ -773,8 +776,8 @@ function FloorLamp() {
         <coneGeometry args={[0.22, 0.30, 18, 1, true]} />
         <meshStandardMaterial color="#e6c89e" emissive="#e6c89e" emissiveIntensity={0.18} side={THREE.DoubleSide} roughness={0.65} />
       </mesh>
-      {/* very subtle kicker — just enough to keep the corner from black */}
-      <pointLight position={[0, 1.66, 0]} intensity={0.55} distance={2.8} decay={2} color="#d49158" />
+      {/* floor lamp fill — warm corner glow */}
+      <pointLight position={[0, 1.66, 0]} intensity={1.2} distance={3.5} decay={2} color="#d49158" />
     </group>
   );
 }
@@ -785,14 +788,15 @@ function Scene({ phase, onMonitorClick, onArrived }: {
 }) {
   return (
     <Suspense fallback={null}>
-      {/* Single-source lighting for Hopper-evening feel: the banker's
-          lamp is the hero, ambient is barely there, the window is a
-          soft warm glow not a competing sun. */}
-      <ambientLight intensity={0.06} color="#3a3026" />
+      {/* Lighting: banker's lamp is still the hero but the room is no
+          longer Hopper-dark. Raised ambient + hemisphere so the walls
+          and corners read, while the warm lamp pool still dominates.
+          Think: late afternoon with the lamp just switched on. */}
+      <ambientLight intensity={0.18} color="#3d3628" />
       <directionalLight
         position={[-6, 3.5, 0.5]}
-        intensity={0.22}
-        color="#d49158"
+        intensity={0.55}
+        color="#d8a870"
         castShadow
         shadow-mapSize-width={2048}
         shadow-mapSize-height={2048}
@@ -802,11 +806,15 @@ function Scene({ phase, onMonitorClick, onArrived }: {
         shadow-camera-top={8}
         shadow-camera-bottom={-8}
       />
-      <hemisphereLight args={['#5a4a32', '#0e0805', 0.10]} />
-      {/* faint fill from top-right so the guitar corner isn't pure black */}
-      <pointLight position={[3.8, 2.2, 1.2]} intensity={0.35} distance={3.5} decay={2} color="#c8964a" />
-      {/* dense warm fog so the back wall recedes — depth without haze */}
-      <fog attach="fog" args={['#0e0805', 6, 13]} />
+      <hemisphereLight args={['#7a6040', '#180e08', 0.28]} />
+      {/* fill from top-right so the guitar/music corner isn't black */}
+      <pointLight position={[3.8, 2.2, 1.2]} intensity={0.75} distance={4.5} decay={2} color="#c8964a" />
+      {/* soft window bounce off the left wall */}
+      <pointLight position={[-3.5, 2.2, -0.8]} intensity={0.45} distance={4.0} decay={2} color="#e8b878" />
+      {/* subtle fill from the right wall / music corner */}
+      <pointLight position={[3.5, 2.5, -0.5]} intensity={0.30} distance={5.0} decay={2} color="#b88040" />
+      {/* fog pushed back so mid-room is visible */}
+      <fog attach="fog" args={['#120c08', 9, 20]} />
 
       <Room />
       <Window />
@@ -937,8 +945,18 @@ function TapHint() {
 }
 
 /* ---------- top-level ------------------------------------------------ */
+const SS_PHASE = 'pg_phase';
+
 export default function Study() {
-  const [phase, setPhase] = useState<Phase>('idle');
+  // if the user navigated away from the desktop and pressed Back,
+  // sessionStorage retains 'desktop' so we skip the animation entirely
+  const [phase, setPhase] = useState<Phase>(() => {
+    if (typeof window === 'undefined') return 'idle';
+    try {
+      if (sessionStorage.getItem(SS_PHASE) === 'desktop') return 'desktop';
+    } catch { /* ignore */ }
+    return 'idle';
+  });
   // detect touch-only devices (no fine pointer) to show the tap hint
   const [isTouch, setIsTouch] = useState(false);
   useEffect(() => { setIsTouch(window.matchMedia('(hover: none) and (pointer: coarse)').matches); }, []);
@@ -948,7 +966,10 @@ export default function Study() {
   // Boot finishes → show Win95 desktop instead of navigating away
   const handleBootDone = () => { setPhase('desktop'); };
   // User closes the desktop window (×) → back to study idle view
-  const handleDesktopClose = () => { setPhase('idle'); };
+  const handleDesktopClose = () => {
+    try { sessionStorage.removeItem(SS_PHASE); } catch { /* ignore */ }
+    setPhase('idle');
+  };
   return (
     <div style={{ position: 'fixed', inset: 0, background: '#1A130A' }}>
       <Canvas shadows dpr={[1, 1.75]} gl={{ antialias: true }}>

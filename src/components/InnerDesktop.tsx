@@ -350,8 +350,20 @@ function getTime() {
 
 interface WinState { x: number; y: number; w: number; h: number; }
 
+const SS_WIN   = 'pg_win';
+const SS_PHASE = 'pg_phase';
+
 function getInitial(): WinState {
   if (typeof window === 'undefined') return { x: 60, y: 30, w: 860, h: 580 };
+  // try to restore position from previous session visit
+  try {
+    const saved = sessionStorage.getItem(SS_WIN);
+    if (saved) {
+      const p = JSON.parse(saved) as WinState;
+      // sanity-check it fits the current viewport
+      if (p.x >= 0 && p.y >= 0 && p.w >= 520 && p.h >= 360) return p;
+    }
+  } catch { /* ignore */ }
   const vw = window.innerWidth, vh = window.innerHeight - 30; // minus taskbar
   const w = Math.min(860, Math.round(vw * 0.90));
   const h = Math.min(580, Math.round(vh * 0.88));
@@ -439,7 +451,15 @@ export default function InnerDesktop({ onClose }: InnerDesktopProps) {
       l.id = linkId; l.rel = 'stylesheet'; l.href = GFONTS_HREF;
       document.head.appendChild(l);
     }
+    // signal to Study: if the user navigates away and comes back,
+    // skip the dolly+boot animation and go straight to desktop
+    try { sessionStorage.setItem(SS_PHASE, 'desktop'); } catch { /* ignore */ }
   }, []);
+
+  // persist window geometry across navigations
+  useEffect(() => {
+    try { sessionStorage.setItem(SS_WIN, JSON.stringify(win)); } catch { /* ignore */ }
+  }, [win]);
 
   // tick clock
   useEffect(() => {

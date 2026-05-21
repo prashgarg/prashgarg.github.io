@@ -22,3 +22,7 @@ pnpm-debug.log*
 
 # jetbrains setting folder
 .idea/
+
+# reference forks (kept locally, not part of this repo)
+portfolio-inner-site/
+portfolio-website/
