@@ -72,11 +72,33 @@ function CameraRig({ phase, onArrived }: { phase: Phase; onArrived: () => void }
   const fromPos = useRef(CAM_IDLE_POS.clone());
   const fromTgt = useRef(CAM_IDLE_TGT.clone());
   const arrivedFired = useRef(false);
+  // aspect-adaptive idle position / target (updated when size changes)
+  const idlePos = useRef(CAM_IDLE_POS.clone());
+  const idleTgt = useRef(CAM_IDLE_TGT.clone());
 
   useEffect(() => {
     if (!(camera instanceof THREE.PerspectiveCamera)) return;
     const aspect = size.width / Math.max(1, size.height);
-    camera.fov = aspect < 0.7 ? 55 : aspect < 1.0 ? 48 : aspect < 1.4 ? 40 : 34;
+    if (aspect < 0.7) {
+      // phone portrait — THREE.js FOV is vertical, so a tall portrait viewport
+      // with a large FOV shows ceiling+floor. Use a smaller FOV (zoom to desk)
+      // and move the camera slightly closer + lower to frame the desk scene.
+      camera.fov = 42;
+      idlePos.current.set(3.0, 1.6, 3.8);
+      idleTgt.current.set(0.15, 1.25, -0.2);
+    } else if (aspect < 1.0) {
+      camera.fov = 48;
+      idlePos.current.copy(CAM_IDLE_POS);
+      idleTgt.current.copy(CAM_IDLE_TGT);
+    } else if (aspect < 1.4) {
+      camera.fov = 40;
+      idlePos.current.copy(CAM_IDLE_POS);
+      idleTgt.current.copy(CAM_IDLE_TGT);
+    } else {
+      camera.fov = 34;
+      idlePos.current.copy(CAM_IDLE_POS);
+      idleTgt.current.copy(CAM_IDLE_TGT);
+    }
     camera.updateProjectionMatrix();
   }, [size, camera]);
 
@@ -118,14 +140,14 @@ function CameraRig({ phase, onArrived }: { phase: Phase; onArrived: () => void }
       camera.lookAt(tgt.current);
       return;
     }
-    // idle: parallax
-    const wx = CAM_IDLE_POS.x - mouse.current.x * 0.35;
-    const wy = CAM_IDLE_POS.y + mouse.current.y * 0.22;
+    // idle: parallax (uses aspect-adaptive idle pos/tgt)
+    const wx = idlePos.current.x - mouse.current.x * 0.35;
+    const wy = idlePos.current.y + mouse.current.y * 0.22;
     camera.position.x += (wx - camera.position.x) * 0.06;
     camera.position.y += (wy - camera.position.y) * 0.06;
-    camera.position.z += (CAM_IDLE_POS.z - camera.position.z) * 0.06;
-    const tx = CAM_IDLE_TGT.x + mouse.current.x * 0.10;
-    const ty = CAM_IDLE_TGT.y - mouse.current.y * 0.06;
+    camera.position.z += (idlePos.current.z - camera.position.z) * 0.06;
+    const tx = idleTgt.current.x + mouse.current.x * 0.10;
+    const ty = idleTgt.current.y - mouse.current.y * 0.06;
     tgt.current.x += (tx - tgt.current.x) * 0.08;
     tgt.current.y += (ty - tgt.current.y) * 0.08;
     camera.lookAt(tgt.current);
