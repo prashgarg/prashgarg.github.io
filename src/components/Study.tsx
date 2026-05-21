@@ -26,9 +26,9 @@ import InnerDesktop from './InnerDesktop';
 const C = {
   floor:        '#2a1a10',   // dark stained oak floorboards
   floorTrim:    '#1a0e07',
-  wall:         '#263438',   // slightly lifted slate-teal (was #1e2a2d)
-  wallShadow:   '#1c2a28',
-  ceiling:      '#201c1c',
+  wall:         '#344a50',   // lifted further — needed for runtime lighting
+  wallShadow:   '#253a38',
+  ceiling:      '#2a2424',
   windowGlow:   '#f4a958',   // late sun (warmer, less yellow)
   windowSky:    '#3a4856',   // dusk
   desk:         '#4f2e16',   // honey walnut desk
@@ -788,14 +788,19 @@ function Scene({ phase, onMonitorClick, onArrived }: {
 }) {
   return (
     <Suspense fallback={null}>
-      {/* Lighting: banker's lamp is still the hero but the room is no
-          longer Hopper-dark. Raised ambient + hemisphere so the walls
-          and corners read, while the warm lamp pool still dominates.
-          Think: late afternoon with the lamp just switched on. */}
-      <ambientLight intensity={0.18} color="#3d3628" />
+      {/* Lighting: warm late-afternoon study. The banker's lamp is the
+          hero point, ambient + hemisphere give the room its base tone,
+          and three targeted fills ensure no wall falls into pure black.
+          The right wall faces away from the directional so it needs its
+          own dedicated fills — that's the pair at x≈3.5. */}
+      {/* Ambient is intentionally high because runtime lighting on dark
+          materials can't match baked lighting. This is the "floor" —
+          keeps walls from going black. Lamp pool still dominates because
+          it has intensity 8.5 in a 3.2-unit radius. */}
+      <ambientLight intensity={0.45} color="#3d3428" />
       <directionalLight
         position={[-6, 3.5, 0.5]}
-        intensity={0.55}
+        intensity={0.65}
         color="#d8a870"
         castShadow
         shadow-mapSize-width={2048}
@@ -806,15 +811,18 @@ function Scene({ phase, onMonitorClick, onArrived }: {
         shadow-camera-top={8}
         shadow-camera-bottom={-8}
       />
-      <hemisphereLight args={['#7a6040', '#180e08', 0.28]} />
-      {/* fill from top-right so the guitar/music corner isn't black */}
-      <pointLight position={[3.8, 2.2, 1.2]} intensity={0.75} distance={4.5} decay={2} color="#c8964a" />
-      {/* soft window bounce off the left wall */}
-      <pointLight position={[-3.5, 2.2, -0.8]} intensity={0.45} distance={4.0} decay={2} color="#e8b878" />
-      {/* subtle fill from the right wall / music corner */}
-      <pointLight position={[3.5, 2.5, -0.5]} intensity={0.30} distance={5.0} decay={2} color="#b88040" />
-      {/* fog pushed back so mid-room is visible */}
-      <fog attach="fog" args={['#120c08', 9, 20]} />
+      {/* hemisphere gives warm sky tint from above */}
+      <hemisphereLight args={['#b09070', '#201008', 0.50]} />
+      {/* RIGHT SIDE — the camera looks from x≈2.8 so x>3 is in frame.
+          These two fills lift the guitar, music shelf, right wall. */}
+      <pointLight position={[3.8, 2.5, 1.2]} intensity={2.0} distance={7.0} decay={2} color="#c8964a" />
+      <pointLight position={[3.5, 2.5, -0.8]} intensity={1.20} distance={6.0} decay={2} color="#b88040" />
+      {/* window bounce — left wall + floor lamp corner */}
+      <pointLight position={[-3.5, 2.2, -0.8]} intensity={0.65} distance={5.5} decay={2} color="#e8b878" />
+      {/* overhead fill — ceiling bounce keeps the back wall readable */}
+      <pointLight position={[0.5, 3.6, 0.5]}  intensity={0.25} distance={10.0} decay={2} color="#b09060" />
+      {/* fog pushed to background only — depth not haze */}
+      <fog attach="fog" args={['#140c08', 12, 24]} />
 
       <Room />
       <Window />
@@ -900,6 +908,128 @@ function BootOverlay({ onDone }: { onDone: () => void }) {
   );
 }
 
+/* ---------- film grain overlay --------------------------------------- */
+// A low-res (220×140) noise canvas rendered at ~15 fps and stretched to
+// fill the viewport via CSS. mix-blend-mode: soft-light adds photographic
+// grain without brightening or darkening the scene — same technique Henry
+// Heffernan uses (screen.glsl noise at 12% soft-light opacity).
+function GrainOverlay() {
+  const ref = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const canvas = ref.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    let id: ReturnType<typeof setInterval>;
+    const draw = () => {
+      const { width: w, height: h } = canvas;
+      const img = ctx.createImageData(w, h);
+      const d = img.data;
+      for (let i = 0; i < d.length; i += 4) {
+        const v = (Math.random() * 255) | 0;
+        d[i] = d[i + 1] = d[i + 2] = v;
+        d[i + 3] = 255;
+      }
+      ctx.putImageData(img, 0, 0);
+    };
+    draw();
+    id = setInterval(draw, 66); // ~15 fps
+    return () => clearInterval(id);
+  }, []);
+  return (
+    <canvas
+      ref={ref}
+      width={220}
+      height={140}
+      style={{
+        position: 'fixed', inset: 0,
+        width: '100%', height: '100%',
+        pointerEvents: 'none', zIndex: 6,
+        mixBlendMode: 'soft-light',
+        opacity: 0.09,
+        imageRendering: 'pixelated',
+      }}
+    />
+  );
+}
+
+/* ---------- programmatic ambient audio ------------------------------- */
+// Brown noise through a 380 Hz low-pass filter → believable room hum.
+// Volume ramps from 0 → 0.055 over 5 s so it's never jarring.
+// Starts only after a user interaction (browser AudioContext policy).
+function StudyAudio({ active }: { active: boolean }) {
+  const ctxRef  = useRef<AudioContext | null>(null);
+  const gainRef = useRef<GainNode | null>(null);
+  const startedRef = useRef(false);
+
+  // start on first pointerdown
+  useEffect(() => {
+    const start = () => {
+      if (startedRef.current) return;
+      startedRef.current = true;
+
+      const ac = new AudioContext();
+      ctxRef.current = ac;
+
+      // brown noise: integrate white noise for 1/f² power spectrum
+      const bufSize = ac.sampleRate * 2;
+      const buf = ac.createBuffer(1, bufSize, ac.sampleRate);
+      const data = buf.getChannelData(0);
+      let last = 0;
+      for (let i = 0; i < bufSize; i++) {
+        const w = Math.random() * 2 - 1;
+        data[i] = (last + 0.02 * w) / 1.02;
+        last = data[i];
+        data[i] *= 3.5;
+      }
+      const src = ac.createBufferSource();
+      src.buffer = buf;
+      src.loop = true;
+
+      // low-pass: cuts highs, leaves the low room rumble
+      const lpf = ac.createBiquadFilter();
+      lpf.type = 'lowpass';
+      lpf.frequency.value = 380;
+      lpf.Q.value = 0.8;
+
+      // a second, higher filter adds a faint electronics hiss (CRT buzz)
+      const hpf = ac.createBiquadFilter();
+      hpf.type = 'bandpass';
+      hpf.frequency.value = 2800;
+      hpf.Q.value = 8.0;
+      const hissGain = ac.createGain();
+      hissGain.gain.value = 0.008;
+
+      const master = ac.createGain();
+      gainRef.current = master;
+      master.gain.setValueAtTime(0, ac.currentTime);
+      master.gain.linearRampToValueAtTime(0.055, ac.currentTime + 5);
+
+      src.connect(lpf);
+      lpf.connect(master);
+      src.connect(hpf);
+      hpf.connect(hissGain);
+      hissGain.connect(master);
+      master.connect(ac.destination);
+      src.start();
+    };
+    window.addEventListener('pointerdown', start, { once: true });
+    return () => window.removeEventListener('pointerdown', start);
+  }, []);
+
+  // mute when phase is 'booting' or 'desktop' (boot overlay / Win95 takes over)
+  useEffect(() => {
+    const g = gainRef.current;
+    const ac = ctxRef.current;
+    if (!g || !ac) return;
+    const target = active ? 0.055 : 0.0;
+    g.gain.cancelScheduledValues(ac.currentTime);
+    g.gain.linearRampToValueAtTime(target, ac.currentTime + 1.2);
+  }, [active]);
+
+  return null;
+}
+
 /* ---------- tap hint (mobile-only) ----------------------------------- */
 function TapHint() {
   const [visible, setVisible] = useState(true);
@@ -970,6 +1100,9 @@ export default function Study() {
     try { sessionStorage.removeItem(SS_PHASE); } catch { /* ignore */ }
     setPhase('idle');
   };
+  // ambient audio is audible only during idle/dollying/on-monitor
+  const audioActive = phase === 'idle' || phase === 'dollying' || phase === 'on-monitor';
+
   return (
     <div style={{ position: 'fixed', inset: 0, background: '#1A130A' }}>
       <Canvas shadows dpr={[1, 1.75]} gl={{ antialias: true }}>
@@ -977,6 +1110,10 @@ export default function Study() {
         <CameraRig phase={phase} onArrived={handleArrived} />
         <Scene phase={phase} onMonitorClick={handleClick} onArrived={handleArrived} />
       </Canvas>
+      {/* film grain overlay — photographic texture over the 3D canvas */}
+      {phase !== 'desktop' && <GrainOverlay />}
+      {/* ambient room audio — brown noise + CRT hiss, starts on first click */}
+      <StudyAudio active={audioActive} />
       {phase === 'idle' && isTouch && <TapHint />}
       {phase === 'booting' && <BootOverlay onDone={handleBootDone} />}
       {phase === 'desktop' && <InnerDesktop onClose={handleDesktopClose} />}
