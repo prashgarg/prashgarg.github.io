@@ -14,6 +14,7 @@ import type { ReactNode } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { PerspectiveCamera, RoundedBox, ContactShadows, Text, Billboard } from '@react-three/drei';
 import * as THREE from 'three';
+import InnerDesktop from './InnerDesktop';
 
 /* ---------- palette: evening study, single warm lamp pool -----------
  * Aesthetic direction (committed): Hopper/Vermeer interior — one
@@ -59,7 +60,7 @@ const CAM_IDLE_TGT = new THREE.Vector3(0.2, 1.4, -0.3);
 const CAM_MONITOR_POS = new THREE.Vector3(0.05, 1.45, 0.6);
 const CAM_MONITOR_TGT = new THREE.Vector3(0.05, 1.45, -0.35);
 
-type Phase = 'idle' | 'dollying' | 'on-monitor' | 'booting';
+type Phase = 'idle' | 'dollying' | 'on-monitor' | 'booting' | 'desktop';
 const DOLLY_MS = 1600;
 function easeOutCubic(t: number) { return 1 - Math.pow(1 - t, 3); }
 
@@ -111,7 +112,7 @@ function CameraRig({ phase, onArrived }: { phase: Phase; onArrived: () => void }
       if (!arrivedFired.current && k >= 1) { arrivedFired.current = true; onArrived(); }
       return;
     }
-    if (phase === 'on-monitor' || phase === 'booting') {
+    if (phase === 'on-monitor' || phase === 'booting' || phase === 'desktop') {
       camera.position.lerp(CAM_MONITOR_POS, 0.08);
       tgt.current.lerp(CAM_MONITOR_TGT, 0.08);
       camera.lookAt(tgt.current);
@@ -849,11 +850,12 @@ function BootOverlay({ onDone }: { onDone: () => void }) {
 /* ---------- top-level ------------------------------------------------ */
 export default function Study() {
   const [phase, setPhase] = useState<Phase>('idle');
-  const handleClick   = () => { if (phase === 'idle') setPhase('dollying'); };
-  const handleArrived = () => { setPhase('booting'); };
-  const handleBootDone = () => {
-    if (typeof window !== 'undefined') window.location.href = '/research';
-  };
+  const handleClick    = () => { if (phase === 'idle') setPhase('dollying'); };
+  const handleArrived  = () => { setPhase('booting'); };
+  // Boot finishes → show Win95 desktop instead of navigating away
+  const handleBootDone = () => { setPhase('desktop'); };
+  // User closes the desktop window (×) → back to study idle view
+  const handleDesktopClose = () => { setPhase('idle'); };
   return (
     <div style={{ position: 'fixed', inset: 0, background: '#1A130A' }}>
       <Canvas shadows dpr={[1, 1.75]} gl={{ antialias: true }}>
@@ -862,6 +864,7 @@ export default function Study() {
         <Scene phase={phase} onMonitorClick={handleClick} onArrived={handleArrived} />
       </Canvas>
       {phase === 'booting' && <BootOverlay onDone={handleBootDone} />}
+      {phase === 'desktop' && <InnerDesktop onClose={handleDesktopClose} />}
     </div>
   );
 }
