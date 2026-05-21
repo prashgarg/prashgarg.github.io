@@ -1066,7 +1066,11 @@ function BootOverlay({ onDone }: { onDone: () => void }) {
 
   useEffect(() => {
     if (!done) return;
-    const t = setTimeout(onDone, 700);
+    // hold 'welcome.' on screen briefly, then navigate. The inner Layout
+    // starts on the same near-black background and fades in over 760ms,
+    // so we don't need to fade the boot out — that would just briefly
+    // reveal the 3D scene behind it.
+    const t = setTimeout(onDone, 380);
     return () => clearTimeout(t);
   }, [done, onDone]);
 
@@ -1079,7 +1083,6 @@ function BootOverlay({ onDone }: { onDone: () => void }) {
         fontFamily: "ui-monospace, 'SF Mono', Menlo, Monaco, Consolas, monospace",
         display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
         paddingTop: '12vh', cursor: 'pointer',
-        animation: done ? 'bootFade 600ms ease forwards' : 'none',
       }}
     >
       <div style={{ width: 'min(92vw, 560px)', padding: 24 }}>
@@ -1090,7 +1093,7 @@ function BootOverlay({ onDone }: { onDone: () => void }) {
           press any key · click to skip
         </div>
       </div>
-      <style>{`@keyframes bootFade { to { opacity: 0; } }`}</style>
+      <style>{`/* boot stays opaque — Layout fades in from the same near-black */`}</style>
     </div>
   );
 }

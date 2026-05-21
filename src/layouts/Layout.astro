@@ -43,11 +43,22 @@ const canonical  = Astro.site ? new URL(path, Astro.site).toString() : path;
     <meta name="twitter:description" content={description} />
   </head>
   <style is:global>
-    @keyframes innerFadeIn {
-      from { opacity: 0; transform: translateY(6px); }
-      to   { opacity: 1; transform: translateY(0); }
+    /* Start the page on the same near-black the boot terminal lives on,
+       so navigating from the boot doesn't briefly flash the browser's
+       default white. Body then animates from black → cream alongside the
+       opacity fade so the boot reads as a gate the user passes through. */
+    html { background: #0E0D0B; }
+    html.dark { background: #0E0D0B; }
+    body {
+      background-color: var(--color-cream);
+      animation: innerFadeIn 760ms ease-out both;
     }
-    body { animation: innerFadeIn 520ms ease-out both; }
+    html.dark body { background-color: var(--color-ink-2); }
+    @keyframes innerFadeIn {
+      0%   { opacity: 0; background-color: #0E0D0B; transform: translateY(6px); filter: blur(2px); }
+      35%  { opacity: 0; background-color: #0E0D0B; }
+      100% { opacity: 1; transform: translateY(0); filter: blur(0); }
+    }
     @media (prefers-reduced-motion: reduce) {
       body { animation: none; }
     }
