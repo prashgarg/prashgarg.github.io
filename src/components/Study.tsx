@@ -516,13 +516,34 @@ function WallArt() {
       <group position={[1.10, 2.05, -2.78]}>
         {/* gilded frame */}
         <mesh castShadow><boxGeometry args={[1.0, 0.72, 0.04]} /><meshStandardMaterial color="#8c6a2e" metalness={0.4} roughness={0.5} /></mesh>
-        <mesh position={[0, 0, 0.022]}><boxGeometry args={[0.92, 0.64, 0.005]} /><meshStandardMaterial color="#f1e6c4" roughness={0.9} /></mesh>
-        {/* a few abstract "continents" — soft tan shapes */}
-        <mesh position={[-0.25, 0.05, 0.028]}><circleGeometry args={[0.13, 12]} /><meshStandardMaterial color="#c9a878" /></mesh>
-        <mesh position={[ 0.10, -0.05, 0.028]} scale={[1.3, 0.7, 1]}><circleGeometry args={[0.18, 14]} /><meshStandardMaterial color="#b89868" /></mesh>
-        <mesh position={[ 0.30, 0.15, 0.028]}><circleGeometry args={[0.07, 10]} /><meshStandardMaterial color="#d1b380" /></mesh>
-        {/* a small network-graph motif underneath */}
-        <Text position={[0, -0.30, 0.028]} fontSize={0.038} color="#3a2616" anchorX="center" anchorY="middle">atlas</Text>
+        {/* pale-ocean paper */}
+        <mesh position={[0, 0, 0.022]}><boxGeometry args={[0.92, 0.64, 0.005]} /><meshStandardMaterial color="#ddeef2" roughness={0.9} /></mesh>
+        {/* lat/lon grid — thin parallels + meridians */}
+        {[-0.22, -0.10, 0.02, 0.14, 0.22].map((y, i) => (
+          <mesh key={`h${i}`} position={[0, y, 0.026]}>
+            <planeGeometry args={[0.88, 0.004]} />
+            <meshStandardMaterial color="#99bfcc" opacity={0.5} transparent />
+          </mesh>
+        ))}
+        {[-0.36, -0.18, 0.00, 0.18, 0.36].map((x, i) => (
+          <mesh key={`v${i}`} position={[x, 0, 0.026]}>
+            <planeGeometry args={[0.004, 0.60]} />
+            <meshStandardMaterial color="#99bfcc" opacity={0.5} transparent />
+          </mesh>
+        ))}
+        {/* simplified continents (rough positional blobs) */}
+        {/* Americas */}
+        <mesh position={[-0.30,  0.08, 0.028]} scale={[0.7, 1.1, 1]}><circleGeometry args={[0.10, 12]} /><meshStandardMaterial color="#c8a46a" /></mesh>
+        <mesh position={[-0.28, -0.08, 0.028]} scale={[0.6, 0.9, 1]}><circleGeometry args={[0.08, 10]} /><meshStandardMaterial color="#c0985e" /></mesh>
+        {/* Europe / Africa */}
+        <mesh position={[ 0.02,  0.08, 0.028]} scale={[0.6, 0.8, 1]}><circleGeometry args={[0.07, 10]} /><meshStandardMaterial color="#c9a56c" /></mesh>
+        <mesh position={[ 0.04, -0.07, 0.028]} scale={[0.7, 1.0, 1]}><circleGeometry args={[0.09, 10]} /><meshStandardMaterial color="#ba9454" /></mesh>
+        {/* Asia */}
+        <mesh position={[ 0.22,  0.06, 0.028]} scale={[1.4, 0.9, 1]}><circleGeometry args={[0.12, 14]} /><meshStandardMaterial color="#c7a268" /></mesh>
+        {/* Australia */}
+        <mesh position={[ 0.30, -0.14, 0.028]} scale={[0.8, 0.6, 1]}><circleGeometry args={[0.05, 10]} /><meshStandardMaterial color="#c2974e" /></mesh>
+        {/* label */}
+        <Text position={[0, -0.29, 0.028]} fontSize={0.038} color="#3a2616" anchorX="center" anchorY="middle">atlas</Text>
       </group>
 
       {/* a small "network" print to the left of the pin board */}
@@ -782,6 +803,8 @@ function Scene({ phase, onMonitorClick, onArrived }: {
         shadow-camera-bottom={-8}
       />
       <hemisphereLight args={['#5a4a32', '#0e0805', 0.10]} />
+      {/* faint fill from top-right so the guitar corner isn't pure black */}
+      <pointLight position={[3.8, 2.2, 1.2]} intensity={0.35} distance={3.5} decay={2} color="#c8964a" />
       {/* dense warm fog so the back wall recedes — depth without haze */}
       <fog attach="fog" args={['#0e0805', 6, 13]} />
 
@@ -869,9 +892,57 @@ function BootOverlay({ onDone }: { onDone: () => void }) {
   );
 }
 
+/* ---------- tap hint (mobile-only) ----------------------------------- */
+function TapHint() {
+  const [visible, setVisible] = useState(true);
+  // fade out after 4 s or on first touch
+  useEffect(() => {
+    const t = setTimeout(() => setVisible(false), 4000);
+    const hide = () => { setVisible(false); clearTimeout(t); };
+    window.addEventListener('pointerdown', hide, { once: true });
+    return () => { clearTimeout(t); window.removeEventListener('pointerdown', hide); };
+  }, []);
+  if (!visible) return null;
+  return (
+    <div style={{
+      position: 'fixed', bottom: '18%', left: 0, right: 0,
+      display: 'flex', flexDirection: 'column', alignItems: 'center',
+      gap: 6, pointerEvents: 'none', zIndex: 10,
+    }}>
+      {/* pulsing ring */}
+      <div style={{
+        width: 44, height: 44, borderRadius: '50%',
+        border: '1.5px solid rgba(164,217,197,0.55)',
+        animation: 'tap-pulse 1.6s ease-out infinite',
+      }} />
+      <span style={{
+        fontFamily: "ui-monospace, 'SF Mono', Menlo, monospace",
+        fontSize: 11, color: 'rgba(164,217,197,0.7)',
+        letterSpacing: '0.08em',
+        animation: 'tap-fade 1.6s ease-in-out infinite',
+      }}>tap the monitor</span>
+      <style>{`
+        @keyframes tap-pulse {
+          0%   { transform: scale(0.85); opacity: 0.7; }
+          60%  { transform: scale(1.25); opacity: 0.15; }
+          100% { transform: scale(0.85); opacity: 0.7; }
+        }
+        @keyframes tap-fade {
+          0%, 100% { opacity: 0.5; }
+          50%       { opacity: 0.9; }
+        }
+      `}</style>
+    </div>
+  );
+}
+
 /* ---------- top-level ------------------------------------------------ */
 export default function Study() {
   const [phase, setPhase] = useState<Phase>('idle');
+  // detect touch-only devices (no fine pointer) to show the tap hint
+  const [isTouch, setIsTouch] = useState(false);
+  useEffect(() => { setIsTouch(window.matchMedia('(hover: none) and (pointer: coarse)').matches); }, []);
+
   const handleClick    = () => { if (phase === 'idle') setPhase('dollying'); };
   const handleArrived  = () => { setPhase('booting'); };
   // Boot finishes → show Win95 desktop instead of navigating away
@@ -885,6 +956,7 @@ export default function Study() {
         <CameraRig phase={phase} onArrived={handleArrived} />
         <Scene phase={phase} onMonitorClick={handleClick} onArrived={handleArrived} />
       </Canvas>
+      {phase === 'idle' && isTouch && <TapHint />}
       {phase === 'booting' && <BootOverlay onDone={handleBootDone} />}
       {phase === 'desktop' && <InnerDesktop onClose={handleDesktopClose} />}
     </div>

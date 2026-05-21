@@ -219,6 +219,8 @@ const navItems = [
       box-shadow: var(--sunken);
     }
     .w95-statuscell.wide { flex: 1; }
+    .w95-statuscell-sm   { width: 18px; }
+    .w95-statuscell-grip { width: 18px; display: flex; align-items: flex-end; justify-content: flex-end; padding: 1px; }
 
     /* ---- Taskbar ---- */
     .w95-taskbar {
@@ -280,6 +282,13 @@ const navItems = [
 
         <!-- Title bar -->
         <div class="w95-titlebar">
+          <!-- tiny monitor icon, like Henry's window bar icon -->
+          <svg width="14" height="14" viewBox="0 0 14 14" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0">
+            <rect x="1" y="1" width="12" height="9" rx="1" fill="none" stroke="#fff" stroke-width="1"/>
+            <rect x="2" y="2" width="10" height="7" fill="#3e9697"/>
+            <rect x="5" y="10" width="4" height="1.5" fill="#fff"/>
+            <rect x="3" y="11.5" width="8" height="1" fill="#fff"/>
+          </svg>
           <span class="w95-titlebar-text">Prashant Garg — {winTitle}</span>
           <button class="w95-titlebtn" title="Minimise">_</button>
           <button class="w95-titlebtn" title="Maximise">□</button>
@@ -303,10 +312,19 @@ const navItems = [
           <slot />
         </div>
 
-        <!-- Status bar -->
+        <!-- Status bar (4 cells, mirrors Henry's Window chrome) -->
         <div class="w95-statusbar">
           <span class="w95-statuscell wide">{winTitle}</span>
           <span class="w95-statuscell">prashantgarg.os</span>
+          <span class="w95-statuscell w95-statuscell-sm"></span>
+          <!-- resize grip (bottom-right) -->
+          <span class="w95-statuscell w95-statuscell-grip">
+            <svg width="10" height="10" viewBox="0 0 10 10" xmlns="http://www.w3.org/2000/svg">
+              <line x1="10" y1="4"  x2="4"  y2="10" stroke="#86898d" stroke-width="1"/>
+              <line x1="10" y1="7"  x2="7"  y2="10" stroke="#86898d" stroke-width="1"/>
+              <line x1="10" y1="10" x2="10" y2="10" stroke="#86898d" stroke-width="1"/>
+            </svg>
+          </span>
         </div>
 
       </div>
