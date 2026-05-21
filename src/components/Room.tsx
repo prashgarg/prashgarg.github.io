@@ -130,7 +130,16 @@ const DOLLY_DURATION = 1.4; // seconds
 function easeOutCubic(t: number) { return 1 - Math.pow(1 - t, 3); }
 
 function CameraRig({ phase, onDollyDone }: { phase: Phase; onDollyDone: () => void }) {
-  const { camera } = useThree();
+  const { camera, size } = useThree();
+  // Widen the FOV + pull the camera back on portrait viewports so the
+  // cottage fits in the frame on phones.
+  useEffect(() => {
+    if (!(camera instanceof THREE.PerspectiveCamera)) return;
+    const aspect = size.width / Math.max(1, size.height);
+    const fov = aspect < 0.7 ? 58 : aspect < 1.0 ? 50 : aspect < 1.4 ? 42 : 36;
+    camera.fov = fov;
+    camera.updateProjectionMatrix();
+  }, [size, camera]);
   const mouse = useRef({ x: 0, y: 0 });
   const tgt = useRef(CAM_TGT.clone());
   const dollyStart = useRef<number | null>(null);
