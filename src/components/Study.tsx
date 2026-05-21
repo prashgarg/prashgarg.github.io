@@ -55,7 +55,7 @@ const C = {
 };
 
 /* ---------- camera state machine + parallax ------------------------- */
-const CAM_IDLE_POS = new THREE.Vector3(3.6, 1.9, 4.2);
+const CAM_IDLE_POS = new THREE.Vector3(2.8, 1.9, 4.2);
 const CAM_IDLE_TGT = new THREE.Vector3(0.2, 1.4, -0.3);
 const CAM_MONITOR_POS = new THREE.Vector3(0.05, 1.45, 0.6);
 const CAM_MONITOR_TGT = new THREE.Vector3(0.05, 1.45, -0.35);
