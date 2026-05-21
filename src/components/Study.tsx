@@ -15,36 +15,42 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { PerspectiveCamera, RoundedBox, ContactShadows, Text, Billboard } from '@react-three/drei';
 import * as THREE from 'three';
 
-/* ---------- palette: warm academic study, late-afternoon ------------ */
+/* ---------- palette: evening study, single warm lamp pool -----------
+ * Aesthetic direction (committed): Hopper/Vermeer interior — one
+ * dominant warm light source (the banker's lamp on the desk), with
+ * the rest of the room falling into deep shadow. Walls a deep,
+ * muted teal so the warm amber pop reads strongly against it.
+ * Floor + desk + shelves in differentiated wood tones so it doesn't
+ * read as one big slab. */
 const C = {
-  floor:        '#5a3a23',   // dark walnut floorboards
-  floorTrim:    '#3a2616',
-  wall:         '#d6c4a3',   // warm cream plaster
-  wallShadow:   '#b29978',
-  ceiling:      '#cfb98f',
-  windowGlow:   '#fcd99a',   // late sun
-  windowSky:    '#9bc7e0',
-  desk:         '#4a2f1a',   // walnut desk
-  deskTop:      '#3a2515',
-  chair:        '#2a1810',
-  chairCushion: '#5c2018',
-  monitorBody:  '#c8b48a',   // beige CRT
-  monitorBezel: '#1f1a14',
-  crtGlow:      '#a4d9c5',   // mint phosphor when on
-  book1:        '#5a2418',   // oxblood
-  book2:        '#1d3b2a',   // forest
-  book3:        '#243a5a',   // ink blue
-  book4:        '#5a4421',   // mustard
-  paper:        '#f1e6c4',
-  brass:        '#c99551',
+  floor:        '#2a1a10',   // dark stained oak floorboards
+  floorTrim:    '#1a0e07',
+  wall:         '#1e2a2d',   // deep slate-teal — picks up shadow
+  wallShadow:   '#16201f',
+  ceiling:      '#181818',
+  windowGlow:   '#f4a958',   // late sun (warmer, less yellow)
+  windowSky:    '#3a4856',   // dusk
+  desk:         '#4f2e16',   // honey walnut desk
+  deskTop:      '#3a1f0c',
+  chair:        '#1e120a',
+  chairCushion: '#3e1610',
+  monitorBody:  '#bca988',   // warm beige CRT
+  monitorBezel: '#0e0a06',
+  crtGlow:      '#85d8b6',   // mint phosphor — slightly cooler
+  book1:        '#5a2418',
+  book2:        '#1d3b2a',
+  book3:        '#243a5a',
+  book4:        '#5a4421',
+  paper:        '#e4d29a',
+  brass:        '#d8a25c',   // brighter brass to catch lamp light
   vinyl:        '#0d0a08',
   vinylLabel:   '#c44848',
-  postcard1:    '#e4b07b',
-  postcard2:    '#b8c89a',
-  postcard3:    '#e89aa3',
-  postcard4:    '#9ab8d8',
-  rug:          '#6d2624',
-  rugPattern:   '#c89154',
+  postcard1:    '#c89055',
+  postcard2:    '#8aa572',
+  postcard3:    '#b87480',
+  postcard4:    '#6f8aa3',
+  rug:          '#4a1a18',   // deeper oxblood
+  rugPattern:   '#a87440',
 };
 
 /* ---------- camera state machine + parallax ------------------------- */
@@ -322,11 +328,22 @@ function Monitor({ phase, onClick }: { phase: Phase; onClick: () => void }) {
         <boxGeometry args={[0.94, 0.72, 0.02]} />
         <meshStandardMaterial color={C.monitorBezel} roughness={0.4} />
       </mesh>
-      {/* the screen — emissive phosphor */}
+      {/* the screen — emissive phosphor with a faint terminal prompt */}
       <mesh ref={screenRef} position={[0, 0.44, 0.405]}>
         <planeGeometry args={[0.78, 0.58]} />
-        <meshStandardMaterial color="#0c1612" emissive={C.crtGlow} emissiveIntensity={0.75} roughness={0.3} />
+        <meshStandardMaterial color="#0a120e" emissive={C.crtGlow} emissiveIntensity={0.55} roughness={0.3} />
       </mesh>
+      {/* prompt text glowing on the screen — invites the click */}
+      <Text position={[-0.32, 0.55, 0.408]} fontSize={0.030} color="#bff0d8"
+            anchorX="left" anchorY="middle"
+            outlineWidth={0.0008} outlineColor="#85d8b6"
+            font={undefined}>
+        prashantgarg.os
+      </Text>
+      <Text position={[-0.32, 0.30, 0.408]} fontSize={0.024} color="#85d8b6"
+            anchorX="left" anchorY="middle">
+        {'>'} login_
+      </Text>
       {/* hover ring */}
       {hovered && (
         <Billboard position={[0, 1.05, 0]}>
@@ -357,7 +374,7 @@ function DeskProps() {
           <cylinderGeometry args={[0.14, 0.14, 0.40, 18, 1, true]} />
           <meshStandardMaterial color="#225948" emissive="#225948" emissiveIntensity={0.15} side={THREE.DoubleSide} roughness={0.55} />
         </mesh>
-        <pointLight position={[0, 0.40, 0]} intensity={3.2} distance={2.6} decay={2} color="#FFC885" castShadow />
+        <pointLight position={[0, 0.40, 0]} intensity={8.5} distance={3.2} decay={2} color="#FFB266" castShadow shadow-mapSize-width={1024} shadow-mapSize-height={1024} />
       </group>
 
       {/* stack of papers (his research drafts) */}
@@ -441,19 +458,35 @@ function WallArt() {
       {/* pin board above the desk */}
       <mesh position={[-1.05, 2.05, -2.78]} castShadow>
         <boxGeometry args={[1.1, 0.78, 0.03]} />
-        <meshStandardMaterial color="#9a7748" roughness={0.85} />
+        <meshStandardMaterial color="#5a3a1c" roughness={0.85} />
       </mesh>
-      {[
-        [-1.35, 2.20, -2.76,  C.postcard1, 0.04],
-        [-0.95, 2.18, -2.76,  C.postcard2, -0.06],
-        [-0.65, 2.25, -2.76,  C.postcard3, 0.02],
-        [-1.20, 1.92, -2.76,  C.postcard4, -0.03],
-        [-0.75, 1.92, -2.76,  '#d9c290',   0.07],
-      ].map(([x, y, z, col, rot], i) => (
-        <mesh key={i} position={[x as number, y as number, z as number]} rotation-z={rot as number} castShadow>
-          <planeGeometry args={[0.20, 0.13]} />
-          <meshStandardMaterial color={col as string} roughness={0.9} side={THREE.DoubleSide} />
-        </mesh>
+      {([
+        { p: [-1.35, 2.20, -2.76], col: C.postcard1, rot:  0.04, label: 'CAMBRIDGE',  sub: '·  econ' },
+        { p: [-0.95, 2.18, -2.76], col: C.postcard2, rot: -0.06, label: 'OXFORD',     sub: '·  inet' },
+        { p: [-0.65, 2.25, -2.76], col: C.postcard3, rot:  0.02, label: 'IMPERIAL',   sub: '·  phd' },
+        { p: [-1.20, 1.92, -2.76], col: C.postcard4, rot: -0.03, label: 'BOCCONI',    sub: "·  '26" },
+        { p: [-0.75, 1.92, -2.76], col: '#d9c290',  rot:  0.07, label: 'LONDON',     sub: '·  home' },
+      ] as const).map((pc, i) => (
+        <group key={i} position={[pc.p[0], pc.p[1], pc.p[2]]} rotation-z={pc.rot}>
+          <mesh castShadow>
+            <planeGeometry args={[0.21, 0.14]} />
+            <meshStandardMaterial color={pc.col} roughness={0.95} side={THREE.DoubleSide} />
+          </mesh>
+          <Text position={[0, 0.020, 0.001]} fontSize={0.024} color="#1a0e07"
+                anchorX="center" anchorY="middle" maxWidth={0.18}
+                font={undefined} letterSpacing={0.04}>
+            {pc.label}
+          </Text>
+          <Text position={[0, -0.024, 0.001]} fontSize={0.014} color="rgba(26,14,7,0.7)"
+                anchorX="center" anchorY="middle" maxWidth={0.18}>
+            {pc.sub}
+          </Text>
+          {/* small pin */}
+          <mesh position={[0, 0.055, 0.004]}>
+            <sphereGeometry args={[0.008, 8, 6]} />
+            <meshStandardMaterial color={C.brass} metalness={0.7} roughness={0.4} />
+          </mesh>
+        </group>
       ))}
 
       {/* a framed atlas-style world-map print on the back wall, right of the pin board */}
@@ -503,6 +536,183 @@ function WallArt() {
   );
 }
 
+/* ---------- music corner: record player + unlabelled sleeves
+ *  Generic music presence on the right wall — no named artists or
+ *  album art. The user can list favourite musicians in plain text on
+ *  the /about or /now page; visual reproduction in a curated-collection
+ *  context is the line I don't want to cross. */
+function MusicWall() {
+  const sleeves = ['#7d2418', '#1f3b4a', '#b08230', '#1d1d1d', '#a83a22', '#2d5a3a'];
+  return (
+    <group position={[3.95, 1.1, -1.3]} rotation-y={-Math.PI / 2}>
+      {/* shelf */}
+      <mesh position={[0, -0.04, 0]} castShadow receiveShadow>
+        <boxGeometry args={[1.8, 0.04, 0.28]} />
+        <meshStandardMaterial color={C.desk} roughness={0.6} />
+      </mesh>
+      {/* back rail */}
+      <mesh position={[0, 0.35, -0.12]}>
+        <boxGeometry args={[1.8, 0.7, 0.012]} />
+        <meshStandardMaterial color={C.wallShadow} roughness={1} />
+      </mesh>
+
+      {/* record player on the left of the shelf */}
+      <group position={[-0.55, 0.08, 0]}>
+        {/* plinth */}
+        <mesh castShadow>
+          <boxGeometry args={[0.50, 0.08, 0.40]} />
+          <meshStandardMaterial color="#2a1810" roughness={0.6} />
+        </mesh>
+        {/* platter */}
+        <mesh position={[0.04, 0.05, 0]} castShadow>
+          <cylinderGeometry args={[0.16, 0.16, 0.012, 28]} />
+          <meshStandardMaterial color="#1a1a1a" roughness={0.4} />
+        </mesh>
+        {/* the spinning record on top */}
+        <mesh position={[0.04, 0.058, 0]}>
+          <cylinderGeometry args={[0.155, 0.155, 0.002, 28]} />
+          <meshStandardMaterial color="#0d0a08" roughness={0.5} />
+        </mesh>
+        {/* small label centre */}
+        <mesh position={[0.04, 0.060, 0]}>
+          <cylinderGeometry args={[0.04, 0.04, 0.001, 18]} />
+          <meshStandardMaterial color="#c44848" />
+        </mesh>
+        {/* tonearm */}
+        <mesh position={[0.16, 0.05, -0.15]} rotation-y={0.4} castShadow>
+          <boxGeometry args={[0.22, 0.018, 0.014]} />
+          <meshStandardMaterial color={C.brass} metalness={0.6} roughness={0.4} />
+        </mesh>
+        <mesh position={[0.22, 0.06, -0.18]} castShadow>
+          <cylinderGeometry args={[0.022, 0.022, 0.03, 12]} />
+          <meshStandardMaterial color={C.brass} metalness={0.6} roughness={0.4} />
+        </mesh>
+      </group>
+
+      {/* a row of unlabelled record sleeves leaning against the rail */}
+      {sleeves.map((color, i) => {
+        const x = 0.15 + i * 0.12;
+        const rot = ((i % 2) - 0.5) * 0.04;
+        return (
+          <mesh key={i} position={[x, 0.20, 0]} rotation-z={rot} castShadow>
+            <boxGeometry args={[0.32, 0.32, 0.010]} />
+            <meshStandardMaterial color={color} roughness={0.85} />
+          </mesh>
+        );
+      })}
+    </group>
+  );
+}
+
+/* ---------- acoustic guitar leaning in the corner -------------------- */
+function Guitar() {
+  return (
+    <group position={[3.5, 0, 0.9]} rotation-z={-0.18} rotation-y={-0.7}>
+      {/* body — two rounded discs at slightly different radii to fake a guitar shape */}
+      <mesh position={[0, 0.55, 0]} castShadow>
+        <sphereGeometry args={[0.26, 24, 18, 0, Math.PI * 2, 0, Math.PI]} />
+        <meshStandardMaterial color="#8a4a22" roughness={0.55} />
+      </mesh>
+      <mesh position={[0, 0.30, 0]} castShadow>
+        <cylinderGeometry args={[0.22, 0.20, 0.10, 24]} />
+        <meshStandardMaterial color="#7a3f1c" roughness={0.55} />
+      </mesh>
+      {/* sound hole */}
+      <mesh position={[0, 0.42, 0.18]}>
+        <circleGeometry args={[0.05, 18]} />
+        <meshStandardMaterial color="#1a0e07" />
+      </mesh>
+      {/* neck */}
+      <mesh position={[0, 1.05, 0]} castShadow>
+        <boxGeometry args={[0.07, 0.85, 0.05]} />
+        <meshStandardMaterial color="#4a2814" roughness={0.6} />
+      </mesh>
+      {/* headstock */}
+      <mesh position={[0, 1.52, 0]} castShadow>
+        <boxGeometry args={[0.12, 0.14, 0.05]} />
+        <meshStandardMaterial color="#3a1d0e" roughness={0.6} />
+      </mesh>
+      {/* strings — six thin lines on the neck */}
+      {[-0.025, -0.015, -0.005, 0.005, 0.015, 0.025].map((x, i) => (
+        <mesh key={i} position={[x, 0.95, 0.04]}>
+          <boxGeometry args={[0.002, 1.55, 0.002]} />
+          <meshStandardMaterial color="#d2bd92" />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+/* ---------- an open notebook with abstract scribbles ----------------- */
+function Notebook() {
+  return (
+    <group position={[0.55, 0.811, -1.45]} rotation-y={0.12} rotation-x={-Math.PI / 2}>
+      {/* left page */}
+      <mesh position={[-0.13, 0, 0.003]} castShadow>
+        <boxGeometry args={[0.24, 0.32, 0.006]} />
+        <meshStandardMaterial color={C.paper} roughness={1} />
+      </mesh>
+      {/* right page */}
+      <mesh position={[ 0.13, 0, 0.003]} castShadow>
+        <boxGeometry args={[0.24, 0.32, 0.006]} />
+        <meshStandardMaterial color="#f6ecd0" roughness={1} />
+      </mesh>
+      {/* spine seam */}
+      <mesh position={[0, 0, 0.006]}>
+        <boxGeometry args={[0.005, 0.32, 0.002]} />
+        <meshStandardMaterial color="#a98358" />
+      </mesh>
+      {/* scribble lines on the left page (no readable text) */}
+      {[0.10, 0.04, -0.02, -0.08, -0.14].map((y, i) => (
+        <mesh key={i} position={[-0.13, y, 0.008]}>
+          <boxGeometry args={[0.18 - (i % 3) * 0.03, 0.006, 0.001]} />
+          <meshStandardMaterial color="#3a2616" />
+        </mesh>
+      ))}
+      {/* a doodle on the right page — a small circle and a wavy line */}
+      <mesh position={[0.16, 0.10, 0.008]}>
+        <ringGeometry args={[0.018, 0.024, 16]} />
+        <meshStandardMaterial color="#3a2616" side={THREE.DoubleSide} />
+      </mesh>
+      {[0.04, -0.02, -0.08, -0.14].map((y, i) => (
+        <mesh key={'r' + i} position={[0.10 + (i % 2) * 0.03, y, 0.008]}>
+          <boxGeometry args={[0.10 + (i % 2) * 0.04, 0.005, 0.001]} />
+          <meshStandardMaterial color="#3a2616" />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+/* ---------- gender-fluid pride pin on the pinboard ------------------- */
+function GenderFluidPin() {
+  /* the gender-fluid pride flag stripe colours: pink / white / purple
+     / black / blue. five horizontal stripes, small enough to be a
+     pinboard pin. */
+  const stripes = ['#ff77a8', '#ffffff', '#b885d7', '#000000', '#1f3aa6'];
+  return (
+    <group position={[-0.50, 1.96, -2.760]}>
+      {/* round backing */}
+      <mesh>
+        <circleGeometry args={[0.045, 24]} />
+        <meshStandardMaterial color="#1a1a1a" />
+      </mesh>
+      {/* stripes as small rectangles inside the circle */}
+      {stripes.map((c, i) => (
+        <mesh key={i} position={[0, 0.024 - i * 0.014, 0.001]}>
+          <planeGeometry args={[0.075, 0.012]} />
+          <meshStandardMaterial color={c} />
+        </mesh>
+      ))}
+      {/* a tiny brass pin head bottom-centre */}
+      <mesh position={[0, -0.05, 0.004]}>
+        <sphereGeometry args={[0.008, 10, 8]} />
+        <meshStandardMaterial color={C.brass} metalness={0.7} roughness={0.4} />
+      </mesh>
+    </group>
+  );
+}
+
 /* ---------- a small floor lamp in the corner ------------------------ */
 function FloorLamp() {
   return (
@@ -519,7 +729,8 @@ function FloorLamp() {
         <coneGeometry args={[0.22, 0.30, 18, 1, true]} />
         <meshStandardMaterial color="#e6c89e" emissive="#e6c89e" emissiveIntensity={0.18} side={THREE.DoubleSide} roughness={0.65} />
       </mesh>
-      <pointLight position={[0, 1.66, 0]} intensity={2.2} distance={3.6} decay={2} color="#FFD09a" />
+      {/* very subtle kicker — just enough to keep the corner from black */}
+      <pointLight position={[0, 1.66, 0]} intensity={0.55} distance={2.8} decay={2} color="#d49158" />
     </group>
   );
 }
@@ -530,12 +741,14 @@ function Scene({ phase, onMonitorClick, onArrived }: {
 }) {
   return (
     <Suspense fallback={null}>
-      {/* ambient + warm directional from the window */}
-      <ambientLight intensity={0.32} color="#FFE7B6" />
+      {/* Single-source lighting for Hopper-evening feel: the banker's
+          lamp is the hero, ambient is barely there, the window is a
+          soft warm glow not a competing sun. */}
+      <ambientLight intensity={0.06} color="#3a3026" />
       <directionalLight
-        position={[-6, 4, 0]}
-        intensity={0.85}
-        color="#FFC078"
+        position={[-6, 3.5, 0.5]}
+        intensity={0.22}
+        color="#d49158"
         castShadow
         shadow-mapSize-width={2048}
         shadow-mapSize-height={2048}
@@ -545,20 +758,91 @@ function Scene({ phase, onMonitorClick, onArrived }: {
         shadow-camera-top={8}
         shadow-camera-bottom={-8}
       />
-      <hemisphereLight args={['#FFE7B6', '#3A2616', 0.30]} />
-      <fog attach="fog" args={['#1A130A', 12, 22]} />
+      <hemisphereLight args={['#5a4a32', '#0e0805', 0.10]} />
+      {/* dense warm fog so the back wall recedes — depth without haze */}
+      <fog attach="fog" args={['#0e0805', 6, 13]} />
 
       <Room />
       <Window />
       <Rug />
       <Desk />
       <DeskProps />
+      <Notebook />
       <Chair />
       <Monitor phase={phase} onClick={onMonitorClick} />
       <WallArt />
+      <GenderFluidPin />
+      <MusicWall />
+      <Guitar />
       <FloorLamp />
       <ContactShadows position={[0, 0.01, 0]} opacity={0.45} blur={2.4} far={4.5} />
     </Suspense>
+  );
+}
+
+/* ---------- boot overlay (CRT screen → terminal → inner site) -------- */
+function BootOverlay({ onDone }: { onDone: () => void }) {
+  const [text, setText] = useState('');
+  const [done, setDone] = useState(false);
+  const skipped = useRef(false);
+
+  useEffect(() => {
+    const script = [
+      { line: 'prashantgarg.os',                                typeMs: 14, pauseMs: 120 },
+      { line: '> waking the study  [ ok ]',                     typeMs: 8,  pauseMs: 140 },
+      { line: '> mounting research, talks, library  [ ok ]',    typeMs: 8,  pauseMs: 220 },
+      { line: '',                                                typeMs: 0,  pauseMs: 80  },
+      { line: 'welcome.',                                        typeMs: 40, pauseMs: 360 },
+    ];
+    let cancelled = false;
+    let buf = '';
+    async function run() {
+      for (const s of script) {
+        for (let i = 0; i < s.line.length; i++) {
+          if (cancelled || skipped.current) return;
+          buf += s.line[i];
+          setText(buf);
+          await new Promise(r => setTimeout(r, s.typeMs));
+        }
+        buf += '\n';
+        setText(buf);
+        if (cancelled || skipped.current) return;
+        await new Promise(r => setTimeout(r, s.pauseMs));
+      }
+      if (!cancelled) setDone(true);
+    }
+    run();
+    function onKey() { skipped.current = true; setText(script.map(s => s.line).join('\n')); setDone(true); }
+    window.addEventListener('keydown', onKey);
+    return () => { cancelled = true; window.removeEventListener('keydown', onKey); };
+  }, []);
+
+  useEffect(() => {
+    if (!done) return;
+    const t = setTimeout(onDone, 380);
+    return () => clearTimeout(t);
+  }, [done, onDone]);
+
+  return (
+    <div
+      onClick={() => { skipped.current = true; setDone(true); }}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 9999,
+        background: '#0E0D0B', color: '#A4D9C5',
+        fontFamily: "ui-monospace, 'SF Mono', Menlo, Monaco, Consolas, monospace",
+        display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
+        paddingTop: '14vh', cursor: 'pointer',
+      }}
+    >
+      <div style={{ width: 'min(92vw, 560px)', padding: 24 }}>
+        <pre style={{ margin: 0, fontSize: 13, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+          {text}<span style={{ color: '#F9BD2B' }}>▋</span>
+        </pre>
+        <div style={{ marginTop: 36, fontSize: 11, color: 'rgba(164,217,197,0.45)' }}>
+          press any key · click to skip
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -566,9 +850,10 @@ function Scene({ phase, onMonitorClick, onArrived }: {
 export default function Study() {
   const [phase, setPhase] = useState<Phase>('idle');
   const handleClick   = () => { if (phase === 'idle') setPhase('dollying'); };
-  const handleArrived = () => { setPhase('on-monitor'); };
-  /* boot + navigation will be wired in a follow-up commit. For now,
-     clicking the monitor dollies and stops. */
+  const handleArrived = () => { setPhase('booting'); };
+  const handleBootDone = () => {
+    if (typeof window !== 'undefined') window.location.href = '/research';
+  };
   return (
     <div style={{ position: 'fixed', inset: 0, background: '#1A130A' }}>
       <Canvas shadows dpr={[1, 1.75]} gl={{ antialias: true }}>
@@ -576,6 +861,7 @@ export default function Study() {
         <CameraRig phase={phase} onArrived={handleArrived} />
         <Scene phase={phase} onMonitorClick={handleClick} onArrived={handleArrived} />
       </Canvas>
+      {phase === 'booting' && <BootOverlay onDone={handleBootDone} />}
     </div>
   );
 }
