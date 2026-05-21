@@ -1,0 +1,345 @@
+---
+/**
+ * Win95Layout — wraps inner-site pages in Win95 window chrome so they
+ * feel continuous with the InnerDesktop overlay that precedes them.
+ *
+ * Fonts (MSSansSerif, Millennium, Terminal) from Henry Heffernan's
+ * portfolio-inner-site (MIT). All CSS and markup original.
+ */
+import '../styles/global.css';
+
+interface Props {
+  title?: string;
+  description?: string;
+  current?: string;
+}
+const {
+  title = 'Prashant Garg',
+  description = 'Economist working on science, innovation, production, and media using machine learning, causal inference, and network science.',
+  current = '',
+} = Astro.props;
+
+const path = Astro.url.pathname.replace(/\/$/, '') || '/';
+const ogPath  = path === '/' ? '/og/index.png' : `/og${path}.png`;
+const ogImageUrl = Astro.site ? new URL(ogPath, Astro.site).toString() : ogPath;
+const canonical  = Astro.site ? new URL(path, Astro.site).toString() : path;
+
+const winTitle = title.replace(' — Prashant Garg', '');
+
+const navItems = [
+  { href: '/',         label: '← Study',  id: 'home'     },
+  { href: '/research', label: 'Research',  id: 'research' },
+  { href: '/talks',    label: 'Talks',     id: 'talks'    },
+  { href: '/library',  label: 'Library',   id: 'library'  },
+  { href: '/now',      label: 'Now',       id: 'now'      },
+];
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;700&family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+    <meta name="generator" content={Astro.generator} />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content={ogImageUrl} />
+    <meta property="og:url" content={canonical} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content={ogImageUrl} />
+  </head>
+
+  <style is:global>
+    /* Win95 font faces — served from /public/fonts/ */
+    @font-face { font-family: MSSerif;       src: url('/fonts/MSSansSerif.ttf'); }
+    @font-face { font-family: Millennium;    src: url('/fonts/Millennium.ttf'); }
+    @font-face { font-family: MillenniumBold;src: url('/fonts/Millennium-Bold.ttf'); }
+    @font-face { font-family: Terminal;      src: url('/fonts/Terminal.ttf'); }
+
+    /* Reset body so we can control the full layout */
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+    }
+    /* Remove the paper-grain / vignette pseudo-elements from global.css */
+    body::before, body::after { display: none !important; }
+
+    /* ---- Win95 desktop shell ---- */
+    .w95-shell {
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #3e9697;
+      /* subtle noise on the desktop */
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.24 0 0 0 0 0.58 0 0 0 0 0.59 0 0 0 0.12 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      padding: 8px;
+      box-sizing: border-box;
+    }
+
+    /* ---- The window ---- */
+    .w95-window {
+      /* Win95 CSS vars */
+      --hi:   #ffffff;
+      --face: #c3c6ca;
+      --sh:   #86898d;
+      --fr:   #2b2b2b;
+      --raised-outer: inset -1px -1px var(--fr),  inset 1px 1px var(--hi);
+      --raised-inner: inset -2px -2px var(--sh),  inset 2px 2px var(--face);
+      --sunken:       inset -1px -1px var(--hi),  inset 1px 1px var(--sh),
+                      inset -2px -2px var(--face), inset 2px 2px var(--fr);
+
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      height: 100%;
+      max-width: 1280px;
+      max-height: calc(100vh - 16px);
+      background: var(--face);
+      box-shadow: var(--raised-outer);
+    }
+
+    /* ---- Title bar ---- */
+    .w95-titlebar {
+      display: flex;
+      align-items: center;
+      padding: 3px 4px 3px 6px;
+      gap: 5px;
+      background: #0000a3;
+      flex-shrink: 0;
+    }
+    .w95-titlebar-text {
+      flex: 1;
+      font-family: MSSerif, Arial, sans-serif;
+      font-size: 12px;
+      color: #fff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .w95-titlebtn {
+      width: 16px;
+      height: 14px;
+      background: var(--face);
+      border: none;
+      font-size: 9px;
+      font-family: MSSerif, Arial, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: inset -1px -1px var(--fr), inset 1px 1px var(--hi);
+      color: #000;
+      flex-shrink: 0;
+      padding: 0;
+    }
+    .w95-titlebtn:active {
+      box-shadow: inset 1px 1px var(--fr), inset -1px -1px var(--hi);
+    }
+    .w95-titlebtn-close { margin-left: 2px; }
+
+    /* ---- Menu / nav bar ---- */
+    .w95-menubar {
+      display: flex;
+      align-items: stretch;
+      background: var(--face);
+      border-bottom: 1px solid var(--sh);
+      flex-shrink: 0;
+      padding: 1px 2px;
+      gap: 0;
+    }
+    .w95-menuitem {
+      font-family: MSSerif, Arial, sans-serif;
+      font-size: 12px;
+      color: #000;
+      padding: 2px 8px;
+      cursor: pointer;
+      text-decoration: none;
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      border: 1px solid transparent;
+    }
+    .w95-menuitem:hover {
+      background: #0000aa;
+      color: #fff;
+      border-color: transparent;
+    }
+    .w95-menuitem.active {
+      background: var(--face);
+      box-shadow: inset -1px -1px var(--hi), inset 1px 1px var(--sh),
+                  inset -2px -2px var(--face), inset 2px 2px var(--fr);
+    }
+    .w95-menuitem.back {
+      color: #444;
+    }
+    .w95-menuitem.back:hover { color: #fff; }
+
+    /* ---- Content area ---- */
+    .w95-body {
+      flex: 1;
+      overflow-y: auto;
+      background: #fff;
+      box-shadow: var(--sunken);
+      margin: 3px 3px 0 3px;
+      /* Let the inner content paint its own background */
+    }
+    /* override global.css cream background inside the window */
+    .w95-body { background-color: var(--color-cream) !important; }
+
+    /* ---- Status bar ---- */
+    .w95-statusbar {
+      height: 22px;
+      background: var(--face);
+      border-top: 1px solid var(--sh);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 0 4px;
+      flex-shrink: 0;
+      margin-top: 0;
+    }
+    .w95-statuscell {
+      font-family: MSSerif, Arial, sans-serif;
+      font-size: 11px;
+      color: #000;
+      padding: 0 8px;
+      height: 16px;
+      line-height: 16px;
+      box-shadow: var(--sunken);
+    }
+    .w95-statuscell.wide { flex: 1; }
+
+    /* ---- Taskbar ---- */
+    .w95-taskbar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 28px;
+      background: var(--face);
+      border-top: 1px solid var(--hi);
+      display: flex;
+      align-items: center;
+      padding: 2px 4px;
+      z-index: 100;
+      box-shadow: inset 0 1px var(--hi);
+    }
+    .w95-startbtn {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      font-family: MillenniumBold, Arial, sans-serif;
+      font-size: 13px;
+      font-weight: bold;
+      background: var(--face);
+      border: none;
+      cursor: pointer;
+      box-shadow: inset -1px -1px var(--fr), inset 1px 1px var(--hi),
+                  inset -2px -2px var(--sh),  inset 2px 2px var(--face);
+      text-decoration: none;
+      color: #000;
+    }
+    .w95-startbtn:hover { background: #d4d8dc; }
+    .w95-taskbar-spacer { flex: 1; }
+    .w95-clock {
+      font-family: MSSerif, Arial, sans-serif;
+      font-size: 12px;
+      padding: 2px 8px;
+      box-shadow: var(--sunken);
+      white-space: nowrap;
+    }
+
+    /* ---- scrollbar styling ---- */
+    .w95-body::-webkit-scrollbar { width: 16px; }
+    .w95-body::-webkit-scrollbar-track { background: var(--face); }
+    .w95-body::-webkit-scrollbar-thumb {
+      background: var(--face);
+      box-shadow: inset -1px -1px var(--fr), inset 1px 1px var(--hi),
+                  inset -2px -2px var(--sh),  inset 2px 2px var(--face);
+    }
+
+    /* keep layout intact when taskbar present */
+    .w95-shell { padding-bottom: 36px; }
+  </style>
+
+  <body>
+    <div class="w95-shell">
+      <div class="w95-window">
+
+        <!-- Title bar -->
+        <div class="w95-titlebar">
+          <span class="w95-titlebar-text">Prashant Garg — {winTitle}</span>
+          <button class="w95-titlebtn" title="Minimise">_</button>
+          <button class="w95-titlebtn" title="Maximise">□</button>
+          <a href="/" class="w95-titlebtn w95-titlebtn-close" title="Back to study">✕</a>
+        </div>
+
+        <!-- Menu bar / navigation -->
+        <div class="w95-menubar">
+          {navItems.map(it => (
+            <a
+              href={it.href}
+              class={`w95-menuitem${it.id === current ? ' active' : ''}${it.id === 'home' ? ' back' : ''}`}
+            >
+              {it.label}
+            </a>
+          ))}
+        </div>
+
+        <!-- Page content -->
+        <div class="w95-body">
+          <slot />
+        </div>
+
+        <!-- Status bar -->
+        <div class="w95-statusbar">
+          <span class="w95-statuscell wide">{winTitle}</span>
+          <span class="w95-statuscell">prashantgarg.os</span>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Taskbar (fixed at bottom) -->
+    <div class="w95-taskbar">
+      <a href="/" class="w95-startbtn">
+        <svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+          <rect x="0" y="0" width="7" height="7" fill="#f25022"/>
+          <rect x="9" y="0" width="7" height="7" fill="#7fba00"/>
+          <rect x="0" y="9" width="7" height="7" fill="#00a4ef"/>
+          <rect x="9" y="9" width="7" height="7" fill="#ffb900"/>
+        </svg>
+        Start
+      </a>
+      <div class="w95-taskbar-spacer"></div>
+      <div class="w95-clock" id="w95-clock">12:00 PM</div>
+    </div>
+
+    <script is:inline>
+      (function clock() {
+        function tick() {
+          var d = new Date();
+          var h = d.getHours(), m = d.getMinutes();
+          var ap = h >= 12 ? 'PM' : 'AM';
+          h = h % 12 || 12;
+          document.getElementById('w95-clock').textContent =
+            h + ':' + (m < 10 ? '0' + m : m) + ' ' + ap;
+        }
+        tick();
+        setInterval(tick, 5000);
+      })();
+    </script>
+  </body>
+</html>
