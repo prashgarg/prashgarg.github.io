@@ -24,8 +24,8 @@ import InnerDesktop from './InnerDesktop';
  * Floor + desk + shelves in differentiated wood tones so it doesn't
  * read as one big slab. */
 const C = {
-  floor:        '#2a1a10',   // dark stained oak floorboards
-  floorTrim:    '#1a0e07',
+  floor:        '#3d2418',   // stained oak — lifted so ambient reads (was #2a1a10)
+  floorTrim:    '#261508',
   wall:         '#344a50',   // lifted further — needed for runtime lighting
   wallShadow:   '#253a38',
   ceiling:      '#2a2424',
@@ -50,7 +50,7 @@ const C = {
   postcard2:    '#8aa572',
   postcard3:    '#b87480',
   postcard4:    '#6f8aa3',
-  rug:          '#4a1a18',   // deeper oxblood
+  rug:          '#5c2020',   // oxblood — lifted (was #4a1a18)
   rugPattern:   '#a87440',
 };
 
@@ -60,18 +60,30 @@ const CAM_IDLE_TGT = new THREE.Vector3(0.2, 1.4, -0.3);
 const CAM_MONITOR_POS = new THREE.Vector3(0.05, 1.45, 0.6);
 const CAM_MONITOR_TGT = new THREE.Vector3(0.05, 1.45, -0.35);
 
-type Phase = 'idle' | 'dollying' | 'on-monitor' | 'booting' | 'desktop';
-const DOLLY_MS = 1600;
+type Phase = 'entering' | 'idle' | 'dollying' | 'on-monitor' | 'booting' | 'desktop';
+const DOLLY_MS  = 1600;
+const ENTRY_MS  = 2200;   // camera entry duration — Henry uses 2500 ms
 function easeOutCubic(t: number) { return 1 - Math.pow(1 - t, 3); }
+// Henry's easing for the entry: TWEEN.Easing.Exponential.Out
+function easeOutExpo(t: number)  { return t >= 1 ? 1 : 1 - Math.pow(2, -10 * t); }
 
-function CameraRig({ phase, onArrived }: { phase: Phase; onArrived: () => void }) {
+// Entry: camera starts far away (same hemisphere as idle, just much further)
+// and eases to the idle desk view. Scaled down from Henry's 35 000-unit world
+// to our metre-scale scene — same feel, proportional distances.
+const CAM_ENTRY_POS = new THREE.Vector3(9, 6, 14);
+const CAM_ENTRY_TGT = new THREE.Vector3(0.2, 1.0, 0.5);
+
+function CameraRig({ phase, onArrived, onEntryDone }: {
+  phase: Phase; onArrived: () => void; onEntryDone: () => void;
+}) {
   const { camera, size } = useThree();
   const mouse = useRef({ x: 0, y: 0 });
-  const tgt = useRef(CAM_IDLE_TGT.clone());
+  const tgt = useRef(CAM_ENTRY_TGT.clone()); // starts at entry target
   const startedAt = useRef<number | null>(null);
   const fromPos = useRef(CAM_IDLE_POS.clone());
   const fromTgt = useRef(CAM_IDLE_TGT.clone());
   const arrivedFired = useRef(false);
+  const entryFired = useRef(false);
   // aspect-adaptive idle position / target (updated when size changes)
   const idlePos = useRef(CAM_IDLE_POS.clone());
   const idleTgt = useRef(CAM_IDLE_TGT.clone());
@@ -125,7 +137,17 @@ function CameraRig({ phase, onArrived }: { phase: Phase; onArrived: () => void }
     };
   }, []);
 
-  useFrame(() => {
+  useFrame((state) => {
+    // ── entry animation (adapted from Henry's post-load TWEEN) ──────────
+    if (phase === 'entering') {
+      const k = easeOutExpo(Math.min(1, state.clock.elapsedTime * 1000 / ENTRY_MS));
+      camera.position.lerpVectors(CAM_ENTRY_POS, idlePos.current, k);
+      tgt.current.lerpVectors(CAM_ENTRY_TGT, idleTgt.current, k);
+      camera.lookAt(tgt.current);
+      if (!entryFired.current && k >= 0.99) { entryFired.current = true; onEntryDone(); }
+      return;
+    }
+    // ── dolly into monitor ──────────────────────────────────────────────
     if (phase === 'dollying') {
       const k = easeOutCubic(Math.min(1, (performance.now() - (startedAt.current ?? 0)) / DOLLY_MS));
       camera.position.lerpVectors(fromPos.current, CAM_MONITOR_POS, k);
@@ -140,9 +162,13 @@ function CameraRig({ phase, onArrived }: { phase: Phase; onArrived: () => void }
       camera.lookAt(tgt.current);
       return;
     }
-    // idle: parallax (uses aspect-adaptive idle pos/tgt)
-    const wx = idlePos.current.x - mouse.current.x * 0.35;
-    const wy = idlePos.current.y + mouse.current.y * 0.22;
+    // ── idle: mouse parallax + slow sine-wave drift (Henry's IdleKeyframe) ─
+    // Henry: x = sin((t+19000)*0.00008)*originX — same frequencies, metre scale
+    const ms = state.clock.elapsedTime * 1000;
+    const driftX = Math.sin((ms + 19000) * 0.00008) * 0.28;
+    const driftY = Math.sin((ms +  1000) * 0.000004) * 0.10;
+    const wx = idlePos.current.x + driftX - mouse.current.x * 0.35;
+    const wy = idlePos.current.y + driftY + mouse.current.y * 0.22;
     camera.position.x += (wx - camera.position.x) * 0.06;
     camera.position.y += (wy - camera.position.y) * 0.06;
     camera.position.z += (idlePos.current.z - camera.position.z) * 0.06;
@@ -908,6 +934,15 @@ function BootOverlay({ onDone }: { onDone: () => void }) {
   );
 }
 
+/* ---------- helpers -------------------------------------------------- */
+function getTime() {
+  const d = new Date();
+  let h = d.getHours(); const m = d.getMinutes();
+  const ap = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 || 12;
+  return `${h}:${m < 10 ? '0' + m : m} ${ap}`;
+}
+
 /* ---------- mute button (Henry Heffernan style) ---------------------- */
 // SVG icons adapted from Henry Heffernan's portfolio-website (MIT).
 // 26.5×26.5 px black square, white icon at 10 px wide.
@@ -927,54 +962,6 @@ function VolumeOffIcon() {
       <path d="M87.87,61.64q0,25.53,0,51c0,4-1.16,7.34-4.91,9.36A7.37,7.37,0,0,1,74.24,121q-13.39-12.1-26.88-24.1c-3.16-2.82-6.26-5.7-9.54-8.38a6.53,6.53,0,0,0-3.7-1.41C27.56,87,21,87.05,14.44,87,5.08,87,.1,82.08,0,72.79Q0,61.08,0,49.38c.07-8.78,5.39-14,14.21-14.05,6.73,0,13.46,0,20.18-.06a5.09,5.09,0,0,0,3.06-1.15q17.58-15.46,35-31.06C75.59.3,78.82-.71,82.75,1S87.83,6,87.85,9.85c.06,13.53,0,27.06,0,40.59Z" transform="translate(0 -0.15)"/>
       <path d="M137.18,62.29c4.61,4.19,9.06,8.13,13.38,12.2,2.66,2.52,3.19,5.58,1.78,8.23-1.8,3.37-6.94,5.37-11.37,1.06q-5.72-5.55-11.43-11.1c-.44-.43-.9-.84-1.95-1.8-4.19,4.33-8.24,8.66-12.45,12.84-3,3-6,3.3-9.23,1.32a6,6,0,0,1-2-8.51,13.79,13.79,0,0,1,2-2.42c4.06-4,8.15-7.92,12.38-12-.54-.56-1-1.06-1.45-1.52-3.8-3.7-7.63-7.38-11.41-11.11-2.75-2.73-3.26-5.5-1.63-8.34,2.31-4,7.53-4.55,11.28-.88,4.24,4.15,8.27,8.5,12.51,12.89,1.06-1,1.56-1.4,2-1.86,3.77-3.74,7.52-7.49,11.31-11.22,2.56-2.52,5.4-3.15,8.26-1.91a6.27,6.27,0,0,1,3.1,8.84,13.16,13.16,0,0,1-2.2,2.75C146,53.72,142,57.66,137.18,62.29Z" transform="translate(0 -0.15)"/>
     </svg>
-  );
-}
-
-function MuteButton({ muted, onToggle }: { muted: boolean; onToggle: () => void }) {
-  const [active,   setActive]   = useState(false);
-  const [hovering, setHovering] = useState(false);
-
-  const opacity = active ? 0.2 : hovering ? 0.8 : 1.0;
-  const scale   = active ? 0.8 : 1.0;
-
-  return (
-    <button
-      onMouseEnter={() => setHovering(true)}
-      onMouseLeave={() => { setHovering(false); setActive(false); }}
-      onMouseDown={e => { e.stopPropagation(); setActive(true); onToggle(); }}
-      onMouseUp={() => setActive(false)}
-      // mobile
-      onTouchStart={e => { e.stopPropagation(); onToggle(); }}
-      aria-label={muted ? 'Unmute' : 'Mute'}
-      style={{
-        position: 'fixed',
-        bottom: 16,
-        left: 16,
-        width: 26.5,
-        height: 26.5,
-        background: '#000',
-        border: 'none',
-        padding: 0,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        cursor: 'pointer',
-        zIndex: 8,
-        boxSizing: 'border-box',
-      }}
-    >
-      <span style={{
-        opacity,
-        transform: `scale(${scale})`,
-        transition: 'opacity 0.2s ease-out, transform 0.2s ease-out',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        lineHeight: 0,
-      }}>
-        {muted ? <VolumeOffIcon /> : <VolumeOnIcon />}
-      </span>
-    </button>
   );
 }
 
@@ -1023,16 +1010,18 @@ function GrainOverlay() {
   );
 }
 
-/* ---------- programmatic ambient audio ------------------------------- */
-// Brown noise through a 380 Hz low-pass filter → believable room hum.
-// Volume ramps from 0 → 0.055 over 5 s so it's never jarring.
-// Starts only after a user interaction (browser AudioContext policy).
+/* ---------- ambient audio -------------------------------------------- */
+// Layered synthesis:
+//   1. Pink noise → 160 Hz LPF  = soft room presence (no wind, no hiss)
+//   2. 60 Hz sine at -42 dB     = CRT / electrical hum (a detail, not a feature)
+//   3. Sparse vinyl crackle      = fits the record player in the scene
+// Starts on first pointerdown (browser AudioContext policy).
+// Henry plays a recorded office.mp3; we synthesise something in the same spirit.
 function StudyAudio({ active, muted }: { active: boolean; muted: boolean }) {
-  const ctxRef  = useRef<AudioContext | null>(null);
-  const gainRef = useRef<GainNode | null>(null);
+  const ctxRef   = useRef<AudioContext | null>(null);
+  const gainRef  = useRef<GainNode | null>(null);
   const startedRef = useRef(false);
 
-  // start on first pointerdown
   useEffect(() => {
     const start = () => {
       if (startedRef.current) return;
@@ -1040,64 +1029,176 @@ function StudyAudio({ active, muted }: { active: boolean; muted: boolean }) {
 
       const ac = new AudioContext();
       ctxRef.current = ac;
+      const sr = ac.sampleRate;
 
-      // brown noise: integrate white noise for 1/f² power spectrum
-      const bufSize = ac.sampleRate * 2;
-      const buf = ac.createBuffer(1, bufSize, ac.sampleRate);
+      // --- pink noise (3-second looped buffer) ---
+      const bufSize = sr * 3;
+      const buf = ac.createBuffer(1, bufSize, sr);
       const data = buf.getChannelData(0);
-      let last = 0;
+      // Pink noise approximation: blend white samples with gentle integration
+      let b0 = 0, b1 = 0, b2 = 0;
       for (let i = 0; i < bufSize; i++) {
         const w = Math.random() * 2 - 1;
-        data[i] = (last + 0.02 * w) / 1.02;
-        last = data[i];
-        data[i] *= 3.5;
-      }
-      const src = ac.createBufferSource();
-      src.buffer = buf;
-      src.loop = true;
+        b0 = 0.99765 * b0 + w * 0.0990460;
+        b1 = 0.96300 * b1 + w * 0.2965164;
+        b2 = 0.57000 * b2 + w * 1.0526913;
+        data[i] = (b0 + b1 + b2 + w * 0.1848) / 5.5;
 
-      // low-pass: cuts highs, leaves the low room rumble
+        // sparse vinyl crackle: ~40 events/min, each a 4-sample impulse
+        if (Math.random() < 40 / (sr * 60)) {
+          for (let j = 0; j < 4 && i + j < bufSize; j++) {
+            data[i + j] += (Math.random() - 0.5) * 0.5;
+          }
+        }
+      }
+      const noise = ac.createBufferSource();
+      noise.buffer = buf;
+      noise.loop = true;
+
+      // heavy low-pass → warm room presence, not hiss
       const lpf = ac.createBiquadFilter();
       lpf.type = 'lowpass';
-      lpf.frequency.value = 380;
-      lpf.Q.value = 0.8;
+      lpf.frequency.value = 160;
+      lpf.Q.value = 0.5;
 
-      // a second, higher filter adds a faint electronics hiss (CRT buzz)
-      const hpf = ac.createBiquadFilter();
-      hpf.type = 'bandpass';
-      hpf.frequency.value = 2800;
-      hpf.Q.value = 8.0;
-      const hissGain = ac.createGain();
-      hissGain.gain.value = 0.008;
+      // --- 60 Hz CRT hum ---
+      const hum = ac.createOscillator();
+      hum.type = 'sine';
+      hum.frequency.value = 60;
+      const humGain = ac.createGain();
+      humGain.gain.value = 0.006; // barely audible, just a presence
 
       const master = ac.createGain();
       gainRef.current = master;
       master.gain.setValueAtTime(0, ac.currentTime);
-      master.gain.linearRampToValueAtTime(0.055, ac.currentTime + 5);
+      master.gain.linearRampToValueAtTime(0.07, ac.currentTime + 5);
 
-      src.connect(lpf);
+      noise.connect(lpf);
       lpf.connect(master);
-      src.connect(hpf);
-      hpf.connect(hissGain);
-      hissGain.connect(master);
+      hum.connect(humGain);
+      humGain.connect(master);
       master.connect(ac.destination);
-      src.start();
+      noise.start();
+      hum.start();
     };
     window.addEventListener('pointerdown', start, { once: true });
     return () => window.removeEventListener('pointerdown', start);
   }, []);
 
-  // respond to active (phase) and muted (user toggle)
   useEffect(() => {
     const g = gainRef.current;
     const ac = ctxRef.current;
     if (!g || !ac) return;
-    const target = (active && !muted) ? 0.055 : 0.0;
+    const target = (active && !muted) ? 0.07 : 0.0;
     g.gain.cancelScheduledValues(ac.currentTime);
     g.gain.linearRampToValueAtTime(target, ac.currentTime + 1.2);
   }, [active, muted]);
 
   return null;
+}
+
+/* ---------- HUD overlay (bottom-left, Henry Heffernan style) --------- */
+// Matches Henry's InfoOverlay: black chips, white text, stacked vertically.
+// Typewriter timing: 50–100 ms per character (his: Math.random()*50 + 50).
+// Layout (bottom to top): mute button · time · subtitle · name
+function HudOverlay({ muted, onMuteToggle }: { muted: boolean; onMuteToggle: () => void }) {
+  const [nameText,  setNameText]  = useState('');
+  const [subText,   setSubText]   = useState('');
+  const [timeText,  setTimeText]  = useState('');
+  const [showSub,   setShowSub]   = useState(false);
+  const [showTime,  setShowTime]  = useState(false);
+  const [muteActive,   setMuteActive]   = useState(false);
+  const [muteHovering, setMuteHovering] = useState(false);
+
+  // typewriter — same timing as Henry's (random 50–100 ms / char)
+  function typeString(str: string, setter: (s: string) => void, done: () => void) {
+    let i = 0, built = '';
+    function step() {
+      if (i >= str.length) { done(); return; }
+      built += str[i++];
+      setter(built);
+      setTimeout(step, Math.random() * 50 + 50);
+    }
+    step();
+  }
+
+  useEffect(() => {
+    // 400 ms delay before starting (Henry's pattern)
+    const t = setTimeout(() => {
+      typeString('Prashant Garg', setNameText, () => {
+        setShowSub(true);
+        typeString('Economist', setSubText, () => {
+          setShowTime(true);
+          setTimeText(getTime());
+        });
+      });
+    }, 400);
+    return () => clearTimeout(t);
+  }, []);
+
+  // live clock tick
+  useEffect(() => {
+    if (!showTime) return;
+    const id = setInterval(() => setTimeText(getTime()), 5000);
+    return () => clearInterval(id);
+  }, [showTime]);
+
+  // shared chip style: black bg, white text, monospace, small
+  const chip: React.CSSProperties = {
+    background: '#000',
+    color: '#fff',
+    fontFamily: "ui-monospace, 'SF Mono', Menlo, Consolas, monospace",
+    fontSize: 10,
+    lineHeight: '14px',
+    padding: '3px 8px',
+    display: 'inline-block',
+    letterSpacing: '0.04em',
+    whiteSpace: 'nowrap' as const,
+  };
+
+  const muteOpacity = muteActive ? 0.2 : muteHovering ? 0.8 : 1.0;
+  const muteScale   = muteActive ? 0.8 : 1.0;
+
+  return (
+    <div style={{
+      position: 'fixed', bottom: 16, left: 16, zIndex: 8,
+      display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 4,
+    }}>
+      {/* name — always first to appear */}
+      {nameText && <div style={chip}>{nameText}</div>}
+
+      {/* subtitle */}
+      {showSub && <div style={chip}>{subText}</div>}
+
+      {/* clock */}
+      {showTime && <div style={chip}>{timeText}</div>}
+
+      {/* mute button — 26.5×26.5 black square, Henry's exact dimensions */}
+      <button
+        onMouseEnter={() => setMuteHovering(true)}
+        onMouseLeave={() => { setMuteHovering(false); setMuteActive(false); }}
+        onMouseDown={e => { e.stopPropagation(); setMuteActive(true); onMuteToggle(); }}
+        onMouseUp={() => setMuteActive(false)}
+        onTouchStart={e => { e.stopPropagation(); onMuteToggle(); }}
+        aria-label={muted ? 'Unmute' : 'Mute'}
+        style={{
+          width: 26.5, height: 26.5,
+          background: '#000', border: 'none', padding: 0,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          cursor: 'pointer', boxSizing: 'border-box',
+        }}
+      >
+        <span style={{
+          opacity: muteOpacity,
+          transform: `scale(${muteScale})`,
+          transition: 'opacity 0.2s ease-out, transform 0.2s ease-out',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 0,
+        }}>
+          {muted ? <VolumeOffIcon /> : <VolumeOnIcon />}
+        </span>
+      </button>
+    </div>
+  );
 }
 
 /* ---------- tap hint (mobile-only) ----------------------------------- */
@@ -1148,24 +1249,22 @@ function TapHint() {
 const SS_PHASE = 'pg_phase';
 
 export default function Study() {
-  // if the user navigated away from the desktop and pressed Back,
-  // sessionStorage retains 'desktop' so we skip the animation entirely
+  // skip entry animation if returning from an inner page (sessionStorage flag)
   const [phase, setPhase] = useState<Phase>(() => {
-    if (typeof window === 'undefined') return 'idle';
+    if (typeof window === 'undefined') return 'entering';
     try {
       if (sessionStorage.getItem(SS_PHASE) === 'desktop') return 'desktop';
     } catch { /* ignore */ }
-    return 'idle';
+    return 'entering';
   });
   // detect touch-only devices (no fine pointer) to show the tap hint
   const [isTouch, setIsTouch] = useState(false);
   useEffect(() => { setIsTouch(window.matchMedia('(hover: none) and (pointer: coarse)').matches); }, []);
 
-  const handleClick    = () => { if (phase === 'idle') setPhase('dollying'); };
-  const handleArrived  = () => { setPhase('booting'); };
-  // Boot finishes → show Win95 desktop instead of navigating away
-  const handleBootDone = () => { setPhase('desktop'); };
-  // User closes the desktop window (×) → back to study idle view
+  const handleEntryDone   = () => { setPhase('idle'); };
+  const handleClick       = () => { if (phase === 'idle') setPhase('dollying'); };
+  const handleArrived     = () => { setPhase('booting'); };
+  const handleBootDone    = () => { setPhase('desktop'); };
   const handleDesktopClose = () => {
     try { sessionStorage.removeItem(SS_PHASE); } catch { /* ignore */ }
     setPhase('idle');
@@ -1177,19 +1276,18 @@ export default function Study() {
   return (
     <div style={{ position: 'fixed', inset: 0, background: '#1A130A' }}>
       <Canvas shadows dpr={[1, 1.75]} gl={{ antialias: true }}>
-        <PerspectiveCamera makeDefault position={[CAM_IDLE_POS.x, CAM_IDLE_POS.y, CAM_IDLE_POS.z]} fov={34} />
-        <CameraRig phase={phase} onArrived={handleArrived} />
+        {/* camera starts at entry position; CameraRig moves it to idle */}
+        <PerspectiveCamera makeDefault position={[CAM_ENTRY_POS.x, CAM_ENTRY_POS.y, CAM_ENTRY_POS.z]} fov={34} />
+        <CameraRig phase={phase} onArrived={handleArrived} onEntryDone={handleEntryDone} />
         <Scene phase={phase} onMonitorClick={handleClick} onArrived={handleArrived} />
       </Canvas>
-      {/* film grain overlay — photographic texture over the 3D canvas */}
       {phase !== 'desktop' && <GrainOverlay />}
-      {/* ambient room audio — brown noise + CRT hiss, starts on first click */}
       <StudyAudio active={audioActive} muted={muted} />
-      {/* mute toggle — bottom-left, Henry Heffernan style, hidden during Win95 */}
+      {/* HUD: typewriter name/title/clock + mute — hidden during Win95 */}
       {phase !== 'desktop' && (
-        <MuteButton muted={muted} onToggle={() => setMuted(m => !m)} />
+        <HudOverlay muted={muted} onMuteToggle={() => setMuted(m => !m)} />
       )}
-      {phase === 'idle' && isTouch && <TapHint />}
+      {(phase === 'idle' || phase === 'entering') && isTouch && <TapHint />}
       {phase === 'booting' && <BootOverlay onDone={handleBootDone} />}
       {phase === 'desktop' && <InnerDesktop onClose={handleDesktopClose} />}
     </div>
