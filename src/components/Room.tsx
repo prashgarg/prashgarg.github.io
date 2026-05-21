@@ -479,11 +479,35 @@ function Wagon({ position, rotation = 0, scale = 1 }: {
   );
 }
 
-/* ---------- vines (Quaternius Prop_Vine1, recoloured to leafy green) -- */
-function Vine({ position, scale = 1 }: { position: [number, number, number]; scale?: number }) {
+/* ---------- vines (Quaternius Prop_Vine*, recoloured to leafy green) -- */
+function Vine({ position, scale = 1, variant = 1 }: {
+  position: [number, number, number]; scale?: number; variant?: 1 | 2;
+}) {
   return (
     <group position={position} scale={[scale, scale, scale]}>
-      <Model url="/models/vine.glb" fallback={null} modelScale={1} recolor={COTTAGE_RECOLOR} />
+      <Model url={variant === 2 ? '/models/vine2.glb' : '/models/vine.glb'} fallback={null} modelScale={1} recolor={COTTAGE_RECOLOR} />
+    </group>
+  );
+}
+
+/* ---------- crate + brick props (small yard decoration) --------------- */
+function Crate({ position, rotation = 0, scale = 1 }: {
+  position: [number, number, number]; rotation?: number; scale?: number;
+}) {
+  return (
+    <group position={position} rotation-y={rotation} scale={[scale, scale, scale]}>
+      <Model url="/models/crate.glb" fallback={null} modelScale={1} recolor={COTTAGE_RECOLOR} />
+    </group>
+  );
+}
+
+function Brick({ position, rotation = 0, scale = 1 }: {
+  position: [number, number, number]; rotation?: number; scale?: number;
+}) {
+  return (
+    <group position={position} rotation-y={rotation} scale={[scale, scale, scale]}>
+      <Model url="/models/brick.glb" fallback={null} modelScale={1}
+             recolor={{ ...COTTAGE_RECOLOR, 'MI_Brick': '#B9684D' }} />
     </group>
   );
 }
@@ -1005,9 +1029,18 @@ function Scene({ onEnter }: { onEnter?: () => void }) {
       {/* a small cart parked to the side of the cottage */}
       <Wagon position={[-2.4, 0, 1.4]} rotation={0.4} scale={0.45} />
 
+      {/* a wooden crate next to the cart */}
+      <Crate position={[-1.7, 0, 2.0]} rotation={-0.3} scale={0.40} />
+
       {/* a couple of vines draping down from the cottage corners */}
       <Vine position={[ 0.72, 2.05,  0.72]} scale={0.50} />
       <Vine position={[-0.72, 2.05, -0.72]} scale={0.45} />
+      <Vine position={[ 0.72, 2.05, -0.72]} scale={0.55} variant={2} />
+
+      {/* a few terracotta bricks scattered in the yard like real life */}
+      <Brick position={[ 2.1, 0.05,  2.1]} rotation={0.6} scale={0.40} />
+      <Brick position={[-1.4, 0.05, -1.6]} rotation={1.2} scale={0.36} />
+      <Brick position={[ 2.6, 0.05, -0.4]} rotation={2.1} scale={0.38} />
 
       {/* a soft picket fence behind the house */}
       <Fence angle={[Math.PI * 0.6, Math.PI * 1.4]} radius={5.8} count={22} />
