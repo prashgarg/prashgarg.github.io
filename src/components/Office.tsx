@@ -604,6 +604,63 @@ function OfficeChair({ pos }: { pos: [number, number, number] }) {
   );
 }
 
+/* ---------- "lite" workstation — used for the 3 inactive stations --
+ * A single desk + pedestal + non-interactive CRT + chair + chair-mat.
+ * Designed to be instanced inside a rotated group so the same code
+ * renders the N/E/W stations in the cubicle cross.
+ *
+ * Local axes:
+ *   • desk surface centred at local origin (y=0.74)
+ *   • chair is at local +Z (so rotation determines which world direction
+ *     the chair faces away to)
+ *   • monitor sits at local -Z (against the partition arm)
+ */
+function StationLite() {
+  return (
+    <>
+      {/* Desk surface */}
+      <mesh position={[0, 0.74, 0]} castShadow receiveShadow>
+        <boxGeometry args={[1.55, 0.06, 1.30]} />
+        <meshStandardMaterial color={C.desk} roughness={0.42} metalness={0.02} />
+      </mesh>
+      {/* Pedestal (single, offset to one side) */}
+      <mesh position={[-0.48, 0.36, 0]} castShadow receiveShadow>
+        <boxGeometry args={[0.72, 0.72, 1.20]} />
+        <meshStandardMaterial color={C.deskLeg} roughness={0.5} />
+      </mesh>
+      {/* Pedestal drawer lines */}
+      {[0.18, 0.42, 0.62].map((y, i) => (
+        <mesh key={`lp-${i}`} position={[-0.48, y, 0.60]}>
+          <boxGeometry args={[0.62, 0.005, 0.004]} />
+          <meshStandardMaterial color="#A8A8A4" />
+        </mesh>
+      ))}
+      {/* Inactive CRT — boxy beige body */}
+      <mesh position={[0.10, 1.04, -0.35]} castShadow>
+        <boxGeometry args={[0.46, 0.40, 0.34]} />
+        <meshStandardMaterial color={C.monitor} roughness={0.55} />
+      </mesh>
+      {/* Inactive CRT screen — dark phosphor (off) */}
+      <mesh position={[0.10, 1.05, -0.18]}>
+        <planeGeometry args={[0.30, 0.22]} />
+        <meshStandardMaterial color="#1A2820" roughness={0.4} emissive="#0F1812" emissiveIntensity={0.15} />
+      </mesh>
+      {/* Small monitor base */}
+      <mesh position={[0.10, 0.79, -0.35]}>
+        <boxGeometry args={[0.26, 0.04, 0.22]} />
+        <meshStandardMaterial color="#BEB9B2" roughness={0.5} />
+      </mesh>
+      {/* Office chair */}
+      <OfficeChair pos={[0.05, 0, 1.20]} />
+      {/* Chair mat under chair */}
+      <mesh rotation-x={-Math.PI / 2} position={[0.05, 0.011, 1.20]}>
+        <circleGeometry args={[0.62, 32]} />
+        <meshStandardMaterial color="#1E2823" roughness={0.85} />
+      </mesh>
+    </>
+  );
+}
+
 /* ---------- 1980s keyboard + numeric pad ----------------------------- */
 function Keyboard({ pos }: { pos: [number, number, number] }) {
   // Main alphanumeric block + small numeric pad to the right
@@ -896,24 +953,15 @@ function OfficeScene({ phase, onMonitorClick }: {
         <meshStandardMaterial color={C.deskLeg} roughness={0.5} />
       </mesh>
 
-      {/* ── PARTITION SCREENS — T-arrangement ────────────────────────── */}
-      {/* CENTRE vertical partition — sits ON TOP of the desks */}
-      <mesh position={[0, 1.32, DESK_Z]} castShadow receiveShadow>
-        <boxGeometry args={[0.07, 1.10, 1.30]} />
-        <meshStandardMaterial color={C.partition} roughness={0.92} />
-      </mesh>
-      {/* BACK partition — also sits above desk level */}
+      {/* ── PARTITION CROSS — + shape at the cross centre ──────────── */}
+      {/* EW arm (was "back partition") — long arm across the cross */}
       <mesh position={[0, 1.32, DESK_Z - 0.74]} castShadow receiveShadow>
-        <boxGeometry args={[3.5, 1.10, 0.07]} />
+        <boxGeometry args={[4.0, 1.10, 0.07]} />
         <meshStandardMaterial color={C.partition} roughness={0.92} />
       </mesh>
-      {/* Outer wrap-around partitions — also sit above desk level */}
-      <mesh position={[-1.78, 1.32, DESK_Z - 0.25]} castShadow receiveShadow>
-        <boxGeometry args={[0.07, 1.10, 1.00]} />
-        <meshStandardMaterial color={C.partition} roughness={0.92} />
-      </mesh>
-      <mesh position={[1.78, 1.32, DESK_Z - 0.25]} castShadow receiveShadow>
-        <boxGeometry args={[0.07, 1.10, 1.00]} />
+      {/* NS arm — perpendicular, also long, passes through cross centre */}
+      <mesh position={[0, 1.32, DESK_Z - 0.74]} castShadow receiveShadow>
+        <boxGeometry args={[0.07, 1.10, 4.0]} />
         <meshStandardMaterial color={C.partition} roughness={0.92} />
       </mesh>
 
@@ -981,6 +1029,20 @@ function OfficeScene({ phase, onMonitorClick }: {
         <circleGeometry args={[0.68, 32]} />
         <meshStandardMaterial color="#1E2823" roughness={0.85} />
       </mesh>
+
+      {/* ── 3 OTHER STATIONS forming the cubicle cross ──────────────── */}
+      {/* NORTH station — mirror across the cross, user faces south */}
+      <group position={[0, 0, DESK_Z - 1.42]} rotation-y={Math.PI}>
+        <StationLite />
+      </group>
+      {/* EAST station — user faces west (toward the cross) */}
+      <group position={[3.0, 0, DESK_Z - 0.74]} rotation-y={Math.PI / 2}>
+        <StationLite />
+      </group>
+      {/* WEST station — user faces east (toward the cross) */}
+      <group position={[-3.0, 0, DESK_Z - 0.74]} rotation-y={-Math.PI / 2}>
+        <StationLite />
+      </group>
 
       {/* ── WALL CLOCKS — one on each side wall (matches reference) ─── */}
       <WallClock pos={[ROOM_W / 2 - 0.12, 2.8, 3]} />
