@@ -102,13 +102,12 @@ const DESK_Z         = -4.5;
 // so MONITOR_WORLD reflects that.
 const MONITOR_WORLD  = new THREE.Vector3(0.10, 1.05, DESK_Z - 0.35);   // (0.10, 1.05, -4.85)
 
-// IDLE wide view — matches reference 3's "empty office with workstation
-// cluster in the centre" feel. Camera pulled far back and elevated so
-// the cubicle cross is small in the frame and the room dominates,
-// emphasising scale + emptiness (Kubrick / 2001 final-scene vibe).
-const CAM_ENTRY_POS  = new THREE.Vector3(-3.5, 3.8, 12.0);
-const CAM_ENTRY_TGT  = new THREE.Vector3(0.0, 1.0, -5.0);
-const CAM_IDLE_POS   = new THREE.Vector3(-3.0, 2.8, 8.5);
+// IDLE wide view — empty-office atmosphere (reference 3) where the
+// 4-booth cubicle cross (reference 4) sits prominently in the frame
+// surrounded by empty floor. Elevated, slightly off-centre.
+const CAM_ENTRY_POS  = new THREE.Vector3(-2.5, 3.4, 10.5);
+const CAM_ENTRY_TGT  = new THREE.Vector3(0.0, 0.9, -5.0);
+const CAM_IDLE_POS   = new THREE.Vector3(-2.0, 2.5, 7.0);
 const CAM_IDLE_TGT   = new THREE.Vector3(0.0, 0.8, -5.0);
 // Camera ends VERY close to the monitor face — ~0.3 m from the screen.
 // At FOV 58° this makes the monitor screen fill roughly 66%×78% of the
