@@ -67,13 +67,13 @@ function playKeystroke() {
 type Phase = 'splash' | 'entering' | 'idle' | 'dollying' | 'on-monitor' | 'booting' | 'desktop';
 
 /* ---------- room constants ------------------------------------------- */
-const ROOM_W = 22;
-const ROOM_D = 30;
-const ROOM_H = 3.8;
+const ROOM_W = 36;
+const ROOM_D = 46;
+const ROOM_H = 4.5;
 
 /* ---------- palette --------------------------------------------------- */
 const C = {
-  carpet:    '#5E7B65',
+  carpet:    '#5A8C68',
   wall:      '#EAEAE6',
   ceiling:   '#D2D4D6',
   desk:      '#E4E2DC',
@@ -100,9 +100,9 @@ const LEFT_DESK_X    = -0.85;
 const RIGHT_DESK_X   =  0.85;
 const MONITOR_WORLD  = new THREE.Vector3(LEFT_DESK_X, 1.08, DESK_Z);
 
-const CAM_ENTRY_POS  = new THREE.Vector3(-0.5, 2.4, 8);
-const CAM_ENTRY_TGT  = new THREE.Vector3(0.1, 1.1, DESK_Z);
-const CAM_IDLE_POS   = new THREE.Vector3(-0.7, 1.58, 3.4);
+const CAM_ENTRY_POS  = new THREE.Vector3(-0.5, 2.1, 6.5);
+const CAM_ENTRY_TGT  = new THREE.Vector3(0.1, 1.05, DESK_Z);
+const CAM_IDLE_POS   = new THREE.Vector3(-0.7, 1.50, 2.1);
 const CAM_IDLE_TGT   = new THREE.Vector3(0.15, 0.95, DESK_Z);
 const CAM_MONITOR_POS = new THREE.Vector3(LEFT_DESK_X, 1.12, DESK_Z + 1.55);
 const CAM_MONITOR_TGT = MONITOR_WORLD.clone();
@@ -204,7 +204,7 @@ const CARPET_FRAG = `
   }
 `;
 
-/* ---------- ceiling diamond-grid shader ------------------------------ */
+/* ---------- ceiling diamond-coffer shader (faux 3-D depth) ----------- */
 const CEIL_VERT = `
   varying vec2 vUv;
   void main() {
@@ -213,29 +213,50 @@ const CEIL_VERT = `
   }
 `;
 
-// Diamond grid = square grid rotated 45°.
-// Three layers: structural beam (dark edge), coffer reveal (medium), panel centre (bright).
+// Real recessed coffers would be 3-D geometry — but a well-shaded flat
+// ceiling reads almost as well, and runs faster. We fake the depth via:
+//   • bright fluorescent panel at the centre of each diamond
+//   • a gradient "sloped wall" zone around the panel, where the side
+//     facing UP in screen space is lit and the side facing DOWN is
+//     shadowed (this is what gives the 3-D recess illusion)
+//   • a dark ridge / beam where adjacent coffers meet
 const CEIL_FRAG = `
   uniform vec2 uFreq;
   varying vec2 vUv;
   void main() {
     vec2 p = vUv * uFreq;
-    // rotate 45°
+    // rotate 45° to get a diamond grid
     vec2 q = vec2(p.x + p.y, p.x - p.y);
     vec2 f = fract(q);
-    // cell-local coords [-1,1]
-    vec2 c   = (f - 0.5) * 2.0;
-    float d  = max(abs(c.x), abs(c.y));   // 0 = centre, 1 = edge
+    vec2 c = (f - 0.5) * 2.0;            // cell-local [-1, 1]
+    float d = max(abs(c.x), abs(c.y));   // Chebyshev distance
 
-    float isPanel = 1.0 - smoothstep(0.50, 0.62, d);   // bright inner cell
-    float isBeam  =       smoothstep(0.82, 0.92, d);    // dark structural frame
+    // three concentric zones
+    float panel  = 1.0 - smoothstep(0.42, 0.56, d);  // bright lit panel
+    float ridge  =       smoothstep(0.84, 0.94, d);  // dark frame between coffers
+    float slope  = (1.0 - panel) * (1.0 - ridge);     // sloped wall in between
 
-    vec3 panelCol  = vec3(0.92, 0.94, 0.96);
-    vec3 cofferCol = vec3(0.72, 0.74, 0.76);
-    vec3 beamCol   = vec3(0.48, 0.50, 0.52);
+    // Sloped-wall shading — pick which "wall" of the coffer based on
+    // the dominant axis of c, then shade by sign. The wall facing the
+    // viewer (negative direction in screen space) catches less light;
+    // the far wall catches more. This sells the recess illusion.
+    float wallShade;
+    if (abs(c.x) > abs(c.y)) {
+      wallShade = 0.5 - c.x * 0.30;
+    } else {
+      wallShade = 0.5 - c.y * 0.42;     // vertical walls bias more
+    }
+    wallShade = clamp(wallShade, 0.0, 1.0);
 
-    vec3 col = mix(cofferCol, panelCol, isPanel);
-    col      = mix(col, beamCol, isBeam);
+    // Tonemap zone colours
+    vec3 panelCol = vec3(0.96, 0.97, 0.99);                            // bright fluorescent
+    vec3 slopeCol = mix(vec3(0.46, 0.49, 0.52),
+                        vec3(0.88, 0.90, 0.92), wallShade);             // dark→bright slope
+    vec3 ridgeCol = vec3(0.34, 0.36, 0.38);                             // structural beam
+
+    vec3 col = slopeCol;
+    col = mix(col, panelCol, panel);
+    col = mix(col, ridgeCol, ridge);
     gl_FragColor = vec4(col, 1.0);
   }
 `;
@@ -416,10 +437,36 @@ function CrtMonitor({ phase, onClick }: { phase: Phase; onClick?: () => void }) 
         <boxGeometry args={[0.54, 0.46, 0.40]} />
         <meshStandardMaterial color={C.monitor} roughness={0.55} />
       </mesh>
+      {/* SIDE VENTS — thin horizontal slits on both sides (CRT cooling) */}
+      {([-1, 1] as const).map((side) =>
+        [0.10, 0.06, 0.02, -0.02, -0.06, -0.10].map((y, i) => (
+          <mesh key={`vent-${side}-${i}`} position={[side * 0.272, y, 0]}>
+            <boxGeometry args={[0.005, 0.012, 0.30]} />
+            <meshStandardMaterial color="#7E7A72" roughness={0.6} />
+          </mesh>
+        ))
+      )}
+      {/* top vent grille */}
+      {[0.10, 0.06, 0.02, -0.02, -0.06, -0.10].map((z, i) => (
+        <mesh key={`tvent-${i}`} position={[0, 0.234, z]}>
+          <boxGeometry args={[0.34, 0.005, 0.018]} />
+          <meshStandardMaterial color="#7E7A72" roughness={0.6} />
+        </mesh>
+      ))}
       {/* front bezel indent */}
       <mesh position={[0, 0.01, 0.20]}>
         <boxGeometry args={[0.44, 0.36, 0.01]} />
         <meshStandardMaterial color="#B8B4AC" roughness={0.5} />
+      </mesh>
+      {/* power LED — tiny green dot below screen */}
+      <mesh position={[0.16, -0.18, 0.21]}>
+        <sphereGeometry args={[0.008, 8, 6]} />
+        <meshStandardMaterial color="#6BE08C" emissive="#6BE08C" emissiveIntensity={1.5} />
+      </mesh>
+      {/* power button */}
+      <mesh position={[0.20, -0.18, 0.21]}>
+        <boxGeometry args={[0.03, 0.012, 0.005]} />
+        <meshStandardMaterial color="#9E9A92" roughness={0.5} />
       </mesh>
       {/* screen — CRT shader + the actual click target */}
       <mesh
@@ -536,14 +583,89 @@ function OfficeChair({ pos }: { pos: [number, number, number] }) {
   );
 }
 
+/* ---------- 1980s keyboard + numeric pad ----------------------------- */
+function Keyboard({ pos }: { pos: [number, number, number] }) {
+  // Main alphanumeric block + small numeric pad to the right
+  const KEY_COLOR = '#5BA8B0';      // teal-blue like the references
+  const KEY_DARK  = '#2F5961';
+  // Generate a 4-row × 12-col grid of tiny key bumps for the main board
+  const keys: [number, number][] = [];
+  for (let r = 0; r < 4; r++) {
+    for (let c = 0; c < 12; c++) keys.push([r, c]);
+  }
+  return (
+    <group position={pos}>
+      {/* Main keyboard body — flat tray */}
+      <mesh position={[0, 0.012, 0]} castShadow>
+        <boxGeometry args={[0.40, 0.024, 0.14]} />
+        <meshStandardMaterial color="#E2DFD7" roughness={0.55} />
+      </mesh>
+      {/* Coloured keys: little flat bumps on top */}
+      {keys.map(([r, c]) => (
+        <mesh key={`k-${r}-${c}`} position={[-0.18 + c * 0.0315, 0.027, -0.045 + r * 0.025]}>
+          <boxGeometry args={[0.026, 0.008, 0.020]} />
+          <meshStandardMaterial color={c < 11 ? KEY_COLOR : KEY_DARK} roughness={0.5} />
+        </mesh>
+      ))}
+      {/* spacebar */}
+      <mesh position={[-0.05, 0.027, 0.058]}>
+        <boxGeometry args={[0.14, 0.008, 0.020]} />
+        <meshStandardMaterial color={KEY_COLOR} roughness={0.5} />
+      </mesh>
+      {/* small dial / trackball area to the right of the spacebar */}
+      <mesh position={[0.10, 0.027, 0.058]}>
+        <cylinderGeometry args={[0.015, 0.015, 0.012, 16]} />
+        <meshStandardMaterial color="#202C32" roughness={0.5} />
+      </mesh>
+      {/* Numeric pad block */}
+      <mesh position={[0.27, 0.012, 0]} castShadow>
+        <boxGeometry args={[0.10, 0.024, 0.14]} />
+        <meshStandardMaterial color="#E2DFD7" roughness={0.55} />
+      </mesh>
+      {/* number-pad keys 4×3 */}
+      {Array.from({ length: 4 }).flatMap((_, r) =>
+        Array.from({ length: 3 }).map((_, c) => (
+          <mesh key={`n-${r}-${c}`} position={[0.245 + c * 0.025, 0.027, -0.045 + r * 0.025]}>
+            <boxGeometry args={[0.020, 0.008, 0.020]} />
+            <meshStandardMaterial color={KEY_COLOR} roughness={0.5} />
+          </mesh>
+        ))
+      )}
+    </group>
+  );
+}
+
+/* ---------- desk lamp (banker's style, small) ----------------------- */
+function DeskLamp({ pos }: { pos: [number, number, number] }) {
+  return (
+    <group position={pos}>
+      {/* base disc */}
+      <mesh position={[0, 0.018, 0]} castShadow>
+        <cylinderGeometry args={[0.065, 0.075, 0.035, 18]} />
+        <meshStandardMaterial color="#F0EEEA" roughness={0.55} metalness={0.04} />
+      </mesh>
+      {/* stem */}
+      <mesh position={[0, 0.16, 0]} castShadow>
+        <cylinderGeometry args={[0.012, 0.012, 0.28, 10]} />
+        <meshStandardMaterial color="#E8E6E2" roughness={0.4} metalness={0.1} />
+      </mesh>
+      {/* lampshade — slanted box */}
+      <mesh position={[0.05, 0.31, 0]} rotation-z={-0.45} castShadow>
+        <boxGeometry args={[0.16, 0.07, 0.13]} />
+        <meshStandardMaterial color="#F2F0EC" roughness={0.6} />
+      </mesh>
+    </group>
+  );
+}
+
 /* ---------- main 3-D scene ------------------------------------------- */
 function OfficeScene({ phase, onMonitorClick }: {
   phase: Phase; onMonitorClick: () => void;
 }) {
-  // Ceiling diamond-grid shader
+  // Ceiling shader (diamond coffers with faux depth)
   const ceilMat = useMemo(() => new THREE.ShaderMaterial({
     uniforms: {
-      uFreq: { value: new THREE.Vector2(8.0, 10.5) },
+      uFreq: { value: new THREE.Vector2(12.0, 16.0) },
     },
     vertexShader: CEIL_VERT,
     fragmentShader: CEIL_FRAG,
@@ -553,7 +675,7 @@ function OfficeScene({ phase, onMonitorClick }: {
   // Wall shader (panel seams) — one instance shared across all 3 walls
   const wallMat = useMemo(() => new THREE.ShaderMaterial({
     uniforms: {
-      uSeams: { value: 9.0 },
+      uSeams: { value: 5.0 },
       uWall:  { value: new THREE.Color('#EAEAE6') },
       uSeam:  { value: new THREE.Color('#B8B8B4') },
     },
@@ -571,11 +693,12 @@ function OfficeScene({ phase, onMonitorClick }: {
     fragmentShader: CARPET_FRAG,
   }), []);
 
-  // Fluorescent ceiling lights in a 3 × 3 grid
+  // Fluorescent ceiling lights — wider grid for the bigger room
   const lightGrid: [number, number][] = [
-    [-6.5, -10], [0, -10], [6.5, -10],
-    [-6.5,  -2], [0,  -2], [6.5,  -2],
-    [-6.5,   6], [0,   6], [6.5,   6],
+    [-12, -16], [-4, -16], [4, -16], [12, -16],
+    [-12,  -6], [-4,  -6], [4,  -6], [12,  -6],
+    [-12,   4], [-4,   4], [4,   4], [12,   4],
+    [-12,  14], [-4,  14], [4,  14], [12,  14],
   ];
 
   return (
@@ -616,18 +739,17 @@ function OfficeScene({ phase, onMonitorClick }: {
         color="#0A1A0F"
       />
 
-      {/* ── CEILING — diamond-grid shader ────────────────────────────── */}
+      {/* ── CEILING — diamond-coffer shader with faux-3D depth ──────── */}
       <mesh rotation-x={Math.PI / 2} position={[0, ROOM_H, 0]}>
         <planeGeometry args={[ROOM_W, ROOM_D]} />
         <primitive object={ceilMat} attach="material" />
       </mesh>
-
-      {/* Small ceiling fixtures (smoke detectors / vents) — scatter a few */}
+      {/* Scattered ceiling fixtures (smoke detectors / vents) */}
       {[
-        [-6, -8], [4, -6], [-3, 1], [7, 4], [-7, 8],
+        [-9, -12], [6, -10], [-4, 0], [10, 5], [-10, 12], [4, 14],
       ].map(([x, z], i) => (
         <mesh key={`fix-${i}`} position={[x, ROOM_H - 0.04, z]} rotation-x={Math.PI / 2}>
-          <circleGeometry args={[0.10, 16]} />
+          <circleGeometry args={[0.14, 16]} />
           <meshStandardMaterial color="#5A5C60" roughness={0.45} metalness={0.25} />
         </mesh>
       ))}
@@ -780,17 +902,40 @@ function OfficeScene({ phase, onMonitorClick }: {
       {/* ── CRT MONITOR ──────────────────────────────────────────────── */}
       <CrtMonitor phase={phase} onClick={onMonitorClick} />
 
-      {/* ── DESK OBJECTS — minimal, matches reference ──────────────── */}
-      {/* small green object beside monitor (reference has a small notes square) */}
-      <mesh position={[LEFT_DESK_X + 0.42, 0.775, DESK_Z]}>
-        <boxGeometry args={[0.10, 0.025, 0.10]} />
-        <meshStandardMaterial color="#B4C892" roughness={0.85} />
+      {/* ── DESK OBJECTS — keyboard, lamp, notes, mug ──────────────── */}
+
+      {/* KEYBOARD — sits in front of monitor on the LEFT desk */}
+      <Keyboard pos={[LEFT_DESK_X + 0.05, 0.77, DESK_Z + 0.42]} />
+
+      {/* yellow sticky notes — beside keyboard */}
+      <mesh position={[LEFT_DESK_X - 0.28, 0.776, DESK_Z + 0.42]} rotation-y={0.18}>
+        <boxGeometry args={[0.10, 0.012, 0.10]} />
+        <meshStandardMaterial color="#F5E68A" roughness={0.85} />
       </mesh>
-      {/* stack of papers — LEFT desk, in front of monitor */}
-      <mesh position={[LEFT_DESK_X + 0.18, 0.775, DESK_Z + 0.42]}>
-        <boxGeometry args={[0.26, 0.022, 0.20]} />
+      <mesh position={[LEFT_DESK_X - 0.27, 0.782, DESK_Z + 0.42]} rotation-y={0.14}>
+        <boxGeometry args={[0.10, 0.005, 0.10]} />
+        <meshStandardMaterial color="#F8EC9A" roughness={0.85} />
+      </mesh>
+
+      {/* DESK LAMP — sits at the back corner of the left desk */}
+      <DeskLamp pos={[LEFT_DESK_X - 0.50, 0.77, DESK_Z - 0.40]} />
+
+      {/* stack of papers — LEFT desk, in front of keyboard */}
+      <mesh position={[LEFT_DESK_X + 0.30, 0.775, DESK_Z + 0.55]} rotation-y={-0.12}>
+        <boxGeometry args={[0.16, 0.018, 0.12]} />
         <meshStandardMaterial color="#F0EDE4" roughness={0.9} />
       </mesh>
+
+      {/* small framed picture — back-right of LEFT desk */}
+      <mesh position={[LEFT_DESK_X + 0.55, 0.81, DESK_Z - 0.35]} rotation-y={-0.20}>
+        <boxGeometry args={[0.13, 0.10, 0.018]} />
+        <meshStandardMaterial color="#3A3632" roughness={0.5} />
+      </mesh>
+      <mesh position={[LEFT_DESK_X + 0.55, 0.81, DESK_Z - 0.341]} rotation-y={-0.20}>
+        <planeGeometry args={[0.10, 0.075]} />
+        <meshStandardMaterial color="#8AA5C8" roughness={0.8} />
+      </mesh>
+
       {/* coffee mug — RIGHT desk, on near edge */}
       <mesh position={[RIGHT_DESK_X + 0.30, 0.785, DESK_Z + 0.22]}>
         <cylinderGeometry args={[0.052, 0.046, 0.10, 14]} />
@@ -810,8 +955,44 @@ function OfficeScene({ phase, onMonitorClick }: {
         <meshStandardMaterial color="#C8C6C0" roughness={0.6} />
       </mesh>
 
-      {/* ── WALL CLOCK (right wall) ───────────────────────────────────── */}
-      <WallClock pos={[ROOM_W / 2 - 0.12, 2.7, 3]} />
+      {/* ── CHAIR MAT — dark circle under chair (anchors it visually) ── */}
+      <mesh rotation-x={-Math.PI / 2} position={[RIGHT_DESK_X, 0.011, DESK_Z + 1.15]}>
+        <circleGeometry args={[0.68, 32]} />
+        <meshStandardMaterial color="#1E2823" roughness={0.85} />
+      </mesh>
+
+      {/* ── WALL CLOCKS — one on each side wall (matches reference) ─── */}
+      <WallClock pos={[ROOM_W / 2 - 0.12, 2.8, 3]} />
+      <WallClock pos={[-ROOM_W / 2 + 0.12, 2.8, -2]} />
+
+      {/* ── FRAMED PICTURE — on the back wall between the two desks ── */}
+      <group position={[0, 1.85, -ROOM_D / 2 + 0.06]}>
+        {/* outer frame */}
+        <mesh>
+          <boxGeometry args={[0.40, 0.30, 0.025]} />
+          <meshStandardMaterial color="#2A2826" roughness={0.55} />
+        </mesh>
+        {/* image inside frame (placeholder soft photo tones) */}
+        <mesh position={[0, 0, 0.014]}>
+          <planeGeometry args={[0.34, 0.24]} />
+          <meshStandardMaterial color="#8A9AB8" roughness={0.8} />
+        </mesh>
+      </group>
+
+      {/* ── CEILING TRIM LINE — thin dark line where walls meet ceiling ── */}
+      {([
+        // back wall trim
+        [[0, ROOM_H - 0.01, -ROOM_D / 2 + 0.07] as const, [ROOM_W, 0.02, 0.02] as const],
+        // left wall trim
+        [[-ROOM_W / 2 + 0.07, ROOM_H - 0.01, 0] as const, [0.02, 0.02, ROOM_D] as const],
+        // right wall trim
+        [[ROOM_W / 2 - 0.07, ROOM_H - 0.01, 0] as const, [0.02, 0.02, ROOM_D] as const],
+      ] as const).map(([p, s], i) => (
+        <mesh key={`trim-${i}`} position={p}>
+          <boxGeometry args={s} />
+          <meshStandardMaterial color="#7C7E80" roughness={0.5} metalness={0.15} />
+        </mesh>
+      ))}
 
       {/* ── DOOR (left wall, slightly ajar) ──────────────────────────── */}
       {/* door frame */}
