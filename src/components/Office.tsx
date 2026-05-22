@@ -105,10 +105,12 @@ const MONITOR_WORLD  = new THREE.Vector3(0.10, 1.05, DESK_Z - 0.35);   // (0.10,
 // IDLE wide view — empty-office atmosphere (reference 3) where the
 // 4-booth cubicle cross (reference 4) sits prominently in the frame
 // surrounded by empty floor. Elevated, slightly off-centre.
-const CAM_ENTRY_POS  = new THREE.Vector3(-2.5, 3.4, 10.5);
-const CAM_ENTRY_TGT  = new THREE.Vector3(0.0, 0.9, -5.0);
-const CAM_IDLE_POS   = new THREE.Vector3(-2.0, 2.5, 7.0);
-const CAM_IDLE_TGT   = new THREE.Vector3(0.0, 0.8, -5.0);
+// Idle: cinematic 3/4 wide. Workstation small in frame, empty room
+// dominates. Camera pulled back + slightly elevated for atmosphere.
+const CAM_ENTRY_POS  = new THREE.Vector3(-2.0, 3.0, 9.5);
+const CAM_ENTRY_TGT  = new THREE.Vector3(0.2, 0.7, -5.0);
+const CAM_IDLE_POS   = new THREE.Vector3(-1.4, 2.5, 6.5);
+const CAM_IDLE_TGT   = new THREE.Vector3(0.2, 0.6, -5.0);
 // Camera ends VERY close to the monitor face — ~0.3 m from the screen.
 // At FOV 58° this makes the monitor screen fill roughly 66%×78% of the
 // viewport, so the bezel reads as a frame around the inner site (Heffer
@@ -117,12 +119,12 @@ const CAM_IDLE_TGT   = new THREE.Vector3(0.0, 0.8, -5.0);
 const CAM_MONITOR_POS = new THREE.Vector3(0.10, 1.05, DESK_Z + 0.20);   // (0.10, 1.05, -4.30)
 const CAM_MONITOR_TGT = MONITOR_WORLD.clone();
 
-// Lean-in close-up frame — used when the cursor is in the lower-centre
-// of the viewport. Frames the active station's desk + monitor by looking
-// DOWN over the chair back (elevated angle, so the chair doesn't block
-// the keyboard and monitor view).
-const CAM_LEAN_POS   = new THREE.Vector3(0.10, 1.85, -2.10);
-const CAM_LEAN_TGT   = new THREE.Vector3(0.10, 0.80, -4.50);
+// Lean-in close-up frame — looks STEEPLY DOWN at the desk so the chair
+// back tucks into the bottom-foreground (not blocking the keyboard +
+// monitor). Camera is high enough that the chair-top is well below
+// the target line.
+const CAM_LEAN_POS   = new THREE.Vector3(0.10, 2.45, -1.60);
+const CAM_LEAN_TGT   = new THREE.Vector3(0.10, 0.78, -4.65);
 
 /* ---------- CRT screen shader — pronounced scanlines + faux ASCII ---- */
 const CRT_FRAG = `
@@ -527,7 +529,9 @@ function CrtMonitor({ phase, onClick }: { phase: Phase; onClick?: () => void }) 
   }), []);
   useFrame((state) => {
     crtMat.uniforms.uTime.value      = state.clock.elapsedTime;
-    crtMat.uniforms.uIntensity.value = clickable ? (hovered ? 1.7 : 1.15) : 0.12;
+    // Brighter base so the green CRT pop is visible from the wider idle
+    // distance — was 1.15, now 1.55. Hover state pushed too.
+    crtMat.uniforms.uIntensity.value = clickable ? (hovered ? 2.1 : 1.55) : 0.12;
   });
   return (
     <group position={MONITOR_WORLD.toArray()}>
@@ -577,12 +581,13 @@ function CrtMonitor({ phase, onClick }: { phase: Phase; onClick?: () => void }) 
         <planeGeometry args={[0.34, 0.26]} />
         <primitive object={crtMat} attach="material" />
       </mesh>
-      {/* subtle screen glow light onto the desk + chair */}
+      {/* subtle screen glow light onto the desk + chair — slightly
+          brighter so the CRT's presence is felt from a distance */}
       {clickable && (
         <pointLight
           position={[0, 0.02, 0.35]}
-          intensity={hovered ? 0.7 : 0.32}
-          distance={2.5}
+          intensity={hovered ? 1.0 : 0.5}
+          distance={3.0}
           decay={2}
           color="#7ED9A8"
         />
@@ -857,22 +862,22 @@ function OfficeScene({ phase, onMonitorClick }: {
   return (
     <>
       {/* ── LIGHTING ─────────────────────────────────────────────────── */}
-      {/* Cool ambient — fluorescent rooms have almost no shadow gradient */}
-      <ambientLight intensity={1.85} color="#E4ECF2" />
+      {/* Cool ambient — fluorescent rooms have almost no shadow gradient.
+          Bumped to 2.05 for the bright flood-lit look of the references. */}
+      <ambientLight intensity={2.05} color="#EAF0F4" />
 
       {/* Dedicated desk fill — compensates for partitions blocking ceiling lights */}
-      <pointLight position={[0.3, ROOM_H - 0.5, DESK_Z + 0.5]} intensity={6.5} distance={8} decay={2} color="#F4F8FF" />
+      <pointLight position={[0.3, ROOM_H - 0.5, DESK_Z + 0.5]} intensity={7.5} distance={9} decay={2} color="#F6F9FF" />
 
-      {/* Ceiling panel lights: cool white, even spread, brighter for the
-          flood-lit fluorescent look of the references */}
+      {/* Ceiling panel lights — even brighter for true fluorescent flood */}
       {lightGrid.map(([x, z], i) => (
         <pointLight
           key={i}
           position={[x, ROOM_H - 0.25, z]}
-          intensity={5.5}
-          distance={22}
+          intensity={6.5}
+          distance={24}
           decay={2}
-          color="#F2F5FF"
+          color="#F4F7FF"
         />
       ))}
 
