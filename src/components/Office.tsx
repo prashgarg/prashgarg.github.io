@@ -102,10 +102,13 @@ const DESK_Z         = -4.5;
 // so MONITOR_WORLD reflects that.
 const MONITOR_WORLD  = new THREE.Vector3(0.10, 1.05, DESK_Z - 0.35);   // (0.10, 1.05, -4.85)
 
-const CAM_ENTRY_POS  = new THREE.Vector3(-0.5, 2.1, 6.5);
-const CAM_ENTRY_TGT  = new THREE.Vector3(0.1, 1.05, DESK_Z);
-const CAM_IDLE_POS   = new THREE.Vector3(-0.7, 1.50, 2.1);
-const CAM_IDLE_TGT   = new THREE.Vector3(0.15, 0.95, DESK_Z);
+// IDLE wide view: elevated 3/4 corner shot from the south-west of the
+// cubicle cross, so the active south chair sits OFF-centre and the
+// active CRT is visible past the chair. All 4 booths read clearly.
+const CAM_ENTRY_POS  = new THREE.Vector3(-3.0, 3.4, 7.5);
+const CAM_ENTRY_TGT  = new THREE.Vector3(0.5, 0.7, -4.5);
+const CAM_IDLE_POS   = new THREE.Vector3(-2.4, 2.4, 4.3);
+const CAM_IDLE_TGT   = new THREE.Vector3(0.5, 0.7, -4.7);
 // Camera ends VERY close to the monitor face — ~0.3 m from the screen.
 // At FOV 58° this makes the monitor screen fill roughly 66%×78% of the
 // viewport, so the bezel reads as a frame around the inner site (Heffer
