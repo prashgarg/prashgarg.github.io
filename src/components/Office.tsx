@@ -51,11 +51,11 @@ function easeOutCubic(t: number) { return 1 - Math.pow(1 - t, 3); }
 const DESK_Z         = -4.5;
 const MONITOR_WORLD  = new THREE.Vector3(0.3, 1.08, DESK_Z);
 
-const CAM_ENTRY_POS  = new THREE.Vector3(-1.2, 3.8, 13);
-const CAM_ENTRY_TGT  = new THREE.Vector3(0.8, 1.5, 0);
-const CAM_IDLE_POS   = new THREE.Vector3(-1.2, 1.72, 10.5);
-const CAM_IDLE_TGT   = new THREE.Vector3(0.8, 1.05, DESK_Z);
-const CAM_MONITOR_POS = new THREE.Vector3(0.3, 1.12, DESK_Z + 1.85);
+const CAM_ENTRY_POS  = new THREE.Vector3(-1.4, 2.6, 8);
+const CAM_ENTRY_TGT  = new THREE.Vector3(0.4, 1.1, DESK_Z);
+const CAM_IDLE_POS   = new THREE.Vector3(-1.6, 1.55, 3.5);
+const CAM_IDLE_TGT   = new THREE.Vector3(0.5, 0.95, DESK_Z);
+const CAM_MONITOR_POS = new THREE.Vector3(0.3, 1.12, DESK_Z + 1.65);
 const CAM_MONITOR_TGT = MONITOR_WORLD.clone();
 
 /* ---------- ceiling diamond-grid shader ------------------------------ */
@@ -114,7 +114,7 @@ function CameraRig({ phase, onArrived, onEntryDone }: {
   useEffect(() => {
     if (!(camera instanceof THREE.PerspectiveCamera)) return;
     const aspect = size.width / Math.max(1, size.height);
-    camera.fov = aspect < 0.75 ? 55 : aspect < 1.2 ? 62 : 65;
+    camera.fov = aspect < 0.75 ? 52 : aspect < 1.2 ? 56 : 58;
     camera.updateProjectionMatrix();
   }, [size, camera]);
 
@@ -284,6 +284,87 @@ function CrtMonitor({ phase, onClick }: { phase: Phase; onClick?: () => void }) 
   );
 }
 
+/* ---------- office chair (5-spoke base + wheels, padded seat/back) --- */
+function OfficeChair({ pos }: { pos: [number, number, number] }) {
+  // 5 spokes radiating from a central hub; small wheels at each tip.
+  const SPOKES = 5;
+  const SPOKE_LEN = 0.34;
+  return (
+    <group position={pos}>
+      {/* === BASE ASSEMBLY === */}
+      {/* central hub */}
+      <mesh position={[0, 0.06, 0]} castShadow>
+        <cylinderGeometry args={[0.06, 0.07, 0.06, 16]} />
+        <meshStandardMaterial color="#2A2A2A" roughness={0.35} metalness={0.55} />
+      </mesh>
+      {/* 5 spokes */}
+      {Array.from({ length: SPOKES }).map((_, i) => {
+        const a = (i / SPOKES) * Math.PI * 2;
+        return (
+          <group key={i} position={[0, 0.045, 0]} rotation={[0, a, 0]}>
+            <mesh position={[SPOKE_LEN / 2, 0, 0]} castShadow>
+              {/* slim spoke, narrows toward the tip */}
+              <boxGeometry args={[SPOKE_LEN, 0.03, 0.06]} />
+              <meshStandardMaterial color="#2D2D2D" roughness={0.4} metalness={0.5} />
+            </mesh>
+            {/* wheel/caster at spoke tip — small dark disc */}
+            <mesh position={[SPOKE_LEN + 0.01, 0.005, 0]} rotation-x={Math.PI / 2} castShadow>
+              <cylinderGeometry args={[0.038, 0.038, 0.045, 14]} />
+              <meshStandardMaterial color="#0E0E0E" roughness={0.55} />
+            </mesh>
+          </group>
+        );
+      })}
+
+      {/* === COLUMN === */}
+      <mesh position={[0, 0.30, 0]} castShadow>
+        <cylinderGeometry args={[0.034, 0.04, 0.42, 12]} />
+        <meshStandardMaterial color="#3A3A3A" roughness={0.35} metalness={0.55} />
+      </mesh>
+
+      {/* === SEAT === */}
+      {/* seat pan (rounded edges via slightly larger softer top) */}
+      <mesh position={[0, 0.49, 0]} castShadow receiveShadow>
+        <boxGeometry args={[0.52, 0.08, 0.50]} />
+        <meshStandardMaterial color="#181818" roughness={0.8} />
+      </mesh>
+      {/* seat highlight (rim) */}
+      <mesh position={[0, 0.535, 0]}>
+        <boxGeometry args={[0.48, 0.005, 0.46]} />
+        <meshStandardMaterial color="#222" roughness={0.8} />
+      </mesh>
+
+      {/* === BACKREST === */}
+      {/* short arm connecting seat to back */}
+      <mesh position={[0, 0.62, -0.22]} castShadow>
+        <boxGeometry args={[0.05, 0.20, 0.05]} />
+        <meshStandardMaterial color="#2A2A2A" roughness={0.4} metalness={0.45} />
+      </mesh>
+      {/* the padded backrest (taller than the seat) */}
+      <mesh position={[0, 0.90, -0.24]} castShadow>
+        <boxGeometry args={[0.50, 0.55, 0.09]} />
+        <meshStandardMaterial color="#181818" roughness={0.8} />
+      </mesh>
+
+      {/* === ARMRESTS === */}
+      {([-1, 1] as const).map((side) => (
+        <group key={side}>
+          {/* vertical post */}
+          <mesh position={[side * 0.28, 0.60, -0.05]} castShadow>
+            <boxGeometry args={[0.03, 0.22, 0.03]} />
+            <meshStandardMaterial color="#2A2A2A" roughness={0.4} metalness={0.45} />
+          </mesh>
+          {/* horizontal arm pad */}
+          <mesh position={[side * 0.28, 0.71, 0.02]} castShadow>
+            <boxGeometry args={[0.06, 0.035, 0.30]} />
+            <meshStandardMaterial color="#1A1A1A" roughness={0.7} />
+          </mesh>
+        </group>
+      ))}
+    </group>
+  );
+}
+
 /* ---------- main 3-D scene ------------------------------------------- */
 function OfficeScene({ phase, onMonitorClick }: {
   phase: Phase; onMonitorClick: () => void;
@@ -309,18 +390,18 @@ function OfficeScene({ phase, onMonitorClick }: {
     <>
       {/* ── LIGHTING ─────────────────────────────────────────────────── */}
       {/* Cool ambient — fluorescent rooms have almost no shadow gradient */}
-      <ambientLight intensity={1.15} color="#DCE8F0" />
+      <ambientLight intensity={1.45} color="#DCE8F0" />
 
       {/* Dedicated desk fill — compensates for partitions blocking ceiling lights */}
-      <pointLight position={[0.3, ROOM_H - 0.5, DESK_Z + 0.5]} intensity={4.5} distance={6} decay={2} color="#F0F5FF" />
+      <pointLight position={[0.3, ROOM_H - 0.5, DESK_Z + 0.5]} intensity={5.5} distance={7} decay={2} color="#F0F5FF" />
 
       {/* Ceiling panel lights: cool white, even spread */}
       {lightGrid.map(([x, z], i) => (
         <pointLight
           key={i}
           position={[x, ROOM_H - 0.25, z]}
-          intensity={3.8}
-          distance={18}
+          intensity={4.5}
+          distance={20}
           decay={2}
           color="#EEF3FF"
         />
@@ -404,38 +485,7 @@ function OfficeScene({ phase, onMonitorClick }: {
       </mesh>
 
       {/* ── OFFICE CHAIR ─────────────────────────────────────────────── */}
-      {/* seat */}
-      <mesh position={[0.3, 0.52, DESK_Z + 1.1]} castShadow>
-        <boxGeometry args={[0.56, 0.07, 0.54]} />
-        <meshStandardMaterial color={C.chair} roughness={0.75} />
-      </mesh>
-      {/* seat cushion bevel */}
-      <mesh position={[0.3, 0.56, DESK_Z + 1.1]}>
-        <boxGeometry args={[0.50, 0.02, 0.48]} />
-        <meshStandardMaterial color="#282828" roughness={0.8} />
-      </mesh>
-      {/* backrest */}
-      <mesh position={[0.3, 0.86, DESK_Z + 0.86]} castShadow>
-        <boxGeometry args={[0.54, 0.60, 0.07]} />
-        <meshStandardMaterial color={C.chair} roughness={0.75} />
-      </mesh>
-      {/* centre column */}
-      <mesh position={[0.3, 0.27, DESK_Z + 1.1]}>
-        <cylinderGeometry args={[0.038, 0.038, 0.52, 8]} />
-        <meshStandardMaterial color={C.chairMetal} roughness={0.4} metalness={0.5} />
-      </mesh>
-      {/* 5-spoke base */}
-      <mesh position={[0.3, 0.04, DESK_Z + 1.1]}>
-        <cylinderGeometry args={[0.34, 0.34, 0.04, 5]} />
-        <meshStandardMaterial color={C.chairMetal} roughness={0.4} metalness={0.5} />
-      </mesh>
-      {/* armrests */}
-      {([-1, 1] as const).map((side) => (
-        <mesh key={side} position={[0.3 + side * 0.31, 0.68, DESK_Z + 1.04]} castShadow>
-          <boxGeometry args={[0.06, 0.04, 0.32]} />
-          <meshStandardMaterial color={C.chairMetal} roughness={0.4} metalness={0.5} />
-        </mesh>
-      ))}
+      <OfficeChair pos={[0.3, 0, DESK_Z + 1.15]} />
 
       {/* ── CRT MONITOR ──────────────────────────────────────────────── */}
       <CrtMonitor phase={phase} onClick={onMonitorClick} />
@@ -801,7 +851,7 @@ export default function Office() {
   return (
     <div style={{ position: 'fixed', inset: 0, background: '#C8CAC4' }}>
       <Canvas shadows dpr={[1, 1.75]} gl={{ antialias: true }}>
-        <PerspectiveCamera makeDefault position={[CAM_ENTRY_POS.x, CAM_ENTRY_POS.y, CAM_ENTRY_POS.z]} fov={65} />
+        <PerspectiveCamera makeDefault position={[CAM_ENTRY_POS.x, CAM_ENTRY_POS.y, CAM_ENTRY_POS.z]} fov={58} />
         <CameraRig phase={phase} onArrived={handleArrived} onEntryDone={handleEntryDone} />
         <OfficeScene phase={phase} onMonitorClick={handleClick} />
       </Canvas>
