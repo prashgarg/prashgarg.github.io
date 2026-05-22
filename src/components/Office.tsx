@@ -102,13 +102,14 @@ const DESK_Z         = -4.5;
 // so MONITOR_WORLD reflects that.
 const MONITOR_WORLD  = new THREE.Vector3(0.10, 1.05, DESK_Z - 0.35);   // (0.10, 1.05, -4.85)
 
-// IDLE wide view: elevated 3/4 corner shot from the south-west of the
-// cubicle cross, so the active south chair sits OFF-centre and the
-// active CRT is visible past the chair. All 4 booths read clearly.
-const CAM_ENTRY_POS  = new THREE.Vector3(-3.0, 3.4, 7.5);
-const CAM_ENTRY_TGT  = new THREE.Vector3(0.5, 0.7, -4.5);
-const CAM_IDLE_POS   = new THREE.Vector3(-2.4, 2.4, 4.3);
-const CAM_IDLE_TGT   = new THREE.Vector3(0.5, 0.7, -4.7);
+// IDLE wide view — matches reference 3's "empty office with workstation
+// cluster in the centre" feel. Camera pulled far back and elevated so
+// the cubicle cross is small in the frame and the room dominates,
+// emphasising scale + emptiness (Kubrick / 2001 final-scene vibe).
+const CAM_ENTRY_POS  = new THREE.Vector3(-3.5, 3.8, 12.0);
+const CAM_ENTRY_TGT  = new THREE.Vector3(0.0, 1.0, -5.0);
+const CAM_IDLE_POS   = new THREE.Vector3(-3.0, 2.8, 8.5);
+const CAM_IDLE_TGT   = new THREE.Vector3(0.0, 0.8, -5.0);
 // Camera ends VERY close to the monitor face — ~0.3 m from the screen.
 // At FOV 58° this makes the monitor screen fill roughly 66%×78% of the
 // viewport, so the bezel reads as a frame around the inner site (Heffer
@@ -731,8 +732,12 @@ function StationLite({ active = false }: { active?: boolean } = {}) {
           </mesh>
         </>
       )}
-      {/* Office chair */}
-      <OfficeChair pos={[0.05, 0, 1.20]} />
+      {/* Office chair — rotated 180° so the seated USER faces the desk
+          and monitor (toward local -Z). Without this rotation the chair
+          faces +Z (outward) and the user sits with back to the desk. */}
+      <group position={[0.05, 0, 1.20]} rotation-y={Math.PI}>
+        <OfficeChair pos={[0, 0, 0]} />
+      </group>
       {/* Chair mat under chair */}
       <mesh rotation-x={-Math.PI / 2} position={[0.05, 0.011, 1.20]}>
         <circleGeometry args={[0.62, 32]} />
@@ -854,20 +859,21 @@ function OfficeScene({ phase, onMonitorClick }: {
     <>
       {/* ── LIGHTING ─────────────────────────────────────────────────── */}
       {/* Cool ambient — fluorescent rooms have almost no shadow gradient */}
-      <ambientLight intensity={1.45} color="#DCE8F0" />
+      <ambientLight intensity={1.85} color="#E4ECF2" />
 
       {/* Dedicated desk fill — compensates for partitions blocking ceiling lights */}
-      <pointLight position={[0.3, ROOM_H - 0.5, DESK_Z + 0.5]} intensity={5.5} distance={7} decay={2} color="#F0F5FF" />
+      <pointLight position={[0.3, ROOM_H - 0.5, DESK_Z + 0.5]} intensity={6.5} distance={8} decay={2} color="#F4F8FF" />
 
-      {/* Ceiling panel lights: cool white, even spread */}
+      {/* Ceiling panel lights: cool white, even spread, brighter for the
+          flood-lit fluorescent look of the references */}
       {lightGrid.map(([x, z], i) => (
         <pointLight
           key={i}
           position={[x, ROOM_H - 0.25, z]}
-          intensity={4.5}
-          distance={20}
+          intensity={5.5}
+          distance={22}
           decay={2}
-          color="#EEF3FF"
+          color="#F2F5FF"
         />
       ))}
 
