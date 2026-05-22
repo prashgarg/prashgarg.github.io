@@ -96,23 +96,30 @@ function easeOutCubic(t: number) { return 1 - Math.pow(1 - t, 3); }
 // Desk and monitor sit at centre of the room (z=0 in room-depth terms,
 // which in world coords is z = -4.5 when the camera enters from z ≈ +13)
 const DESK_Z         = -4.5;
-const LEFT_DESK_X    = -0.85;
-const RIGHT_DESK_X   =  0.85;
-const MONITOR_WORLD  = new THREE.Vector3(LEFT_DESK_X, 1.08, DESK_Z);
+// Symmetric 4-station layout: all 4 booths share identical StationLite
+// geometry. The active station (SOUTH) puts its monitor on the desk at
+// the same local position as the lite stations (local 0.1, 1.05, -0.35),
+// so MONITOR_WORLD reflects that.
+const MONITOR_WORLD  = new THREE.Vector3(0.10, 1.05, DESK_Z - 0.35);   // (0.10, 1.05, -4.85)
 
 const CAM_ENTRY_POS  = new THREE.Vector3(-0.5, 2.1, 6.5);
 const CAM_ENTRY_TGT  = new THREE.Vector3(0.1, 1.05, DESK_Z);
 const CAM_IDLE_POS   = new THREE.Vector3(-0.7, 1.50, 2.1);
 const CAM_IDLE_TGT   = new THREE.Vector3(0.15, 0.95, DESK_Z);
-const CAM_MONITOR_POS = new THREE.Vector3(LEFT_DESK_X, 1.12, DESK_Z + 1.55);
+// Camera ends VERY close to the monitor face — ~0.3 m from the screen.
+// At FOV 58° this makes the monitor screen fill roughly 66%×78% of the
+// viewport, so the bezel reads as a frame around the inner site (Heffer
+// pattern). Camera is dead-centred on the monitor so the screen always
+// projects to viewport center.
+const CAM_MONITOR_POS = new THREE.Vector3(0.10, 1.05, DESK_Z + 0.20);   // (0.10, 1.05, -4.30)
 const CAM_MONITOR_TGT = MONITOR_WORLD.clone();
 
 // Lean-in close-up frame — used when the cursor is in the lower-centre
-// of the viewport (i.e. the user is looking at the workstation).
-// Positioned to show keyboard + monitor + chair at readable scale
-// without committing to the full dolly.
-const CAM_LEAN_POS   = new THREE.Vector3(-0.30, 1.15, -2.30);
-const CAM_LEAN_TGT   = new THREE.Vector3(-0.40, 0.78, -4.20);
+// of the viewport. Frames the active station's desk + monitor by looking
+// DOWN over the chair back (elevated angle, so the chair doesn't block
+// the keyboard and monitor view).
+const CAM_LEAN_POS   = new THREE.Vector3(0.10, 1.85, -2.10);
+const CAM_LEAN_TGT   = new THREE.Vector3(0.10, 0.80, -4.50);
 
 /* ---------- CRT screen shader — pronounced scanlines + faux ASCII ---- */
 const CRT_FRAG = `
@@ -683,7 +690,7 @@ function OfficeChair({ pos }: { pos: [number, number, number] }) {
  *     the chair faces away to)
  *   • monitor sits at local -Z (against the partition arm)
  */
-function StationLite() {
+function StationLite({ active = false }: { active?: boolean } = {}) {
   return (
     <>
       {/* Desk surface */}
@@ -691,7 +698,7 @@ function StationLite() {
         <boxGeometry args={[1.55, 0.06, 1.30]} />
         <meshStandardMaterial color={C.desk} roughness={0.42} metalness={0.02} />
       </mesh>
-      {/* Pedestal (single, offset to one side) */}
+      {/* Pedestal (single, offset to one side — to the user's LEFT) */}
       <mesh position={[-0.48, 0.36, 0]} castShadow receiveShadow>
         <boxGeometry args={[0.72, 0.72, 1.20]} />
         <meshStandardMaterial color={C.deskLeg} roughness={0.5} />
@@ -703,21 +710,24 @@ function StationLite() {
           <meshStandardMaterial color="#A8A8A4" />
         </mesh>
       ))}
-      {/* Inactive CRT — boxy beige body */}
-      <mesh position={[0.10, 1.04, -0.35]} castShadow>
-        <boxGeometry args={[0.46, 0.40, 0.34]} />
-        <meshStandardMaterial color={C.monitor} roughness={0.55} />
-      </mesh>
-      {/* Inactive CRT screen — dark phosphor (off) */}
-      <mesh position={[0.10, 1.05, -0.18]}>
-        <planeGeometry args={[0.30, 0.22]} />
-        <meshStandardMaterial color="#1A2820" roughness={0.4} emissive="#0F1812" emissiveIntensity={0.15} />
-      </mesh>
-      {/* Small monitor base */}
-      <mesh position={[0.10, 0.79, -0.35]}>
-        <boxGeometry args={[0.26, 0.04, 0.22]} />
-        <meshStandardMaterial color="#BEB9B2" roughness={0.5} />
-      </mesh>
+      {/* Inactive CRT — boxy beige body. SKIPPED on the active station;
+          the parent renders an active CRT (with shader + click) instead. */}
+      {!active && (
+        <>
+          <mesh position={[0.10, 1.04, -0.35]} castShadow>
+            <boxGeometry args={[0.46, 0.40, 0.34]} />
+            <meshStandardMaterial color={C.monitor} roughness={0.55} />
+          </mesh>
+          <mesh position={[0.10, 1.05, -0.18]}>
+            <planeGeometry args={[0.30, 0.22]} />
+            <meshStandardMaterial color="#1A2820" roughness={0.4} emissive="#0F1812" emissiveIntensity={0.15} />
+          </mesh>
+          <mesh position={[0.10, 0.79, -0.35]}>
+            <boxGeometry args={[0.26, 0.04, 0.22]} />
+            <meshStandardMaterial color="#BEB9B2" roughness={0.5} />
+          </mesh>
+        </>
+      )}
       {/* Office chair */}
       <OfficeChair pos={[0.05, 0, 1.20]} />
       {/* Chair mat under chair */}
@@ -905,200 +915,87 @@ function OfficeScene({ phase, onMonitorClick }: {
         <primitive object={wallMat} attach="material" />
       </mesh>
 
-      {/* ── DESK ASSEMBLY — two desks + L-shape back bridge ─────────── */}
-
-      {/* LEFT desk surface — MeshReflectorMaterial for subtle sheen */}
-      <mesh position={[LEFT_DESK_X, 0.74, DESK_Z]} castShadow receiveShadow>
-        <boxGeometry args={[1.5, 0.06, 1.35]} />
-        <MeshReflectorMaterial
-          color={C.desk}
-          blur={[300, 60]}
-          resolution={256}
-          mixBlur={1}
-          mixStrength={0.22}
-          roughness={0.78}
-          depthScale={0.05}
-          minDepthThreshold={0.85}
-          metalness={0.05}
-        />
-      </mesh>
-      {/* LEFT pedestal — beefier, full filing-cabinet volume */}
-      <mesh position={[LEFT_DESK_X - 0.32, 0.36, DESK_Z]} castShadow receiveShadow>
-        <boxGeometry args={[0.85, 0.72, 1.28]} />
-        <meshStandardMaterial color={C.deskLeg} roughness={0.5} />
-      </mesh>
-      {/* LEFT pedestal — 3 drawer lines */}
-      {[0.18, 0.42, 0.62].map((y, i) => (
-        <mesh key={`ldL-${i}`} position={[LEFT_DESK_X - 0.32, y, DESK_Z + 0.642]}>
-          <boxGeometry args={[0.75, 0.006, 0.004]} />
-          <meshStandardMaterial color="#A8A8A4" />
-        </mesh>
-      ))}
-      {/* LEFT pedestal — 3 drawer handles */}
-      {[0.28, 0.50, 0.64].map((y, i) => (
-        <mesh key={`lhL-${i}`} position={[LEFT_DESK_X - 0.32, y, DESK_Z + 0.648]}>
-          <boxGeometry args={[0.15, 0.018, 0.010]} />
-          <meshStandardMaterial color="#C8C6C2" roughness={0.3} metalness={0.4} />
-        </mesh>
-      ))}
-      {/* LEFT inner support (vertical post at desk gap edge) */}
-      <mesh position={[LEFT_DESK_X + 0.72, 0.36, DESK_Z]} castShadow receiveShadow>
-        <boxGeometry args={[0.06, 0.72, 1.28]} />
-        <meshStandardMaterial color={C.deskLeg} roughness={0.5} />
-      </mesh>
-
-      {/* RIGHT desk surface */}
-      <mesh position={[RIGHT_DESK_X, 0.74, DESK_Z]} castShadow receiveShadow>
-        <boxGeometry args={[1.5, 0.06, 1.35]} />
-        <MeshReflectorMaterial
-          color={C.desk}
-          blur={[300, 60]}
-          resolution={256}
-          mixBlur={1}
-          mixStrength={0.22}
-          roughness={0.78}
-          depthScale={0.05}
-          minDepthThreshold={0.85}
-          metalness={0.05}
-        />
-      </mesh>
-      {/* RIGHT pedestal — beefier, full filing-cabinet volume */}
-      <mesh position={[RIGHT_DESK_X + 0.32, 0.36, DESK_Z]} castShadow receiveShadow>
-        <boxGeometry args={[0.85, 0.72, 1.28]} />
-        <meshStandardMaterial color={C.deskLeg} roughness={0.5} />
-      </mesh>
-      {/* RIGHT pedestal — 3 drawer lines */}
-      {[0.18, 0.42, 0.62].map((y, i) => (
-        <mesh key={`ldR-${i}`} position={[RIGHT_DESK_X + 0.32, y, DESK_Z + 0.642]}>
-          <boxGeometry args={[0.75, 0.006, 0.004]} />
-          <meshStandardMaterial color="#A8A8A4" />
-        </mesh>
-      ))}
-      {/* RIGHT pedestal — 3 drawer handles */}
-      {[0.28, 0.50, 0.64].map((y, i) => (
-        <mesh key={`lhR-${i}`} position={[RIGHT_DESK_X + 0.32, y, DESK_Z + 0.648]}>
-          <boxGeometry args={[0.15, 0.018, 0.010]} />
-          <meshStandardMaterial color="#C8C6C2" roughness={0.3} metalness={0.4} />
-        </mesh>
-      ))}
-      {/* RIGHT inner support */}
-      <mesh position={[RIGHT_DESK_X - 0.72, 0.36, DESK_Z]} castShadow receiveShadow>
-        <boxGeometry args={[0.06, 0.72, 1.28]} />
-        <meshStandardMaterial color={C.deskLeg} roughness={0.5} />
-      </mesh>
-
-      {/* ── L-SHAPE BACK BRIDGE — connects the two desks ─────────────── */}
-      {/* Small back-jog desktop spanning the gap between the two desks */}
-      <mesh position={[0, 0.74, DESK_Z - 0.5]} castShadow receiveShadow>
-        <boxGeometry args={[1.9, 0.06, 0.45]} />
-        <MeshReflectorMaterial
-          color={C.desk}
-          blur={[300, 60]}
-          resolution={256}
-          mixBlur={1}
-          mixStrength={0.22}
-          roughness={0.78}
-          depthScale={0.05}
-          minDepthThreshold={0.85}
-          metalness={0.05}
-        />
-      </mesh>
-      {/* Small support block under the bridge */}
-      <mesh position={[0, 0.40, DESK_Z - 0.5]} castShadow receiveShadow>
-        <boxGeometry args={[0.30, 0.66, 0.40]} />
-        <meshStandardMaterial color={C.deskLeg} roughness={0.5} />
-      </mesh>
-
-      {/* ── PARTITION CROSS — + shape at the cross centre ──────────── */}
-      {/* EW arm (was "back partition") — long arm across the cross */}
+      {/* ── PARTITION CROSS — + shape at the centre of all 4 booths ── */}
+      {/* EW arm */}
       <mesh position={[0, 1.32, DESK_Z - 0.74]} castShadow receiveShadow>
         <boxGeometry args={[4.0, 1.10, 0.07]} />
         <meshStandardMaterial color={C.partition} roughness={0.92} />
       </mesh>
-      {/* NS arm — perpendicular, also long, passes through cross centre */}
+      {/* NS arm */}
       <mesh position={[0, 1.32, DESK_Z - 0.74]} castShadow receiveShadow>
         <boxGeometry args={[0.07, 1.10, 4.0]} />
         <meshStandardMaterial color={C.partition} roughness={0.92} />
       </mesh>
 
-      {/* ── OFFICE CHAIR — pulled up to the right desk ──────────────── */}
-      <OfficeChair pos={[RIGHT_DESK_X, 0, DESK_Z + 1.15]} />
+      {/* ── 4 SYMMETRIC BOOTHS ───────────────────────────────────────
+          All 4 booths share identical StationLite geometry. Only the
+          SOUTH booth is the "active" one (active CRT + accessories). */}
+      {/* SOUTH (active) */}
+      <group position={[0, 0, DESK_Z]}>
+        <StationLite active />
+      </group>
+      {/* NORTH — user faces south */}
+      <group position={[0, 0, DESK_Z - 1.42]} rotation-y={Math.PI}>
+        <StationLite />
+      </group>
+      {/* EAST — user faces west */}
+      <group position={[3.0, 0, DESK_Z - 0.74]} rotation-y={Math.PI / 2}>
+        <StationLite />
+      </group>
+      {/* WEST — user faces east */}
+      <group position={[-3.0, 0, DESK_Z - 0.74]} rotation-y={-Math.PI / 2}>
+        <StationLite />
+      </group>
 
-      {/* ── CRT MONITOR ──────────────────────────────────────────────── */}
+      {/* ── ACTIVE CRT on the south booth (click target) ──────────── */}
       <CrtMonitor phase={phase} onClick={onMonitorClick} />
 
-      {/* ── DESK OBJECTS — keyboard, lamp, notes, mug ──────────────── */}
+      {/* ── DESK ACCESSORIES — all on the south booth only ──────────
+          Positioned in world coords corresponding to the south booth's
+          desk surface at z = DESK_Z (-4.5), centred at x = 0.10 to align
+          with the active CRT. */}
 
-      {/* KEYBOARD — sits in front of monitor on the LEFT desk */}
-      <Keyboard pos={[LEFT_DESK_X + 0.05, 0.77, DESK_Z + 0.42]} />
+      {/* keyboard — directly in front of monitor */}
+      <Keyboard pos={[0.05, 0.77, DESK_Z + 0.30]} />
 
-      {/* yellow sticky notes — beside keyboard */}
-      <mesh position={[LEFT_DESK_X - 0.28, 0.776, DESK_Z + 0.42]} rotation-y={0.18}>
+      {/* desk lamp — back-left corner */}
+      <DeskLamp pos={[-0.55, 0.77, DESK_Z - 0.45]} />
+
+      {/* sticky notes — to the right of keyboard */}
+      <mesh position={[0.50, 0.776, DESK_Z + 0.30]} rotation-y={0.18}>
         <boxGeometry args={[0.10, 0.012, 0.10]} />
         <meshStandardMaterial color="#F5E68A" roughness={0.85} />
       </mesh>
-      <mesh position={[LEFT_DESK_X - 0.27, 0.782, DESK_Z + 0.42]} rotation-y={0.14}>
+      <mesh position={[0.51, 0.782, DESK_Z + 0.30]} rotation-y={0.14}>
         <boxGeometry args={[0.10, 0.005, 0.10]} />
         <meshStandardMaterial color="#F8EC9A" roughness={0.85} />
       </mesh>
 
-      {/* DESK LAMP — sits at the back corner of the left desk */}
-      <DeskLamp pos={[LEFT_DESK_X - 0.50, 0.77, DESK_Z - 0.40]} />
-
-      {/* stack of papers — LEFT desk, in front of keyboard */}
-      <mesh position={[LEFT_DESK_X + 0.30, 0.775, DESK_Z + 0.55]} rotation-y={-0.12}>
+      {/* stack of papers — far-left front of desk */}
+      <mesh position={[-0.55, 0.775, DESK_Z + 0.45]} rotation-y={-0.12}>
         <boxGeometry args={[0.16, 0.018, 0.12]} />
         <meshStandardMaterial color="#F0EDE4" roughness={0.9} />
       </mesh>
 
-      {/* small framed picture — back-right of LEFT desk */}
-      <mesh position={[LEFT_DESK_X + 0.55, 0.81, DESK_Z - 0.35]} rotation-y={-0.20}>
-        <boxGeometry args={[0.13, 0.10, 0.018]} />
-        <meshStandardMaterial color="#3A3632" roughness={0.5} />
-      </mesh>
-      <mesh position={[LEFT_DESK_X + 0.55, 0.81, DESK_Z - 0.341]} rotation-y={-0.20}>
-        <planeGeometry args={[0.10, 0.075]} />
-        <meshStandardMaterial color="#8AA5C8" roughness={0.8} />
-      </mesh>
-
-      {/* coffee mug — RIGHT desk, on near edge */}
-      <mesh position={[RIGHT_DESK_X + 0.30, 0.785, DESK_Z + 0.22]}>
+      {/* coffee mug — right-front corner */}
+      <mesh position={[0.65, 0.785, DESK_Z + 0.15]}>
         <cylinderGeometry args={[0.052, 0.046, 0.10, 14]} />
         <meshStandardMaterial color="#DCDAD6" roughness={0.55} />
       </mesh>
-      <mesh position={[RIGHT_DESK_X + 0.36, 0.785, DESK_Z + 0.22]} rotation-z={Math.PI / 2}>
+      <mesh position={[0.71, 0.785, DESK_Z + 0.15]} rotation-z={Math.PI / 2}>
         <torusGeometry args={[0.028, 0.008, 6, 10, Math.PI]} />
         <meshStandardMaterial color="#D8D6D2" roughness={0.55} />
       </mesh>
-      {/* telephone — RIGHT desk, back-right corner */}
-      <mesh position={[RIGHT_DESK_X + 0.20, 0.775, DESK_Z - 0.35]}>
-        <boxGeometry args={[0.22, 0.055, 0.16]} />
-        <meshStandardMaterial color="#D0CEC8" roughness={0.6} />
-      </mesh>
-      <mesh position={[RIGHT_DESK_X + 0.20, 0.84, DESK_Z - 0.35]}>
-        <boxGeometry args={[0.18, 0.055, 0.06]} />
-        <meshStandardMaterial color="#C8C6C0" roughness={0.6} />
-      </mesh>
 
-      {/* ── CHAIR MAT — dark circle under chair (anchors it visually) ── */}
-      <mesh rotation-x={-Math.PI / 2} position={[RIGHT_DESK_X, 0.011, DESK_Z + 1.15]}>
-        <circleGeometry args={[0.68, 32]} />
-        <meshStandardMaterial color="#1E2823" roughness={0.85} />
+      {/* small framed picture — back-right of desk */}
+      <mesh position={[0.55, 0.81, DESK_Z - 0.45]} rotation-y={-0.20}>
+        <boxGeometry args={[0.13, 0.10, 0.018]} />
+        <meshStandardMaterial color="#3A3632" roughness={0.5} />
       </mesh>
-
-      {/* ── 3 OTHER STATIONS forming the cubicle cross ──────────────── */}
-      {/* NORTH station — mirror across the cross, user faces south */}
-      <group position={[0, 0, DESK_Z - 1.42]} rotation-y={Math.PI}>
-        <StationLite />
-      </group>
-      {/* EAST station — user faces west (toward the cross) */}
-      <group position={[3.0, 0, DESK_Z - 0.74]} rotation-y={Math.PI / 2}>
-        <StationLite />
-      </group>
-      {/* WEST station — user faces east (toward the cross) */}
-      <group position={[-3.0, 0, DESK_Z - 0.74]} rotation-y={-Math.PI / 2}>
-        <StationLite />
-      </group>
+      <mesh position={[0.55, 0.81, DESK_Z - 0.441]} rotation-y={-0.20}>
+        <planeGeometry args={[0.10, 0.075]} />
+        <meshStandardMaterial color="#8AA5C8" roughness={0.8} />
+      </mesh>
 
       {/* ── WALL CLOCKS — one on each side wall (matches reference) ─── */}
       <WallClock pos={[ROOM_W / 2 - 0.12, 2.8, 3]} />
@@ -1285,7 +1182,7 @@ function BootOverlay({ onDone }: { onDone: () => void }) {
       style={{
         position: 'fixed',
         top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-        width: 'min(86vw, 1200px)', height: 'min(78vh, 720px)',
+        width: 'min(66vw, 880px)', height: 'min(78vh, 670px)',
         zIndex: 9999,
         background: '#0E0D0B', color: '#A4D9C5',
         fontFamily: "ui-monospace,'SF Mono',Menlo,Monaco,Consolas,monospace",

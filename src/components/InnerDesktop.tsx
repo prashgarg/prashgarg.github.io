@@ -35,16 +35,18 @@ const WIN95_STYLE = `
   font-family: MSSerif, 'Arial', sans-serif;
   user-select: none;
 }
-/* Embedded mode — sits centred in the viewport so the 3D scene behind
-   it stays visible around the edges (Henry Heffernan pattern). */
+/* Embedded mode — sized to match where the monitor SCREEN projects to
+   the viewport at the close-up dolly position (~0.3 m from screen face).
+   The 3D office scene stays visible around the edges, with the CRT
+   bezel acting as the visible frame around the inner site. */
 .win95-desktop.embedded {
   inset: auto;
   top: 50%;
   left: 50%;
-  width: min(86vw, 1200px);
-  height: min(78vh, 720px);
+  width: min(66vw, 880px);
+  height: min(78vh, 670px);
   transform: translate(-50%, -50%);
-  box-shadow: 0 0 0 2px #2b2b2b, 0 20px 60px rgba(0,0,0,0.55);
+  box-shadow: 0 0 0 2px #2b2b2b, 0 18px 50px rgba(0,0,0,0.55);
 }
 
 /* ---------- window chrome ----------------------------------------- */
