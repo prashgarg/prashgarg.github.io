@@ -107,6 +107,13 @@ const CAM_IDLE_TGT   = new THREE.Vector3(0.15, 0.95, DESK_Z);
 const CAM_MONITOR_POS = new THREE.Vector3(LEFT_DESK_X, 1.12, DESK_Z + 1.55);
 const CAM_MONITOR_TGT = MONITOR_WORLD.clone();
 
+// Lean-in close-up frame — used when the cursor is in the lower-centre
+// of the viewport (i.e. the user is looking at the workstation).
+// Positioned to show keyboard + monitor + chair at readable scale
+// without committing to the full dolly.
+const CAM_LEAN_POS   = new THREE.Vector3(-0.30, 1.15, -2.30);
+const CAM_LEAN_TGT   = new THREE.Vector3(-0.40, 0.78, -4.20);
+
 /* ---------- CRT screen shader — pronounced scanlines + faux ASCII ---- */
 const CRT_FRAG = `
   uniform vec3  uColor;
@@ -337,36 +344,50 @@ function CameraRig({ phase, onArrived, onEntryDone }: {
       camera.lookAt(tgt.current);
       return;
     }
-    // ── idle: parallax + monitor magnetism (Henry's pattern) ──────────────
-    // - subtle sine drift so it never feels static
-    // - cursor moves camera laterally + tilts target (more breathing)
-    // - "monitor magnet": the closer the cursor is to the screen centre
-    //   (top-centre of viewport), the further the camera dollies in
-    const ms = state.clock.elapsedTime * 1000;
-    const driftX = Math.sin((ms + 19000) * 0.00007) * 0.22;
-    const driftY = Math.sin((ms +  1000) * 0.000003) * 0.08;
-    // proximity to the monitor in screen space — monitor sits roughly
-    // at (mouseX ~ -0.4, mouseY ~ -0.3) when at idle, so when the cursor
-    // moves into that region we want the camera to lean in.
+    // ── idle: parallax + LEAN-IN on cursor approach ──────────────────────
+    // Strategy: when cursor moves into the lower-centre of the viewport
+    // (where the workstation lives) the camera smoothly transitions from
+    // CAM_IDLE_POS (wide doorway view) to CAM_LEAN_POS (close-up of
+    // keyboard + monitor). When cursor moves back up/out, it pulls back.
+    //
+    // Trigger is screen-space (not world-space) on purpose — using world
+    // proximity would create a feedback loop: camera leans in → ws moves
+    // on screen → cursor no longer near ws → camera pulls back. Screen
+    // position is stable through the transition.
     const mx = mouse.current.x, my = mouse.current.y;
-    const distToMon = Math.hypot(mx - (-0.40), my - (-0.30));
-    const magnet = 1 - Math.min(1, distToMon / 1.1);   // 0…1, peaks near monitor
-    const zoomK  = Math.pow(magnet, 1.8) * 0.30;       // 0…0.30 — gentle lean-in
-    // wider cursor-parallax for "breathing"
-    const wx = idlePos.current.x + driftX - mx * 0.45;
-    const wy = idlePos.current.y + driftY + my * 0.28;
-    // dolly toward monitor when cursor is near monitor — interpolate
-    // between idlePos and a point closer to the monitor
-    const zoomedZ = idlePos.current.z * (1 - zoomK) + (DESK_Z + 2.4) * zoomK;
-    const zoomedY = idlePos.current.y * (1 - zoomK * 0.4) + 1.20 * (zoomK * 0.4);
-    camera.position.x += (wx - camera.position.x) * 0.05;
-    camera.position.y += (wy + (zoomedY - idlePos.current.y) - camera.position.y) * 0.05;
-    camera.position.z += (zoomedZ - camera.position.z) * 0.05;
-    // target also drifts and leans toward monitor when zooming
-    const tx = idleTgt.current.x + mx * 0.14 + (LEFT_DESK_X - idleTgt.current.x) * zoomK * 0.5;
-    const ty = idleTgt.current.y - my * 0.08;
-    tgt.current.x += (tx - tgt.current.x) * 0.07;
-    tgt.current.y += (ty - tgt.current.y) * 0.07;
+    // yLean: 0 at mouse.y=0 (centre), 1 at mouse.y>=0.5 (lower half)
+    // xCentre: 1 when |mx|<small, fades to 0 by |mx|=0.85
+    const yLean   = Math.max(0, Math.min(1, my / 0.5));
+    const xCentre = 1 - Math.min(1, Math.abs(mx) / 0.85);
+    const leanK   = Math.pow(yLean * xCentre, 1.15);   // 0…1 — eased
+    // sine drift so it never feels static
+    const ms = state.clock.elapsedTime * 1000;
+    const driftX = Math.sin((ms + 19000) * 0.00007) * 0.18;
+    const driftY = Math.sin((ms +  1000) * 0.000003) * 0.06;
+    // interpolate IDLE ↔ LEAN positions / targets by leanK
+    const basePosX = idlePos.current.x * (1 - leanK) + CAM_LEAN_POS.x * leanK;
+    const basePosY = idlePos.current.y * (1 - leanK) + CAM_LEAN_POS.y * leanK;
+    const basePosZ = idlePos.current.z * (1 - leanK) + CAM_LEAN_POS.z * leanK;
+    const baseTgtX = idleTgt.current.x * (1 - leanK) + CAM_LEAN_TGT.x * leanK;
+    const baseTgtY = idleTgt.current.y * (1 - leanK) + CAM_LEAN_TGT.y * leanK;
+    const baseTgtZ = idleTgt.current.z * (1 - leanK) + CAM_LEAN_TGT.z * leanK;
+    // parallax — dialed down during lean so the cursor doesn't fight the
+    // smooth lean-in transition
+    const parallaxScale = 1 - leanK * 0.55;
+    const wx = basePosX + driftX - mx * 0.34 * parallaxScale;
+    const wy = basePosY + driftY + my * 0.20 * parallaxScale * (1 - leanK * 0.8);
+    const wz = basePosZ;
+    // smooth lerp toward target — slightly faster lerp during lean for
+    // responsiveness, slower at idle for stillness
+    const lerpK = 0.05 + leanK * 0.04;
+    camera.position.x += (wx - camera.position.x) * lerpK;
+    camera.position.y += (wy - camera.position.y) * lerpK;
+    camera.position.z += (wz - camera.position.z) * lerpK;
+    const tx = baseTgtX + mx * 0.11 * parallaxScale;
+    const ty = baseTgtY - my * 0.06 * parallaxScale * (1 - leanK * 0.7);
+    tgt.current.x += (tx - tgt.current.x) * (lerpK + 0.02);
+    tgt.current.y += (ty - tgt.current.y) * (lerpK + 0.02);
+    tgt.current.z += (baseTgtZ - tgt.current.z) * (lerpK + 0.02);
     camera.lookAt(tgt.current);
   });
   return null;
