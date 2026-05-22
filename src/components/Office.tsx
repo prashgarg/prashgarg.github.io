@@ -53,10 +53,10 @@ const LEFT_DESK_X    = -0.85;
 const RIGHT_DESK_X   =  0.85;
 const MONITOR_WORLD  = new THREE.Vector3(LEFT_DESK_X, 1.08, DESK_Z);
 
-const CAM_ENTRY_POS  = new THREE.Vector3(-1.4, 2.6, 8);
-const CAM_ENTRY_TGT  = new THREE.Vector3(0.4, 1.1, DESK_Z);
-const CAM_IDLE_POS   = new THREE.Vector3(-1.6, 1.55, 3.5);
-const CAM_IDLE_TGT   = new THREE.Vector3(0.5, 0.95, DESK_Z);
+const CAM_ENTRY_POS  = new THREE.Vector3(-0.5, 2.4, 8);
+const CAM_ENTRY_TGT  = new THREE.Vector3(0.1, 1.1, DESK_Z);
+const CAM_IDLE_POS   = new THREE.Vector3(-0.7, 1.58, 3.4);
+const CAM_IDLE_TGT   = new THREE.Vector3(0.15, 0.95, DESK_Z);
 const CAM_MONITOR_POS = new THREE.Vector3(LEFT_DESK_X, 1.12, DESK_Z + 1.55);
 const CAM_MONITOR_TGT = MONITOR_WORLD.clone();
 
@@ -524,6 +524,16 @@ function OfficeScene({ phase, onMonitorClick }: {
         <planeGeometry args={[ROOM_W, ROOM_D]} />
         <primitive object={ceilMat} attach="material" />
       </mesh>
+
+      {/* Small ceiling fixtures (smoke detectors / vents) — scatter a few */}
+      {[
+        [-6, -8], [4, -6], [-3, 1], [7, 4], [-7, 8],
+      ].map(([x, z], i) => (
+        <mesh key={`fix-${i}`} position={[x, ROOM_H - 0.04, z]} rotation-x={Math.PI / 2}>
+          <circleGeometry args={[0.10, 16]} />
+          <meshStandardMaterial color="#5A5C60" roughness={0.45} metalness={0.25} />
+        </mesh>
+      ))}
 
       {/* ── WALLS — panel-seam shader ───────────────────────────────── */}
       {/* back wall (uses a flat plane so the shader UV maps cleanly) */}
