@@ -529,9 +529,9 @@ function CrtMonitor({ phase, onClick }: { phase: Phase; onClick?: () => void }) 
   }), []);
   useFrame((state) => {
     crtMat.uniforms.uTime.value      = state.clock.elapsedTime;
-    // Brighter base so the green CRT pop is visible from the wider idle
-    // distance — was 1.15, now 1.55. Hover state pushed too.
-    crtMat.uniforms.uIntensity.value = clickable ? (hovered ? 2.1 : 1.55) : 0.12;
+    // Bright phosphor pop visible from idle distance + dramatic hover.
+    // The CRT acts as the visual anchor / focal point of the scene.
+    crtMat.uniforms.uIntensity.value = clickable ? (hovered ? 2.6 : 1.85) : 0.12;
   });
   return (
     <group position={MONITOR_WORLD.toArray()}>
@@ -1135,11 +1135,26 @@ function BiosScreen({ onDone }: { onDone: () => void }) {
         {step > 0 && step <= LINES.length && <span style={{ color: '#F9BD2B', fontSize: 13 }}>▋</span>}
       </div>
       {showPopup && (
-        <div onClick={dismiss} style={{ border: '7px solid #fff', padding: '32px 44px', width: 'min(88vw, 340px)', boxSizing: 'border-box', cursor: 'pointer', opacity: dismissed ? 0 : 1, transform: dismissed ? 'scale(1.06)' : 'scale(1)', transition: dismissed ? 'opacity 0.2s ease, transform 0.2s ease' : 'none', animation: dismissed ? 'none' : 'bios-popup-in 0.28s cubic-bezier(0.16,1,0.3,1) both' }}>
-          <div style={{ color: 'rgba(255,255,255,0.55)', fontSize: 11, letterSpacing: '0.10em', marginBottom: 20 }}>prashantgarg.org&nbsp;&nbsp;{new Date().getFullYear()}</div>
-          <div style={{ color: '#fff', fontSize: 13, letterSpacing: '0.04em', marginBottom: 28, display: 'flex', alignItems: 'center', gap: 7 }}>
+        <div
+          onClick={dismiss}
+          style={{
+            border: '8px solid #fff',
+            padding: '44px 56px',
+            width: 'min(92vw, 480px)',
+            boxSizing: 'border-box',
+            cursor: 'pointer',
+            opacity: dismissed ? 0 : 1,
+            transform: dismissed ? 'scale(1.06)' : 'scale(1)',
+            transition: dismissed ? 'opacity 0.2s ease, transform 0.2s ease' : 'none',
+            animation: dismissed ? 'none' : 'bios-popup-in 0.32s cubic-bezier(0.16,1,0.3,1) both',
+          }}
+        >
+          <div style={{ color: 'rgba(255,255,255,0.55)', fontSize: 13, letterSpacing: '0.14em', marginBottom: 26 }}>
+            prashantgarg.org&nbsp;&nbsp;·&nbsp;&nbsp;{new Date().getFullYear()}
+          </div>
+          <div style={{ color: '#fff', fontSize: 18, lineHeight: 1.4, letterSpacing: '0.05em', marginBottom: 36, display: 'flex', alignItems: 'center', gap: 9 }}>
             Click START to enter
-            <span style={{ display: 'inline-block', width: '0.65em', height: '1.05em', background: '#fff', verticalAlign: 'middle', animation: 'bios-blink 0.65s step-end infinite' }} />
+            <span style={{ display: 'inline-block', width: '0.55em', height: '1.05em', background: '#fff', verticalAlign: 'middle', animation: 'bios-blink 0.65s step-end infinite' }} />
           </div>
           <button
             onMouseEnter={() => setStartHover(true)}
@@ -1147,7 +1162,19 @@ function BiosScreen({ onDone }: { onDone: () => void }) {
             onMouseDown={() => playUiClick('down')}
             onMouseUp={() => playUiClick('up')}
             onClick={(e) => { e.stopPropagation(); dismiss(); }}
-            style={{ background: startHover ? '#fff' : '#000', color: startHover ? '#000' : '#fff', border: '2px solid #fff', padding: '7px 32px', fontFamily: mono, fontSize: 12, letterSpacing: '0.18em', cursor: 'pointer', transition: 'background 0.12s ease, color 0.12s ease', outline: 'none' }}
+            style={{
+              background: startHover ? '#fff' : '#000',
+              color: startHover ? '#000' : '#fff',
+              border: '2px solid #fff',
+              padding: '11px 48px',
+              fontFamily: mono,
+              fontSize: 15,
+              letterSpacing: '0.24em',
+              fontWeight: 600,
+              cursor: 'pointer',
+              transition: 'background 0.12s ease, color 0.12s ease',
+              outline: 'none',
+            }}
           >START</button>
         </div>
       )}
@@ -1229,6 +1256,25 @@ function VolumeOffIcon() {
       <path d="M87.87,61.64q0,25.53,0,51c0,4-1.16,7.34-4.91,9.36A7.37,7.37,0,0,1,74.24,121q-13.39-12.1-26.88-24.1c-3.16-2.82-6.26-5.7-9.54-8.38a6.53,6.53,0,0,0-3.7-1.41C27.56,87,21,87.05,14.44,87,5.08,87,.1,82.08,0,72.79Q0,61.08,0,49.38c.07-8.78,5.39-14,14.21-14.05,6.73,0,13.46,0,20.18-.06a5.09,5.09,0,0,0,3.06-1.15q17.58-15.46,35-31.06C75.59.3,78.82-.71,82.75,1S87.83,6,87.85,9.85c.06,13.53,0,27.06,0,40.59Z" transform="translate(0 -0.15)"/>
       <path d="M137.18,62.29c4.61,4.19,9.06,8.13,13.38,12.2,2.66,2.52,3.19,5.58,1.78,8.23-1.8,3.37-6.94,5.37-11.37,1.06q-5.72-5.55-11.43-11.1c-.44-.43-.9-.84-1.95-1.8-4.19,4.33-8.24,8.66-12.45,12.84-3,3-6,3.3-9.23,1.32a6,6,0,0,1-2-8.51,13.79,13.79,0,0,1,2-2.42c4.06-4,8.15-7.92,12.38-12-.54-.56-1-1.06-1.45-1.52-3.8-3.7-7.63-7.38-11.41-11.11-2.75-2.73-3.26-5.5-1.63-8.34,2.31-4,7.53-4.55,11.28-.88,4.24,4.15,8.27,8.5,12.51,12.89,1.06-1,1.56-1.4,2-1.86,3.77-3.74,7.52-7.49,11.31-11.22,2.56-2.52,5.4-3.15,8.26-1.91a6.27,6.27,0,0,1,3.1,8.84,13.16,13.16,0,0,1-2.2,2.75C146,53.72,142,57.66,137.18,62.29Z" transform="translate(0 -0.15)"/>
     </svg>
+  );
+}
+
+/* ---------- vignette overlay ----------------------------------------- */
+// Soft radial darkening at the corners — pulls the eye toward the
+// centre of the frame and adds cinematic atmosphere. Sits beneath the
+// HUD and grain, above the canvas.
+function VignetteOverlay() {
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        pointerEvents: 'none',
+        zIndex: 5,
+        background:
+          'radial-gradient(ellipse 110% 110% at 50% 50%, transparent 30%, rgba(0,0,0,0.18) 65%, rgba(0,0,0,0.55) 100%)',
+      }}
+    />
   );
 }
 
@@ -1418,11 +1464,19 @@ export default function Office() {
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: '#C8CAC4' }}>
-      <Canvas shadows dpr={[1, 1.75]} gl={{ antialias: true }}>
-        <PerspectiveCamera makeDefault position={[CAM_ENTRY_POS.x, CAM_ENTRY_POS.y, CAM_ENTRY_POS.z]} fov={58} />
-        <CameraRig phase={phase} onArrived={handleArrived} onEntryDone={handleEntryDone} />
-        <OfficeScene phase={phase} onMonitorClick={handleClick} />
-      </Canvas>
+      {/* Subtle cool color grade — gives the institutional fluorescent
+          feel of the references (slight contrast + cool tint). */}
+      <div style={{
+        position: 'absolute', inset: 0,
+        filter: 'contrast(1.04) saturate(0.95) hue-rotate(-4deg)',
+      }}>
+        <Canvas shadows dpr={[1, 1.75]} gl={{ antialias: true }}>
+          <PerspectiveCamera makeDefault position={[CAM_ENTRY_POS.x, CAM_ENTRY_POS.y, CAM_ENTRY_POS.z]} fov={58} />
+          <CameraRig phase={phase} onArrived={handleArrived} onEntryDone={handleEntryDone} />
+          <OfficeScene phase={phase} onMonitorClick={handleClick} />
+        </Canvas>
+      </div>
+      {phase !== 'splash' && <VignetteOverlay />}
       {phase !== 'splash' && <GrainOverlay />}
       <StudyAudio active={audioActive} muted={muted} />
       {phase !== 'splash' && (

@@ -47,6 +47,12 @@ const WIN95_STYLE = `
   height: min(78vh, 670px);
   transform: translate(-50%, -50%);
   box-shadow: 0 0 0 2px #2b2b2b, 0 18px 50px rgba(0,0,0,0.55);
+  /* fade-in when boot completes and InnerDesktop mounts */
+  animation: w95-fadein 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes w95-fadein {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.985); }
+  100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
 }
 
 /* ---------- window chrome ----------------------------------------- */
