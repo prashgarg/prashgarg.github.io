@@ -35,6 +35,17 @@ const WIN95_STYLE = `
   font-family: MSSerif, 'Arial', sans-serif;
   user-select: none;
 }
+/* Embedded mode — sits centred in the viewport so the 3D scene behind
+   it stays visible around the edges (Henry Heffernan pattern). */
+.win95-desktop.embedded {
+  inset: auto;
+  top: 50%;
+  left: 50%;
+  width: min(86vw, 1200px);
+  height: min(78vh, 720px);
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 0 2px #2b2b2b, 0 20px 60px rgba(0,0,0,0.55);
+}
 
 /* ---------- window chrome ----------------------------------------- */
 .win95-window {
@@ -328,6 +339,19 @@ const WIN95_STYLE = `
   box-shadow: var(--sunken);
   white-space: nowrap;
 }
+/* system-tray mute button */
+.win95-tray-btn {
+  width: 26px; height: 22px;
+  background: #c3c6ca;
+  border: none; cursor: pointer; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: inset -1px -1px #2b2b2b, inset 1px 1px #fff,
+              inset -2px -2px #86898d,  inset 2px 2px #c3c6ca;
+}
+.win95-tray-btn:active {
+  box-shadow: inset -1px -1px #fff, inset 1px 1px #2b2b2b,
+              inset -2px -2px #c3c6ca, inset 2px 2px #86898d;
+}
 
 /* scrollbar */
 .win95-content::-webkit-scrollbar { width: 16px; }
@@ -405,6 +429,7 @@ interface WinState { x: number; y: number; w: number; h: number; }
 
 const SS_WIN   = 'pg_win';
 const SS_PHASE = 'pg_phase';
+const SS_MUTED = 'pg_muted';
 
 function getInitial(): WinState {
   if (typeof window === 'undefined') return { x: 60, y: 30, w: 860, h: 580 };
@@ -479,18 +504,68 @@ function ResizeGripIcon() {
   );
 }
 
+/* ---------- volume icons (adapted from Study.tsx, MIT SVGs) ------------ */
+function VolumeOnIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 149.48 122.85" width="12" height="12" fill="#2b2b2b">
+      <path d="M87.87,61.64q0,25.53,0,51c0,4-1.16,7.34-4.91,9.36A7.37,7.37,0,0,1,74.24,121q-13.39-12.1-26.88-24.1c-3.16-2.82-6.26-5.7-9.54-8.38a6.53,6.53,0,0,0-3.7-1.41C27.56,87,21,87.05,14.44,87,5.08,87,.1,82.08,0,72.79Q0,61.08,0,49.38c.07-8.78,5.39-14,14.21-14.05,6.73,0,13.46,0,20.18-.06a5.09,5.09,0,0,0,3.06-1.15q17.58-15.46,35-31.06C75.59.3,78.82-.71,82.75,1S87.83,6,87.85,9.85c.06,13.53,0,27.06,0,40.59Z" transform="translate(0 -0.15)"/>
+      <path d="M149.48,62.67c-1.15,16.31-7.19,28.67-18.4,38.5-3.33,2.92-7.63,3-10.05.29s-1.94-6.62,1.24-9.53c5.68-5.18,10.33-11,12.44-18.54,4.23-15,1.13-28.3-9.75-39.63-1.09-1.13-2.32-2.14-3.38-3.3-2.52-2.75-2.65-6.65-.36-9a6.76,6.76,0,0,1,9.05-.27c9.84,8.43,16.26,18.91,18.37,31.79C149.24,56.64,149.3,60.38,149.48,62.67Z" transform="translate(0 -0.15)"/>
+      <path d="M123,61.54a25.75,25.75,0,0,1-8.75,19.53c-2.85,2.56-7,2.71-9.43.29S102.2,74.9,105,72c2.27-2.34,4.46-4.66,4.94-8.08.67-4.66-.48-8.68-4-11.92-1.91-1.75-3.34-3.76-2.87-6.51.41-2.4,1.52-4.35,4-5.19A6.85,6.85,0,0,1,114.19,42,25.77,25.77,0,0,1,123,61.54Z" transform="translate(0 -0.15)"/>
+    </svg>
+  );
+}
+function VolumeOffIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 153.1 122.85" width="12" height="12" fill="#2b2b2b">
+      <path d="M87.87,61.64q0,25.53,0,51c0,4-1.16,7.34-4.91,9.36A7.37,7.37,0,0,1,74.24,121q-13.39-12.1-26.88-24.1c-3.16-2.82-6.26-5.7-9.54-8.38a6.53,6.53,0,0,0-3.7-1.41C27.56,87,21,87.05,14.44,87,5.08,87,.1,82.08,0,72.79Q0,61.08,0,49.38c.07-8.78,5.39-14,14.21-14.05,6.73,0,13.46,0,20.18-.06a5.09,5.09,0,0,0,3.06-1.15q17.58-15.46,35-31.06C75.59.3,78.82-.71,82.75,1S87.83,6,87.85,9.85c.06,13.53,0,27.06,0,40.59Z" transform="translate(0 -0.15)"/>
+      <path d="M137.18,62.29c4.61,4.19,9.06,8.13,13.38,12.2,2.66,2.52,3.19,5.58,1.78,8.23-1.8,3.37-6.94,5.37-11.37,1.06q-5.72-5.55-11.43-11.1c-.44-.43-.9-.84-1.95-1.8-4.19,4.33-8.24,8.66-12.45,12.84-3,3-6,3.3-9.23,1.32a6,6,0,0,1-2-8.51,13.79,13.79,0,0,1,2-2.42c4.06-4,8.15-7.92,12.38-12-.54-.56-1-1.06-1.45-1.52-3.8-3.7-7.63-7.38-11.41-11.11-2.75-2.73-3.26-5.5-1.63-8.34,2.31-4,7.53-4.55,11.28-.88,4.24,4.15,8.27,8.5,12.51,12.89,1.06-1,1.56-1.4,2-1.86,3.77-3.74,7.52-7.49,11.31-11.22,2.56-2.52,5.4-3.15,8.26-1.91a6.27,6.27,0,0,1,3.1,8.84,13.16,13.16,0,0,1-2.2,2.75C146,53.72,142,57.66,137.18,62.29Z" transform="translate(0 -0.15)"/>
+    </svg>
+  );
+}
+
 /* ---------- main component --------------------------------------------- */
 interface InnerDesktopProps {
   onClose: () => void;
+  /** When true, the desktop renders as a centred window with the 3D
+   *  scene visible around it (Henry Heffernan pattern). */
+  embedded?: boolean;
 }
 
-export default function InnerDesktop({ onClose }: InnerDesktopProps) {
+export default function InnerDesktop({ onClose, embedded = false }: InnerDesktopProps) {
   const [time, setTime] = useState(getTime);
   const [win, setWin] = useState<WinState>(getInitial);
   const [isMaximized, setIsMaximized] = useState(false);
   const [preMax, setPreMax] = useState<WinState | null>(null);
   const [isMinimized, setIsMinimized] = useState(false);
   const [isActive, setIsActive] = useState(true);
+
+  // ---------- ambient audio (continues from the study) ----------
+  const [muted, setMuted] = useState<boolean>(() => {
+    try { return sessionStorage.getItem(SS_MUTED) === '1'; } catch { return false; }
+  });
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    // When embedded inside the 3D scene the parent owns the audio
+    // (Office.tsx's StudyAudio) — skip our own loop to avoid double playback.
+    if (embedded) return;
+    const audio = new Audio('/audio/ambient.mp3');
+    audio.loop   = true;
+    audio.volume = 0.32;
+    audio.muted  = muted;
+    audioRef.current = audio;
+    // attempt autoplay; if blocked wait for first interaction
+    audio.play().catch(() => {
+      const resume = () => { audio.play().catch(() => {}); };
+      document.addEventListener('pointerdown', resume, { once: true });
+    });
+    return () => { audio.pause(); audio.src = ''; };
+  }, [embedded]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (audioRef.current) audioRef.current.muted = muted;
+    try { sessionStorage.setItem(SS_MUTED, muted ? '1' : '0'); } catch { /* ignore */ }
+  }, [muted]);
 
   // inject CSS + Google Fonts once
   useEffect(() => {
@@ -603,7 +678,7 @@ export default function InnerDesktop({ onClose }: InnerDesktopProps) {
 
   return (
     /* clicking the teal desktop background deactivates the window */
-    <div className="win95-desktop" onMouseDown={() => setIsActive(false)}>
+    <div className={`win95-desktop${embedded ? ' embedded' : ''}`} onMouseDown={() => setIsActive(false)}>
 
       {!isMinimized && (
         /* clicking anywhere on the window activates it */
@@ -727,6 +802,15 @@ export default function InnerDesktop({ onClose }: InnerDesktopProps) {
         </button>
 
         <div className="win95-toolbar-spacer" />
+        {/* system tray: mute toggle */}
+        <button
+          className="win95-tray-btn"
+          title={muted ? 'Unmute ambient' : 'Mute ambient'}
+          onMouseDown={() => { playUiClick('down'); setMuted(m => !m); }}
+          onMouseUp={() => playUiClick('up')}
+        >
+          {muted ? <VolumeOffIcon /> : <VolumeOnIcon />}
+        </button>
         <div className="win95-clock">{time}</div>
       </div>
     </div>

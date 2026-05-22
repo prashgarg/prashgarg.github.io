@@ -16,6 +16,53 @@ import { PerspectiveCamera, ContactShadows, MeshReflectorMaterial } from '@react
 import * as THREE from 'three';
 import InnerDesktop from './InnerDesktop';
 
+/* ---------- shared UI audio helpers ---------------------------------- */
+// Mechanical click + keyboard typing sounds, synthesised inline so we
+// don't need any audio files. Shared AudioContext (created lazily on
+// the first call) so it gets unlocked by the same user gesture as the
+// main ambient audio.
+let _uiAc: AudioContext | null = null;
+function getUiAc(): AudioContext | null {
+  if (typeof window === 'undefined') return null;
+  if (!_uiAc) {
+    try { _uiAc = new ((window as any).AudioContext || (window as any).webkitAudioContext)(); }
+    catch { return null; }
+  }
+  if (_uiAc.state === 'suspended') _uiAc.resume();
+  return _uiAc;
+}
+function playUiClick(type: 'down' | 'up' = 'down') {
+  const ac = getUiAc(); if (!ac) return;
+  const now    = ac.currentTime;
+  const durS   = type === 'down' ? 0.024 : 0.016;
+  const bpFreq = type === 'down' ? 1800 : 3200;
+  const gain   = type === 'down' ? 0.22 : 0.16;
+  const n      = Math.floor(ac.sampleRate * durS);
+  const buf    = ac.createBuffer(1, n, ac.sampleRate);
+  const d      = buf.getChannelData(0);
+  for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / (n * 0.25));
+  const src = ac.createBufferSource(); src.buffer = buf;
+  const bpf = ac.createBiquadFilter(); bpf.type = 'bandpass'; bpf.frequency.value = bpFreq; bpf.Q.value = 0.7;
+  const g   = ac.createGain(); g.gain.value = gain;
+  src.connect(bpf); bpf.connect(g); g.connect(ac.destination); src.start(now);
+}
+// Softer, slightly varied keystroke for typewriter HUD.
+function playKeystroke() {
+  const ac = getUiAc(); if (!ac) return;
+  const now    = ac.currentTime;
+  const durS   = 0.013 + Math.random() * 0.006;
+  const bpFreq = 2200 + Math.random() * 900;
+  const gain   = 0.085 + Math.random() * 0.025;
+  const n      = Math.floor(ac.sampleRate * durS);
+  const buf    = ac.createBuffer(1, n, ac.sampleRate);
+  const d      = buf.getChannelData(0);
+  for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / (n * 0.2));
+  const src = ac.createBufferSource(); src.buffer = buf;
+  const bpf = ac.createBiquadFilter(); bpf.type = 'bandpass'; bpf.frequency.value = bpFreq; bpf.Q.value = 0.85;
+  const g   = ac.createGain(); g.gain.value = gain;
+  src.connect(bpf); bpf.connect(g); g.connect(ac.destination); src.start(now);
+}
+
 /* ---------- phase type ------------------------------------------------ */
 type Phase = 'splash' | 'entering' | 'idle' | 'dollying' | 'on-monitor' | 'booting' | 'desktop';
 
@@ -269,17 +316,34 @@ function CameraRig({ phase, onArrived, onEntryDone }: {
       camera.lookAt(tgt.current);
       return;
     }
-    // ── idle: subtle parallax drift (Henry's pattern) ──────────────────────
+    // ── idle: parallax + monitor magnetism (Henry's pattern) ──────────────
+    // - subtle sine drift so it never feels static
+    // - cursor moves camera laterally + tilts target (more breathing)
+    // - "monitor magnet": the closer the cursor is to the screen centre
+    //   (top-centre of viewport), the further the camera dollies in
     const ms = state.clock.elapsedTime * 1000;
-    const driftX = Math.sin((ms + 19000) * 0.00007) * 0.18;
-    const driftY = Math.sin((ms +  1000) * 0.000003) * 0.06;
-    const wx = idlePos.current.x + driftX - mouse.current.x * 0.25;
-    const wy = idlePos.current.y + driftY + mouse.current.y * 0.15;
+    const driftX = Math.sin((ms + 19000) * 0.00007) * 0.22;
+    const driftY = Math.sin((ms +  1000) * 0.000003) * 0.08;
+    // proximity to the monitor in screen space — monitor sits roughly
+    // at (mouseX ~ -0.4, mouseY ~ -0.3) when at idle, so when the cursor
+    // moves into that region we want the camera to lean in.
+    const mx = mouse.current.x, my = mouse.current.y;
+    const distToMon = Math.hypot(mx - (-0.40), my - (-0.30));
+    const magnet = 1 - Math.min(1, distToMon / 1.1);   // 0…1, peaks near monitor
+    const zoomK  = Math.pow(magnet, 1.8) * 0.30;       // 0…0.30 — gentle lean-in
+    // wider cursor-parallax for "breathing"
+    const wx = idlePos.current.x + driftX - mx * 0.45;
+    const wy = idlePos.current.y + driftY + my * 0.28;
+    // dolly toward monitor when cursor is near monitor — interpolate
+    // between idlePos and a point closer to the monitor
+    const zoomedZ = idlePos.current.z * (1 - zoomK) + (DESK_Z + 2.4) * zoomK;
+    const zoomedY = idlePos.current.y * (1 - zoomK * 0.4) + 1.20 * (zoomK * 0.4);
     camera.position.x += (wx - camera.position.x) * 0.05;
-    camera.position.y += (wy - camera.position.y) * 0.05;
-    camera.position.z += (idlePos.current.z - camera.position.z) * 0.05;
-    const tx = idleTgt.current.x + mouse.current.x * 0.08;
-    const ty = idleTgt.current.y - mouse.current.y * 0.05;
+    camera.position.y += (wy + (zoomedY - idlePos.current.y) - camera.position.y) * 0.05;
+    camera.position.z += (zoomedZ - camera.position.z) * 0.05;
+    // target also drifts and leans toward monitor when zooming
+    const tx = idleTgt.current.x + mx * 0.14 + (LEFT_DESK_X - idleTgt.current.x) * zoomK * 0.5;
+    const ty = idleTgt.current.y - my * 0.08;
     tgt.current.x += (tx - tgt.current.x) * 0.07;
     tgt.current.y += (ty - tgt.current.y) * 0.07;
     camera.lookAt(tgt.current);
@@ -790,7 +854,7 @@ function BiosScreen({ onDone }: { onDone: () => void }) {
   const dismissedRef = useRef(false);
 
   const LINES = [
-    { text: 'prashantgarg.os  v1.0',                                          type: 'header' },
+    { text: 'prashantgarg.org  v1.0',                                          type: 'header' },
     { text: 'Economist · Cambridge · Imperial · LSE',                         type: 'sub'    },
     { text: '',                                                                 type: 'blank'  },
     { text: '> mounting research archives',                                    type: 'check'  },
@@ -842,12 +906,19 @@ function BiosScreen({ onDone }: { onDone: () => void }) {
       </div>
       {showPopup && (
         <div onClick={dismiss} style={{ border: '7px solid #fff', padding: '32px 44px', width: 'min(88vw, 340px)', boxSizing: 'border-box', cursor: 'pointer', opacity: dismissed ? 0 : 1, transform: dismissed ? 'scale(1.06)' : 'scale(1)', transition: dismissed ? 'opacity 0.2s ease, transform 0.2s ease' : 'none', animation: dismissed ? 'none' : 'bios-popup-in 0.28s cubic-bezier(0.16,1,0.3,1) both' }}>
-          <div style={{ color: 'rgba(255,255,255,0.55)', fontSize: 11, letterSpacing: '0.10em', marginBottom: 20 }}>prashantgarg.os&nbsp;&nbsp;{new Date().getFullYear()}</div>
+          <div style={{ color: 'rgba(255,255,255,0.55)', fontSize: 11, letterSpacing: '0.10em', marginBottom: 20 }}>prashantgarg.org&nbsp;&nbsp;{new Date().getFullYear()}</div>
           <div style={{ color: '#fff', fontSize: 13, letterSpacing: '0.04em', marginBottom: 28, display: 'flex', alignItems: 'center', gap: 7 }}>
             Click START to enter
             <span style={{ display: 'inline-block', width: '0.65em', height: '1.05em', background: '#fff', verticalAlign: 'middle', animation: 'bios-blink 0.65s step-end infinite' }} />
           </div>
-          <button onMouseEnter={() => setStartHover(true)} onMouseLeave={() => setStartHover(false)} onClick={(e) => { e.stopPropagation(); dismiss(); }} style={{ background: startHover ? '#fff' : '#000', color: startHover ? '#000' : '#fff', border: '2px solid #fff', padding: '7px 32px', fontFamily: mono, fontSize: 12, letterSpacing: '0.18em', cursor: 'pointer', transition: 'background 0.12s ease, color 0.12s ease', outline: 'none' }}>START</button>
+          <button
+            onMouseEnter={() => setStartHover(true)}
+            onMouseLeave={() => setStartHover(false)}
+            onMouseDown={() => playUiClick('down')}
+            onMouseUp={() => playUiClick('up')}
+            onClick={(e) => { e.stopPropagation(); dismiss(); }}
+            style={{ background: startHover ? '#fff' : '#000', color: startHover ? '#000' : '#fff', border: '2px solid #fff', padding: '7px 32px', fontFamily: mono, fontSize: 12, letterSpacing: '0.18em', cursor: 'pointer', transition: 'background 0.12s ease, color 0.12s ease', outline: 'none' }}
+          >START</button>
         </div>
       )}
       <style>{`@keyframes bios-blink{0%,100%{opacity:1}50%{opacity:0}}@keyframes bios-popup-in{from{opacity:0;transform:scale(0.95)}to{opacity:1;transform:scale(1)}}`}</style>
@@ -862,7 +933,7 @@ function BootOverlay({ onDone }: { onDone: () => void }) {
   const skipped = useRef(false);
   useEffect(() => {
     const script = [
-      { line: 'prashantgarg.os',                                typeMs: 14, pauseMs: 120 },
+      { line: 'prashantgarg.org',                                typeMs: 14, pauseMs: 120 },
       { line: '> waking the study  [ ok ]',                     typeMs: 8,  pauseMs: 140 },
       { line: '> mounting research, talks, library  [ ok ]',    typeMs: 8,  pauseMs: 220 },
       { line: '',                                                typeMs: 0,  pauseMs: 80  },
@@ -889,8 +960,22 @@ function BootOverlay({ onDone }: { onDone: () => void }) {
   }, []);
   useEffect(() => { if (!done) return; const t = setTimeout(onDone, 380); return () => clearTimeout(t); }, [done, onDone]);
   return (
-    <div onClick={() => { skipped.current = true; setDone(true); }} style={{ position: 'fixed', inset: 0, zIndex: 9999, background: '#0E0D0B', color: '#A4D9C5', fontFamily: "ui-monospace,'SF Mono',Menlo,Monaco,Consolas,monospace", display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: '14vh', cursor: 'pointer' }}>
-      <div style={{ width: 'min(92vw, 560px)', padding: 24 }}>
+    <div
+      onClick={() => { skipped.current = true; setDone(true); }}
+      style={{
+        position: 'fixed',
+        top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+        width: 'min(86vw, 1200px)', height: 'min(78vh, 720px)',
+        zIndex: 9999,
+        background: '#0E0D0B', color: '#A4D9C5',
+        fontFamily: "ui-monospace,'SF Mono',Menlo,Monaco,Consolas,monospace",
+        display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
+        paddingTop: '10%', cursor: 'pointer',
+        boxShadow: '0 0 0 2px #2b2b2b, 0 20px 60px rgba(0,0,0,0.55)',
+        boxSizing: 'border-box',
+      }}
+    >
+      <div style={{ width: 'min(92%, 560px)', padding: 24 }}>
         <pre style={{ margin: 0, fontSize: 13, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{text}<span style={{ color: '#F9BD2B' }}>▋</span></pre>
         <div style={{ marginTop: 36, fontSize: 11, color: 'rgba(164,217,197,0.45)' }}>press any key · click to skip</div>
       </div>
@@ -995,22 +1080,47 @@ function HudOverlay({ muted, onMuteToggle }: { muted: boolean; onMuteToggle: () 
   const [showTime, setShowTime] = useState(false);
   const [muteActive,   setMuteActive]   = useState(false);
   const [muteHovering, setMuteHovering] = useState(false);
-  function typeString(str: string, setter: (s: string) => void, done: () => void) {
+  function typeString(str: string, setter: (s: string) => void, done: () => void, withSound = false) {
     let i = 0, built = '';
-    function step() { if (i >= str.length) { done(); return; } built += str[i++]; setter(built); setTimeout(step, Math.random()*50+50); }
+    function step() {
+      if (i >= str.length) { done(); return; }
+      const ch = str[i++];
+      built += ch;
+      setter(built);
+      if (withSound && ch !== ' ') playKeystroke();
+      setTimeout(step, Math.random()*70+55);
+    }
     step();
   }
   useEffect(() => {
-    const t = setTimeout(() => { typeString('Prashant Garg', setNameText, () => { setShowSub(true); typeString('Economist', setSubText, () => { setShowTime(true); setTimeText(getTime()); }); }); }, 400);
+    const t = setTimeout(() => {
+      typeString('Prashant Garg', setNameText, () => {
+        setShowSub(true);
+        typeString('Economist', setSubText, () => {
+          setShowTime(true);
+          setTimeText(getTime());
+        }, true);
+      }, true);
+    }, 400);
     return () => clearTimeout(t);
   }, []); // eslint-disable-line
   useEffect(() => { if (!showTime) return; const id = setInterval(() => setTimeText(getTime()), 5000); return () => clearInterval(id); }, [showTime]);
-  const chip: React.CSSProperties = { background: '#000', color: '#fff', fontFamily: "ui-monospace,'SF Mono',Menlo,Consolas,monospace", fontSize: 10, lineHeight: '14px', padding: '3px 8px', display: 'inline-block', letterSpacing: '0.04em', whiteSpace: 'nowrap' };
+  // Henry-style HUD chips — bigger, more letter-spacing, monospaced
+  const chip: React.CSSProperties = {
+    background: '#000', color: '#fff',
+    fontFamily: "ui-monospace,'SF Mono',Menlo,Consolas,monospace",
+    fontSize: 15, lineHeight: '22px',
+    padding: '4px 12px',
+    display: 'inline-block',
+    letterSpacing: '0.06em',
+    whiteSpace: 'nowrap',
+  };
+  const chipName: React.CSSProperties = { ...chip, fontSize: 17, lineHeight: '24px' };
   const muteOpacity = muteActive ? 0.2 : muteHovering ? 0.8 : 1.0;
   const muteScale   = muteActive ? 0.8 : 1.0;
   return (
-    <div style={{ position: 'fixed', bottom: 16, left: 16, zIndex: 8, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 4 }}>
-      {nameText && <div style={chip}>{nameText}</div>}
+    <div style={{ position: 'fixed', bottom: 20, left: 20, zIndex: 8, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 5 }}>
+      {nameText && <div style={chipName}>{nameText}</div>}
       {showSub  && <div style={chip}>{subText}</div>}
       {showTime && <div style={chip}>{timeText}</div>}
       <button onMouseEnter={() => setMuteHovering(true)} onMouseLeave={() => { setMuteHovering(false); setMuteActive(false); }} onMouseDown={e => { e.stopPropagation(); setMuteActive(true); onMuteToggle(); }} onMouseUp={() => setMuteActive(false)} onTouchStart={e => { e.stopPropagation(); onMuteToggle(); }} aria-label={muted ? 'Unmute' : 'Mute'} style={{ width: 40, height: 40, background: '#000', border: 'none', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxSizing: 'border-box' }}>
@@ -1072,7 +1182,9 @@ export default function Office() {
     try { sessionStorage.setItem(SS_MUTED, muted ? '1' : '0'); } catch { /* */ }
   }, [muted]);
 
-  const audioActive = phase === 'idle' || phase === 'dollying' || phase === 'on-monitor';
+  // audio plays during every visible phase — the 3D room stays on screen
+  // even when the embedded InnerDesktop is open, so music continues
+  const audioActive = phase !== 'splash';
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: '#C8CAC4' }}>
@@ -1081,15 +1193,15 @@ export default function Office() {
         <CameraRig phase={phase} onArrived={handleArrived} onEntryDone={handleEntryDone} />
         <OfficeScene phase={phase} onMonitorClick={handleClick} />
       </Canvas>
-      {phase !== 'desktop' && phase !== 'splash' && <GrainOverlay />}
+      {phase !== 'splash' && <GrainOverlay />}
       <StudyAudio active={audioActive} muted={muted} />
-      {phase !== 'desktop' && phase !== 'splash' && (
+      {phase !== 'splash' && (
         <HudOverlay muted={muted} onMuteToggle={() => setMuted(m => !m)} />
       )}
       {(phase === 'idle' || phase === 'entering') && isTouch && <TapHint />}
       {phase === 'splash'  && <BiosScreen onDone={() => setPhase('entering')} />}
       {phase === 'booting' && <BootOverlay onDone={handleBootDone} />}
-      {phase === 'desktop' && <InnerDesktop onClose={handleDesktopClose} />}
+      {phase === 'desktop' && <InnerDesktop onClose={handleDesktopClose} embedded />}
     </div>
   );
 }
