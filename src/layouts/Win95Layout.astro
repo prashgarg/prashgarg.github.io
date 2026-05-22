@@ -346,6 +346,42 @@ const navItems = [
     </div>
 
     <script is:inline>
+      /* ----- synthesised UI click sounds (mirrors InnerDesktop.tsx) ----- */
+      (function uiSounds() {
+        var _ac = null;
+        function getAc() {
+          if (!_ac) {
+            try { _ac = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) { return null; }
+          }
+          if (_ac.state === 'suspended') _ac.resume();
+          return _ac;
+        }
+        function playClick(type) {
+          var ac = getAc(); if (!ac) return;
+          var now   = ac.currentTime;
+          var durS  = type === 'down' ? 0.022 : 0.015;
+          var freq  = type === 'down' ? 1800  : 3200;
+          var gain  = type === 'down' ? 0.22  : 0.16;
+          var n     = Math.floor(ac.sampleRate * durS);
+          var buf   = ac.createBuffer(1, n, ac.sampleRate);
+          var d     = buf.getChannelData(0);
+          for (var i = 0; i < n; i++) d[i] = (Math.random()*2-1) * Math.exp(-i/(n*0.25));
+          var src = ac.createBufferSource(); src.buffer = buf;
+          var bpf = ac.createBiquadFilter(); bpf.type = 'bandpass'; bpf.frequency.value = freq; bpf.Q.value = 0.7;
+          var g   = ac.createGain(); g.gain.value = gain;
+          src.connect(bpf); bpf.connect(g); g.connect(ac.destination);
+          src.start(now);
+        }
+        document.querySelectorAll(
+          '.w95-menuitem, .w95-titlebtn, .w95-titlebtn-close, .w95-startbtn'
+        ).forEach(function(el) {
+          el.addEventListener('mousedown', function() { playClick('down'); });
+          el.addEventListener('mouseup',   function() { playClick('up');   });
+        });
+      })();
+    </script>
+
+    <script is:inline>
       (function clock() {
         function tick() {
           var d = new Date();

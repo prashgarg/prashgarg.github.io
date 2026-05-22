@@ -339,6 +339,59 @@ const WIN95_STYLE = `
 }
 `;
 
+/* ---------- synthesised UI click sounds (Henry Heffernan pattern, MIT) ---
+ * Henry plays mouseDown.mp3 + mouseUp.mp3 from a positional 3D source at
+ * the monitor location.  We achieve the same tactile feel by synthesising a
+ * short noise burst — no audio file required.
+ *
+ * Two flavours (matching Henry's two-sound approach):
+ *   'down' — 22 ms / 1800 Hz BPF / gain 0.22  (the press)
+ *   'up'   — 15 ms / 3200 Hz BPF / gain 0.16  (the release)
+ */
+let _uiAc: AudioContext | null = null;
+
+function getUiAc(): AudioContext | null {
+  if (typeof window === 'undefined') return null;
+  if (!_uiAc) {
+    try {
+      _uiAc = new ((window as any).AudioContext || (window as any).webkitAudioContext)();
+    } catch { return null; }
+  }
+  if (_uiAc.state === 'suspended') _uiAc.resume();
+  return _uiAc;
+}
+
+function playUiClick(type: 'down' | 'up' = 'down') {
+  const ac = getUiAc();
+  if (!ac) return;
+  const now     = ac.currentTime;
+  const durS    = type === 'down' ? 0.022 : 0.015;
+  const bpFreq  = type === 'down' ? 1800  : 3200;
+  const gain    = type === 'down' ? 0.22  : 0.16;
+  const samples = Math.floor(ac.sampleRate * durS);
+
+  const buf = ac.createBuffer(1, samples, ac.sampleRate);
+  const d   = buf.getChannelData(0);
+  for (let i = 0; i < samples; i++) {
+    // white noise shaped with a fast exponential decay
+    d[i] = (Math.random() * 2 - 1) * Math.exp(-i / (samples * 0.25));
+  }
+
+  const src = ac.createBufferSource();
+  src.buffer = buf;
+
+  const bpf        = ac.createBiquadFilter();
+  bpf.type         = 'bandpass';
+  bpf.frequency.value = bpFreq;
+  bpf.Q.value      = 0.7;
+
+  const g          = ac.createGain();
+  g.gain.value     = gain;
+
+  src.connect(bpf); bpf.connect(g); g.connect(ac.destination);
+  src.start(now);
+}
+
 /* ---------- helpers ---------------------------------------------------- */
 function getTime() {
   const d = new Date();
@@ -387,6 +440,7 @@ function NavLink({ label, href }: { label: string; href: string }) {
   const [flash, setFlash] = useState(false);
   const go = (e: React.MouseEvent) => {
     e.preventDefault();
+    playUiClick('down');
     setFlash(true);
     setTimeout(() => { window.location.href = href; }, 100);
   };
@@ -395,6 +449,7 @@ function NavLink({ label, href }: { label: string; href: string }) {
       href={href}
       className={`win95-nav-link ${flash ? 'flash' : ''}`}
       onMouseDown={go}
+      onMouseUp={() => playUiClick('up')}
     >
       <span className="win95-nav-link-dot" />
       <h4>{label}</h4>
@@ -569,19 +624,22 @@ export default function InnerDesktop({ onClose }: InnerDesktopProps) {
             <button
               className="win95-titlebtn"
               title="Minimise"
-              onMouseDown={e => e.stopPropagation()}
+              onMouseDown={e => { e.stopPropagation(); playUiClick('down'); }}
+              onMouseUp={() => playUiClick('up')}
               onClick={e => { e.stopPropagation(); minimize(); }}
             >_</button>
             <button
               className="win95-titlebtn"
               title={isMaximized ? 'Restore' : 'Maximise'}
-              onMouseDown={e => e.stopPropagation()}
+              onMouseDown={e => { e.stopPropagation(); playUiClick('down'); }}
+              onMouseUp={() => playUiClick('up')}
               onClick={e => { e.stopPropagation(); toggleMaximize(); }}
             >□</button>
             <button
               className="win95-titlebtn win95-titlebtn-close"
               title="Close / back to study"
-              onMouseDown={e => e.stopPropagation()}
+              onMouseDown={e => { e.stopPropagation(); playUiClick('down'); }}
+              onMouseUp={() => playUiClick('up')}
               onClick={e => { e.stopPropagation(); onClose(); }}
             >✕</button>
           </div>
@@ -595,7 +653,12 @@ export default function InnerDesktop({ onClose }: InnerDesktopProps) {
                 {NAV_LINKS.map(l => <NavLink key={l.href} label={l.label} href={l.href} />)}
               </div>
               <div className="win95-nav-spacer" />
-              <span className="win95-nav-back" onClick={onClose}>← back to study</span>
+              <span
+                className="win95-nav-back"
+                onMouseDown={() => playUiClick('down')}
+                onMouseUp={() => playUiClick('up')}
+                onClick={onClose}
+              >← back to study</span>
             </nav>
 
             <div className="win95-content">
@@ -609,6 +672,8 @@ export default function InnerDesktop({ onClose }: InnerDesktopProps) {
                     <button
                       key={l.href}
                       className="win95-btn"
+                      onMouseDown={() => playUiClick('down')}
+                      onMouseUp={() => playUiClick('up')}
                       onClick={() => { window.location.href = l.href; }}
                     >
                       {l.label}
@@ -636,7 +701,11 @@ export default function InnerDesktop({ onClose }: InnerDesktopProps) {
 
       {/* ---- taskbar ---- */}
       <div className="win95-toolbar">
-        <button className="win95-start-btn">
+        <button
+          className="win95-start-btn"
+          onMouseDown={() => playUiClick('down')}
+          onMouseUp={() => playUiClick('up')}
+        >
           <svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
             <rect x="0" y="0" width="7" height="7" fill="#f25022"/>
             <rect x="9" y="0" width="7" height="7" fill="#7fba00"/>
@@ -649,6 +718,8 @@ export default function InnerDesktop({ onClose }: InnerDesktopProps) {
         {/* window chip — always visible, sunken when active */}
         <button
           className={`win95-taskbar-chip ${chipFocused ? 'focused' : ''}`}
+          onMouseDown={() => playUiClick('down')}
+          onMouseUp={() => playUiClick('up')}
           onClick={onChipClick}
         >
           <MonitorIcon />

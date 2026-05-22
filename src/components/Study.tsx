@@ -60,7 +60,7 @@ const CAM_IDLE_TGT = new THREE.Vector3(0.2, 1.4, -0.3);
 const CAM_MONITOR_POS = new THREE.Vector3(0.05, 1.45, 0.6);
 const CAM_MONITOR_TGT = new THREE.Vector3(0.05, 1.45, -0.35);
 
-type Phase = 'entering' | 'idle' | 'dollying' | 'on-monitor' | 'booting' | 'desktop';
+type Phase = 'splash' | 'entering' | 'idle' | 'dollying' | 'on-monitor' | 'booting' | 'desktop';
 const DOLLY_MS  = 1600;
 const ENTRY_MS  = 2200;   // camera entry duration — Henry uses 2500 ms
 function easeOutCubic(t: number) { return 1 - Math.pow(1 - t, 3); }
@@ -84,6 +84,10 @@ function CameraRig({ phase, onArrived, onEntryDone }: {
   const fromTgt = useRef(CAM_IDLE_TGT.clone());
   const arrivedFired = useRef(false);
   const entryFired = useRef(false);
+  // performance.now() timestamp for when 'entering' phase actually starts —
+  // avoids the clock.elapsedTime bug where elapsedTime accumulates during
+  // the BIOS splash so the entry animation would snap instantly.
+  const entryStartTime = useRef<number | null>(null);
   // aspect-adaptive idle position / target (updated when size changes)
   const idlePos = useRef(CAM_IDLE_POS.clone());
   const idleTgt = useRef(CAM_IDLE_TGT.clone());
@@ -121,6 +125,11 @@ function CameraRig({ phase, onArrived, onEntryDone }: {
       fromTgt.current.copy(tgt.current);
       arrivedFired.current = false;
     }
+    if (phase === 'entering') {
+      // reset so the first useFrame sets the start timestamp fresh
+      entryStartTime.current = null;
+      entryFired.current = false;
+    }
   }, [phase, camera]);
 
   useEffect(() => {
@@ -140,7 +149,16 @@ function CameraRig({ phase, onArrived, onEntryDone }: {
   useFrame((state) => {
     // ── entry animation (adapted from Henry's post-load TWEEN) ──────────
     if (phase === 'entering') {
-      const k = easeOutExpo(Math.min(1, state.clock.elapsedTime * 1000 / ENTRY_MS));
+      // First frame: latch the wall-clock time and snap camera to start pos.
+      // Using performance.now() rather than clock.elapsedTime so the BIOS
+      // splash time (which keeps the R3F clock running) doesn't consume
+      // the 2200 ms budget before the animation even starts.
+      if (entryStartTime.current === null) {
+        entryStartTime.current = performance.now();
+        camera.position.copy(CAM_ENTRY_POS);
+        tgt.current.copy(CAM_ENTRY_TGT);
+      }
+      const k = easeOutExpo(Math.min(1, (performance.now() - entryStartTime.current) / ENTRY_MS));
       camera.position.lerpVectors(CAM_ENTRY_POS, idlePos.current, k);
       tgt.current.lerpVectors(CAM_ENTRY_TGT, idleTgt.current, k);
       camera.lookAt(tgt.current);
@@ -868,6 +886,187 @@ function Scene({ phase, onMonitorClick, onArrived }: {
   );
 }
 
+/* ---------- BIOS splash screen --------------------------------------- */
+// Shown on fresh load before the 3D entry animation.
+// Sequence:
+//   1. BIOS lines appear one by one (130 ms stagger)
+//   2. 600 ms after last line: BIOS text fades out
+//   3. "START" popup fades in (7px white border, centred)
+//   4. Click START (or any key) → popup scales + fades → onDone()
+// Adapted from Henry Heffernan's BIOS screen pattern (MIT).
+function BiosScreen({ onDone }: { onDone: () => void }) {
+  const [step,        setStep]        = useState(0);
+  const [biosGone,    setBiosGone]    = useState(false);
+  const [showPopup,   setShowPopup]   = useState(false);
+  const [dismissed,   setDismissed]   = useState(false);
+  const [startHover,  setStartHover]  = useState(false);
+  const dismissedRef = useRef(false);
+
+  const LINES = [
+    { text: 'prashantgarg.os  v1.0',                                        type: 'header' },
+    { text: 'Economist · Cambridge · Imperial · LSE',                       type: 'sub'    },
+    { text: '',                                                               type: 'blank'  },
+    { text: '> mounting research archives',                                  type: 'check'  },
+    { text: '> calibrating global automation',                               type: 'check'  },
+    { text: '> warming the study lamp',                                      type: 'check'  },
+    { text: '> loading vinyl collection',                                    type: 'check'  },
+    { text: '',                                                               type: 'blank'  },
+    { text: `Press any key to skip memory test · ${new Date().getFullYear()}`, type: 'footer' },
+  ] as const;
+  // cumulative delays (ms) for each line
+  const DELAYS = [0, 130, 280, 420, 560, 700, 840, 960, 1060];
+
+  useEffect(() => {
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    DELAYS.forEach((d, i) => {
+      timers.push(setTimeout(() => setStep(i + 1), d));
+    });
+    // fade BIOS out, then reveal popup
+    timers.push(setTimeout(() => {
+      setBiosGone(true);
+      setTimeout(() => setShowPopup(true), 340);
+    }, 1700));
+    return () => timers.forEach(clearTimeout);
+  }, []);  // eslint-disable-line react-hooks/exhaustive-deps
+
+  const dismiss = () => {
+    if (dismissedRef.current) return;
+    dismissedRef.current = true;
+    setDismissed(true);
+    setTimeout(onDone, 220);
+  };
+
+  // Keyboard dismiss — any key except Tab
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key !== 'Tab') dismiss(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);  // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Window-level pointer dismiss once popup is visible.
+  // R3F's event system captures synthetic pointer events before they reach
+  // DOM onClick handlers on overlays, so we attach at window level (which
+  // fires in capture phase, ahead of any element handler).
+  useEffect(() => {
+    if (!showPopup) return;
+    const onDown = () => dismiss();
+    window.addEventListener('pointerdown', onDown, { capture: true });
+    return () => window.removeEventListener('pointerdown', onDown, { capture: true });
+  }, [showPopup]);  // eslint-disable-line react-hooks/exhaustive-deps
+
+  const mono = "ui-monospace, 'SF Mono', Menlo, Monaco, Consolas, monospace";
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 9999,
+      background: '#000',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontFamily: mono,
+    }}>
+      {/* ── BIOS lines ─────────────────────────────────────── */}
+      <div style={{
+        width: 'min(92vw, 500px)', padding: 24,
+        opacity: biosGone ? 0 : 1,
+        transition: 'opacity 0.32s ease',
+        // hide (not unmount) so layout stays stable during fade
+        pointerEvents: biosGone ? 'none' : 'auto',
+        position: showPopup ? 'absolute' : 'static',
+      }}>
+        {LINES.slice(0, step).map((line, i) => (
+          <div key={i} style={{
+            display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
+            lineHeight: line.type === 'blank' ? '0.85em' : '1.85em',
+            color: line.type === 'header' ? '#ffffff' :
+                   line.type === 'sub'    ? 'rgba(255,255,255,0.52)' :
+                   line.type === 'footer' ? 'rgba(255,255,255,0.28)' : '#a4d9c5',
+            fontSize: line.type === 'header' ? 14 : line.type === 'footer' ? 10 : 12,
+            letterSpacing: line.type === 'header' ? '0.10em' : '0.04em',
+          }}>
+            {line.type === 'check' ? (
+              <>
+                <span>{line.text}</span>
+                <span style={{ color: '#4ec994', marginLeft: 20, flexShrink: 0 }}>[ ok ]</span>
+              </>
+            ) : (
+              <span>{line.text || ' '}</span>
+            )}
+          </div>
+        ))}
+        {step > 0 && step <= LINES.length && (
+          <span style={{ color: '#F9BD2B', fontSize: 13 }}>▋</span>
+        )}
+      </div>
+
+      {/* ── START popup ────────────────────────────────────── */}
+      {showPopup && (
+        <div
+          onClick={dismiss}
+          style={{
+            border: '7px solid #fff',
+            padding: '32px 44px',
+            width: 'min(88vw, 340px)',
+            boxSizing: 'border-box',
+            cursor: 'pointer',
+            // dismiss: scale up + fade out; appear: popup-in animation
+            opacity:   dismissed ? 0   : 1,
+            transform: dismissed ? 'scale(1.06)' : 'scale(1)',
+            transition: dismissed ? 'opacity 0.2s ease, transform 0.2s ease' : 'none',
+            animation: dismissed ? 'none' : 'bios-popup-in 0.28s cubic-bezier(0.16,1,0.3,1) both',
+          }}
+        >
+          <div style={{
+            color: 'rgba(255,255,255,0.55)', fontSize: 11,
+            letterSpacing: '0.10em', marginBottom: 20,
+          }}>
+            prashantgarg.os&nbsp;&nbsp;{new Date().getFullYear()}
+          </div>
+          <div style={{
+            color: '#fff', fontSize: 13, letterSpacing: '0.04em',
+            marginBottom: 28, display: 'flex', alignItems: 'center', gap: 7,
+          }}>
+            Click START to enter
+            {/* blinking block cursor */}
+            <span style={{
+              display: 'inline-block', width: '0.65em', height: '1.05em',
+              background: '#fff', verticalAlign: 'middle',
+              animation: 'bios-blink 0.65s step-end infinite',
+            }} />
+          </div>
+          <button
+            onMouseEnter={() => setStartHover(true)}
+            onMouseLeave={() => setStartHover(false)}
+            onClick={(e) => { e.stopPropagation(); dismiss(); }}
+            style={{
+              background: startHover ? '#fff' : '#000',
+              color:      startHover ? '#000' : '#fff',
+              border: '2px solid #fff',
+              padding: '7px 32px',
+              fontFamily: mono,
+              fontSize: 12, letterSpacing: '0.18em',
+              cursor: 'pointer',
+              transition: 'background 0.12s ease, color 0.12s ease',
+              outline: 'none',
+            }}
+          >
+            START
+          </button>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes bios-blink {
+          0%, 100% { opacity: 1; }
+          50%       { opacity: 0; }
+        }
+        @keyframes bios-popup-in {
+          from { opacity: 0; transform: scale(0.95); }
+          to   { opacity: 1; transform: scale(1);    }
+        }
+      `}</style>
+    </div>
+  );
+}
+
 /* ---------- boot overlay (CRT screen → terminal → inner site) -------- */
 function BootOverlay({ onDone }: { onDone: () => void }) {
   const [text, setText] = useState('');
@@ -945,11 +1144,11 @@ function getTime() {
 
 /* ---------- mute button (Henry Heffernan style) ---------------------- */
 // SVG icons adapted from Henry Heffernan's portfolio-website (MIT).
-// 26.5×26.5 px black square, white icon at 10 px wide.
+// 40×40 px black square, white icon at 16 px wide.
 // States: default opacity 1.0 → hover 0.8 → pressed scale 0.8 / opacity 0.2.
 function VolumeOnIcon() {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 149.48 122.85" width="10" height="10" fill="#fff">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 149.48 122.85" width="16" height="16" fill="#fff">
       <path d="M87.87,61.64q0,25.53,0,51c0,4-1.16,7.34-4.91,9.36A7.37,7.37,0,0,1,74.24,121q-13.39-12.1-26.88-24.1c-3.16-2.82-6.26-5.7-9.54-8.38a6.53,6.53,0,0,0-3.7-1.41C27.56,87,21,87.05,14.44,87,5.08,87,.1,82.08,0,72.79Q0,61.08,0,49.38c.07-8.78,5.39-14,14.21-14.05,6.73,0,13.46,0,20.18-.06a5.09,5.09,0,0,0,3.06-1.15q17.58-15.46,35-31.06C75.59.3,78.82-.71,82.75,1S87.83,6,87.85,9.85c.06,13.53,0,27.06,0,40.59Z" transform="translate(0 -0.15)"/>
       <path d="M149.48,62.67c-1.15,16.31-7.19,28.67-18.4,38.5-3.33,2.92-7.63,3-10.05.29s-1.94-6.62,1.24-9.53c5.68-5.18,10.33-11,12.44-18.54,4.23-15,1.13-28.3-9.75-39.63-1.09-1.13-2.32-2.14-3.38-3.3-2.52-2.75-2.65-6.65-.36-9a6.76,6.76,0,0,1,9.05-.27c9.84,8.43,16.26,18.91,18.37,31.79C149.24,56.64,149.3,60.38,149.48,62.67Z" transform="translate(0 -0.15)"/>
       <path d="M123,61.54a25.75,25.75,0,0,1-8.75,19.53c-2.85,2.56-7,2.71-9.43.29S102.2,74.9,105,72c2.27-2.34,4.46-4.66,4.94-8.08.67-4.66-.48-8.68-4-11.92-1.91-1.75-3.34-3.76-2.87-6.51.41-2.4,1.52-4.35,4-5.19A6.85,6.85,0,0,1,114.19,42,25.77,25.77,0,0,1,123,61.54Z" transform="translate(0 -0.15)"/>
@@ -958,7 +1157,7 @@ function VolumeOnIcon() {
 }
 function VolumeOffIcon() {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 153.1 122.85" width="10" height="10" fill="#fff">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 153.1 122.85" width="16" height="16" fill="#fff">
       <path d="M87.87,61.64q0,25.53,0,51c0,4-1.16,7.34-4.91,9.36A7.37,7.37,0,0,1,74.24,121q-13.39-12.1-26.88-24.1c-3.16-2.82-6.26-5.7-9.54-8.38a6.53,6.53,0,0,0-3.7-1.41C27.56,87,21,87.05,14.44,87,5.08,87,.1,82.08,0,72.79Q0,61.08,0,49.38c.07-8.78,5.39-14,14.21-14.05,6.73,0,13.46,0,20.18-.06a5.09,5.09,0,0,0,3.06-1.15q17.58-15.46,35-31.06C75.59.3,78.82-.71,82.75,1S87.83,6,87.85,9.85c.06,13.53,0,27.06,0,40.59Z" transform="translate(0 -0.15)"/>
       <path d="M137.18,62.29c4.61,4.19,9.06,8.13,13.38,12.2,2.66,2.52,3.19,5.58,1.78,8.23-1.8,3.37-6.94,5.37-11.37,1.06q-5.72-5.55-11.43-11.1c-.44-.43-.9-.84-1.95-1.8-4.19,4.33-8.24,8.66-12.45,12.84-3,3-6,3.3-9.23,1.32a6,6,0,0,1-2-8.51,13.79,13.79,0,0,1,2-2.42c4.06-4,8.15-7.92,12.38-12-.54-.56-1-1.06-1.45-1.52-3.8-3.7-7.63-7.38-11.41-11.11-2.75-2.73-3.26-5.5-1.63-8.34,2.31-4,7.53-4.55,11.28-.88,4.24,4.15,8.27,8.5,12.51,12.89,1.06-1,1.56-1.4,2-1.86,3.77-3.74,7.52-7.49,11.31-11.22,2.56-2.52,5.4-3.15,8.26-1.91a6.27,6.27,0,0,1,3.1,8.84,13.16,13.16,0,0,1-2.2,2.75C146,53.72,142,57.66,137.18,62.29Z" transform="translate(0 -0.15)"/>
     </svg>
@@ -1011,85 +1210,143 @@ function GrainOverlay() {
 }
 
 /* ---------- ambient audio -------------------------------------------- */
-// Layered synthesis:
-//   1. Pink noise → 160 Hz LPF  = soft room presence (no wind, no hiss)
-//   2. 60 Hz sine at -42 dB     = CRT / electrical hum (a detail, not a feature)
-//   3. Sparse vinyl crackle      = fits the record player in the scene
-// Starts on first pointerdown (browser AudioContext policy).
-// Henry plays a recorded office.mp3; we synthesise something in the same spirit.
+// Primary:  load /audio/ambient.mp3 (drop any CC0 loop there — see below).
+// Fallback: synthesised warm ambient — brown noise through a 400 Hz bandpass
+//           + three detuned drone oscillators (A1/E2/A2) with slow LFO
+//           modulation — sounds like music leaking through a wall from the
+//           record player, not static.
+//
+// Volume:   TARGET_VOL = 0.32 (was 0.07 — audible by default).
+// Mute/unmute ramps over 1.2 s to avoid clicks.
+//
+// Good CC0 ambient loops to drop in as /public/audio/ambient.mp3:
+//   • Pixabay — search "lofi study ambient" — royalty-free, no attribution
+//       https://pixabay.com/music/search/ambient%20study/
+//   • Freesound.org — filter by CC0, search "study room ambience"
+//       https://freesound.org/search/?q=room+tone&license=Creative+Commons+0
+// Keep the file small (< 3 MB) — a 2-minute 96 kbps mono MP3 loops cleanly.
+
+const AMBIENT_VOL = 0.32;
+
 function StudyAudio({ active, muted }: { active: boolean; muted: boolean }) {
-  const ctxRef   = useRef<AudioContext | null>(null);
-  const gainRef  = useRef<GainNode | null>(null);
+  const ctxRef     = useRef<AudioContext | null>(null);
+  const gainRef    = useRef<GainNode | null>(null);
   const startedRef = useRef(false);
 
   useEffect(() => {
-    const start = () => {
+    const start = async () => {
       if (startedRef.current) return;
       startedRef.current = true;
 
       const ac = new AudioContext();
       ctxRef.current = ac;
-      const sr = ac.sampleRate;
-
-      // --- pink noise (3-second looped buffer) ---
-      const bufSize = sr * 3;
-      const buf = ac.createBuffer(1, bufSize, sr);
-      const data = buf.getChannelData(0);
-      // Pink noise approximation: blend white samples with gentle integration
-      let b0 = 0, b1 = 0, b2 = 0;
-      for (let i = 0; i < bufSize; i++) {
-        const w = Math.random() * 2 - 1;
-        b0 = 0.99765 * b0 + w * 0.0990460;
-        b1 = 0.96300 * b1 + w * 0.2965164;
-        b2 = 0.57000 * b2 + w * 1.0526913;
-        data[i] = (b0 + b1 + b2 + w * 0.1848) / 5.5;
-
-        // sparse vinyl crackle: ~40 events/min, each a 4-sample impulse
-        if (Math.random() < 40 / (sr * 60)) {
-          for (let j = 0; j < 4 && i + j < bufSize; j++) {
-            data[i + j] += (Math.random() - 0.5) * 0.5;
-          }
-        }
-      }
-      const noise = ac.createBufferSource();
-      noise.buffer = buf;
-      noise.loop = true;
-
-      // heavy low-pass → warm room presence, not hiss
-      const lpf = ac.createBiquadFilter();
-      lpf.type = 'lowpass';
-      lpf.frequency.value = 160;
-      lpf.Q.value = 0.5;
-
-      // --- 60 Hz CRT hum ---
-      const hum = ac.createOscillator();
-      hum.type = 'sine';
-      hum.frequency.value = 60;
-      const humGain = ac.createGain();
-      humGain.gain.value = 0.006; // barely audible, just a presence
 
       const master = ac.createGain();
       gainRef.current = master;
-      master.gain.setValueAtTime(0, ac.currentTime);
-      master.gain.linearRampToValueAtTime(0.07, ac.currentTime + 5);
+      master.gain.setValueAtTime(0, ac.currentTime); // stay silent until phase='idle'
+      master.connect(ac.destination);                // active useEffect triggers the ramp
 
-      noise.connect(lpf);
-      lpf.connect(master);
-      hum.connect(humGain);
-      humGain.connect(master);
-      master.connect(ac.destination);
-      noise.start();
-      hum.start();
+      // ── 1. Try loading an ambient audio file ──────────────────────────
+      let fileLoaded = false;
+      try {
+        const res = await fetch('/audio/ambient.mp3');
+        if (res.ok) {
+          const ab  = await res.arrayBuffer();
+          const buf = await ac.decodeAudioData(ab);
+          const src = ac.createBufferSource();
+          src.buffer = buf;
+          src.loop   = true;
+          src.connect(master);
+          src.start();
+          fileLoaded = true;
+        }
+      } catch { /* fall through to synthesis */ }
+
+      if (fileLoaded) return;
+
+      // ── 2. Fallback synthesis: warm harmonic ambient ──────────────────
+      // Brown noise buffer (4 s loop) — 1/f² spectrum, deep and rich.
+      // Brown is warmer than pink (less high-frequency energy) so it never
+      // reads as "static" — more like ventilation or a room presence.
+      const sr      = ac.sampleRate;
+      const bufSec  = 4;
+      const bufSize = sr * bufSec;
+      const nbuf    = ac.createBuffer(1, bufSize, sr);
+      const nd      = nbuf.getChannelData(0);
+      let last = 0;
+      for (let i = 0; i < bufSize; i++) {
+        const white = Math.random() * 2 - 1;
+        last = (last + 0.02 * white) / 1.02;
+        nd[i] = last * 3.5;
+        // sparse crackle ~25 events/min (softer than before)
+        if (Math.random() < 25 / (sr * 60)) {
+          for (let j = 0; j < 3 && i + j < bufSize; j++) {
+            nd[i + j] += (Math.random() - 0.5) * 0.25;
+          }
+        }
+      }
+      const noiseSrc = ac.createBufferSource();
+      noiseSrc.buffer = nbuf;
+      noiseSrc.loop   = true;
+
+      // Shape through a warm bandpass (400 Hz) so it has body, not bass rumble
+      const bpf         = ac.createBiquadFilter();
+      bpf.type          = 'bandpass';
+      bpf.frequency.value = 400;
+      bpf.Q.value       = 0.6;
+      const noiseGain   = ac.createGain();
+      noiseGain.gain.value = 0.55;
+
+      noiseSrc.connect(bpf);
+      bpf.connect(noiseGain);
+      noiseGain.connect(master);
+      noiseSrc.start();
+
+      // Three softly detuned harmonic drones (A1 / E2 / A2) each with a
+      // slow LFO on amplitude.  Together they evoke music playing through
+      // a wall from the record player on the shelf.
+      ([
+        { freq: 55.00, lfoRate: 0.031, gain: 0.09 },   // A1
+        { freq: 82.41, lfoRate: 0.048, gain: 0.07 },   // E2
+        { freq: 110.0, lfoRate: 0.022, gain: 0.06 },   // A2
+      ] as const).forEach(({ freq, lfoRate, gain }) => {
+        // slight random detune per load so it never sounds synthetic-identical
+        const detune = (Math.random() - 0.5) * 3; // ± 1.5 cents
+
+        const osc = ac.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        osc.detune.value    = detune;
+
+        // slow amplitude LFO makes it feel like breathing / organic movement
+        const lfo     = ac.createOscillator();
+        lfo.type      = 'sine';
+        lfo.frequency.value = lfoRate;
+        const lfoGain = ac.createGain();
+        lfoGain.gain.value = gain * 0.4; // depth of modulation
+
+        const envGain = ac.createGain();
+        envGain.gain.value = gain;
+
+        lfo.connect(lfoGain);
+        lfoGain.connect(envGain.gain);
+        osc.connect(envGain);
+        envGain.connect(master);
+
+        osc.start();
+        lfo.start();
+      });
     };
+
     window.addEventListener('pointerdown', start, { once: true });
     return () => window.removeEventListener('pointerdown', start);
   }, []);
 
   useEffect(() => {
-    const g = gainRef.current;
+    const g  = gainRef.current;
     const ac = ctxRef.current;
     if (!g || !ac) return;
-    const target = (active && !muted) ? 0.07 : 0.0;
+    const target = (active && !muted) ? AMBIENT_VOL : 0.0;
     g.gain.cancelScheduledValues(ac.currentTime);
     g.gain.linearRampToValueAtTime(target, ac.currentTime + 1.2);
   }, [active, muted]);
@@ -1173,7 +1430,7 @@ function HudOverlay({ muted, onMuteToggle }: { muted: boolean; onMuteToggle: () 
       {/* clock */}
       {showTime && <div style={chip}>{timeText}</div>}
 
-      {/* mute button — 26.5×26.5 black square, Henry's exact dimensions */}
+      {/* mute button — 40×40 black square, easy to notice and tap */}
       <button
         onMouseEnter={() => setMuteHovering(true)}
         onMouseLeave={() => { setMuteHovering(false); setMuteActive(false); }}
@@ -1182,7 +1439,7 @@ function HudOverlay({ muted, onMuteToggle }: { muted: boolean; onMuteToggle: () 
         onTouchStart={e => { e.stopPropagation(); onMuteToggle(); }}
         aria-label={muted ? 'Unmute' : 'Mute'}
         style={{
-          width: 26.5, height: 26.5,
+          width: 40, height: 40,
           background: '#000', border: 'none', padding: 0,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           cursor: 'pointer', boxSizing: 'border-box',
@@ -1249,13 +1506,14 @@ function TapHint() {
 const SS_PHASE = 'pg_phase';
 
 export default function Study() {
-  // skip entry animation if returning from an inner page (sessionStorage flag)
+  // Fresh visit → 'splash' (BIOS screen) → 'entering' → 'idle'.
+  // Returning from an inner page (sessionStorage flag) → skip straight to 'desktop'.
   const [phase, setPhase] = useState<Phase>(() => {
-    if (typeof window === 'undefined') return 'entering';
+    if (typeof window === 'undefined') return 'splash';
     try {
       if (sessionStorage.getItem(SS_PHASE) === 'desktop') return 'desktop';
     } catch { /* ignore */ }
-    return 'entering';
+    return 'splash';
   });
   // detect touch-only devices (no fine pointer) to show the tap hint
   const [isTouch, setIsTouch] = useState(false);
@@ -1281,13 +1539,14 @@ export default function Study() {
         <CameraRig phase={phase} onArrived={handleArrived} onEntryDone={handleEntryDone} />
         <Scene phase={phase} onMonitorClick={handleClick} onArrived={handleArrived} />
       </Canvas>
-      {phase !== 'desktop' && <GrainOverlay />}
+      {phase !== 'desktop' && phase !== 'splash' && <GrainOverlay />}
       <StudyAudio active={audioActive} muted={muted} />
-      {/* HUD: typewriter name/title/clock + mute — hidden during Win95 */}
-      {phase !== 'desktop' && (
+      {/* HUD: typewriter name/title/clock + mute — hidden during BIOS splash and Win95 */}
+      {phase !== 'desktop' && phase !== 'splash' && (
         <HudOverlay muted={muted} onMuteToggle={() => setMuted(m => !m)} />
       )}
       {(phase === 'idle' || phase === 'entering') && isTouch && <TapHint />}
+      {phase === 'splash'  && <BiosScreen onDone={() => setPhase('entering')} />}
       {phase === 'booting' && <BootOverlay onDone={handleBootDone} />}
       {phase === 'desktop' && <InnerDesktop onClose={handleDesktopClose} />}
     </div>
