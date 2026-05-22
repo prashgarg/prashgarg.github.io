@@ -49,14 +49,91 @@ function easeOutCubic(t: number) { return 1 - Math.pow(1 - t, 3); }
 // Desk and monitor sit at centre of the room (z=0 in room-depth terms,
 // which in world coords is z = -4.5 when the camera enters from z ≈ +13)
 const DESK_Z         = -4.5;
-const MONITOR_WORLD  = new THREE.Vector3(0.3, 1.08, DESK_Z);
+const LEFT_DESK_X    = -0.85;
+const RIGHT_DESK_X   =  0.85;
+const MONITOR_WORLD  = new THREE.Vector3(LEFT_DESK_X, 1.08, DESK_Z);
 
 const CAM_ENTRY_POS  = new THREE.Vector3(-1.4, 2.6, 8);
 const CAM_ENTRY_TGT  = new THREE.Vector3(0.4, 1.1, DESK_Z);
 const CAM_IDLE_POS   = new THREE.Vector3(-1.6, 1.55, 3.5);
 const CAM_IDLE_TGT   = new THREE.Vector3(0.5, 0.95, DESK_Z);
-const CAM_MONITOR_POS = new THREE.Vector3(0.3, 1.12, DESK_Z + 1.65);
+const CAM_MONITOR_POS = new THREE.Vector3(LEFT_DESK_X, 1.12, DESK_Z + 1.55);
 const CAM_MONITOR_TGT = MONITOR_WORLD.clone();
+
+/* ---------- CRT screen shader (scanlines + faint terminal rows) ------ */
+const CRT_FRAG = `
+  uniform vec3  uColor;
+  uniform float uIntensity;
+  uniform float uTime;
+  varying vec2 vUv;
+  float hash(float x){ return fract(sin(x * 12.9898) * 43758.5453); }
+  void main() {
+    vec2 uv = vUv;
+    // horizontal scanlines (dark bands every few pixels)
+    float scan = 0.5 + 0.5 * sin(uv.y * 130.0);
+    scan = mix(0.66, 1.0, scan);
+    // vignette darkens corners slightly
+    vec2 cv = uv - 0.5;
+    float vig = 1.0 - smoothstep(0.10, 0.62, length(cv));
+    vig = mix(0.55, 1.0, vig);
+    // faux terminal rows — variable-width "text" bars
+    float row = floor(uv.y * 11.0);
+    float seed = hash(row);
+    float content = step(uv.x, 0.12 + seed * 0.78) * step(0.06, uv.x);
+    content *= step(0.35, seed);   // not every row has content
+    // very slow flicker
+    float flicker = 0.96 + 0.04 * sin(uTime * 8.0);
+    vec3 col = uColor * scan * vig * (0.55 + content * 0.5) * flicker;
+    gl_FragColor = vec4(col * uIntensity, 1.0);
+  }
+`;
+
+/* ---------- wall panel-seam shader ----------------------------------- */
+// Thin vertical lines + occasional horizontal at standard panel heights,
+// approximating the modular wall panels in the reference image.
+const WALL_VERT = `
+  varying vec2 vUv;
+  void main() {
+    vUv = uv;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`;
+const WALL_FRAG = `
+  uniform float uSeams;
+  uniform vec3 uWall;
+  uniform vec3 uSeam;
+  varying vec2 vUv;
+  void main() {
+    // vertical seams
+    float x = vUv.x * uSeams;
+    float dV = abs(fract(x) - 0.5) * 2.0;
+    float seamV = smoothstep(0.965, 0.992, dV);
+    // single horizontal at ~2.4m (top trim) on a 3.8m wall ~= 0.63
+    float y = vUv.y;
+    float dH = abs(y - 0.63);
+    float seamH = 1.0 - smoothstep(0.002, 0.006, dH);
+    float seam = max(seamV, seamH * 0.55);
+    vec3 col = mix(uWall, uSeam, seam);
+    gl_FragColor = vec4(col, 1.0);
+  }
+`;
+
+/* ---------- carpet noise shader (subtle weave) ----------------------- */
+const CARPET_FRAG = `
+  uniform vec3 uBase;
+  uniform vec2 uRes;
+  varying vec2 vUv;
+  float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+  void main() {
+    vec2 p = vUv * uRes;
+    // 1) fine pixel noise (~weave grain)
+    float n1 = (hash(floor(p)) - 0.5) * 0.045;
+    // 2) coarser blotches (mild wear pattern)
+    float n2 = (hash(floor(p * 0.08)) - 0.5) * 0.025;
+    vec3 col = uBase + vec3(n1 + n2);
+    gl_FragColor = vec4(col, 1.0);
+  }
+`;
 
 /* ---------- ceiling diamond-grid shader ------------------------------ */
 const CEIL_VERT = `
@@ -232,7 +309,20 @@ function WallClock({ pos }: { pos: [number, number, number] }) {
 function CrtMonitor({ phase, onClick }: { phase: Phase; onClick?: () => void }) {
   const [hovered, setHovered] = useState(false);
   const clickable = phase === 'idle';
-  const screenGlow = (hovered && clickable) ? '#4A7A60' : C.monitorScreen;
+  // CRT shader material — phosphor green with scanlines + terminal rows
+  const crtMat = useMemo(() => new THREE.ShaderMaterial({
+    uniforms: {
+      uColor:     { value: new THREE.Color('#7ED9A8') },
+      uIntensity: { value: 1.2 },
+      uTime:      { value: 0 },
+    },
+    vertexShader: WALL_VERT,
+    fragmentShader: CRT_FRAG,
+  }), []);
+  useFrame((state) => {
+    crtMat.uniforms.uTime.value      = state.clock.elapsedTime;
+    crtMat.uniforms.uIntensity.value = clickable ? (hovered ? 1.7 : 1.15) : 0.12;
+  });
   return (
     <group position={MONITOR_WORLD.toArray()}>
       {/* body */}
@@ -245,29 +335,24 @@ function CrtMonitor({ phase, onClick }: { phase: Phase; onClick?: () => void }) 
         <boxGeometry args={[0.44, 0.36, 0.01]} />
         <meshStandardMaterial color="#B8B4AC" roughness={0.5} />
       </mesh>
-      {/* screen — the actual click target */}
+      {/* screen — CRT shader + the actual click target */}
       <mesh
-        position={[0, 0.02, 0.205]}
+        position={[0, 0.02, 0.207]}
         onClick={clickable ? onClick : undefined}
         onPointerEnter={() => { if (clickable) setHovered(true); }}
         onPointerLeave={() => setHovered(false)}
       >
         <planeGeometry args={[0.34, 0.26]} />
-        <meshStandardMaterial
-          color={screenGlow}
-          emissive={screenGlow}
-          emissiveIntensity={clickable ? (hovered ? 1.2 : 0.65) : 0.08}
-          roughness={0.25}
-        />
+        <primitive object={crtMat} attach="material" />
       </mesh>
-      {/* subtle screen glow light */}
+      {/* subtle screen glow light onto the desk + chair */}
       {clickable && (
         <pointLight
           position={[0, 0.02, 0.35]}
-          intensity={hovered ? 0.6 : 0.25}
+          intensity={hovered ? 0.7 : 0.32}
           distance={2.5}
           decay={2}
-          color="#6ABDA0"
+          color="#7ED9A8"
         />
       )}
       {/* neck */}
@@ -379,6 +464,27 @@ function OfficeScene({ phase, onMonitorClick }: {
     side: THREE.FrontSide,
   }), []);
 
+  // Wall shader (panel seams) — one instance shared across all 3 walls
+  const wallMat = useMemo(() => new THREE.ShaderMaterial({
+    uniforms: {
+      uSeams: { value: 9.0 },
+      uWall:  { value: new THREE.Color('#EAEAE6') },
+      uSeam:  { value: new THREE.Color('#B8B8B4') },
+    },
+    vertexShader: WALL_VERT,
+    fragmentShader: WALL_FRAG,
+  }), []);
+
+  // Carpet shader (subtle texture)
+  const carpetMat = useMemo(() => new THREE.ShaderMaterial({
+    uniforms: {
+      uBase: { value: new THREE.Color(C.carpet) },
+      uRes:  { value: new THREE.Vector2(180, 240) },
+    },
+    vertexShader: WALL_VERT, // reuses the same simple vUv pass-through
+    fragmentShader: CARPET_FRAG,
+  }), []);
+
   // Fluorescent ceiling lights in a 3 × 3 grid
   const lightGrid: [number, number][] = [
     [-6.5, -10], [0, -10], [6.5, -10],
@@ -407,10 +513,10 @@ function OfficeScene({ phase, onMonitorClick }: {
         />
       ))}
 
-      {/* ── FLOOR — sage-green carpet ────────────────────────────────── */}
+      {/* ── FLOOR — sage-green carpet w/ shader noise ────────────────── */}
       <mesh rotation-x={-Math.PI / 2} position={[0, 0, 0]} receiveShadow>
         <planeGeometry args={[ROOM_W, ROOM_D]} />
-        <meshStandardMaterial color={C.carpet} roughness={0.97} metalness={0} />
+        <primitive object={carpetMat} attach="material" />
       </mesh>
 
       {/* ── CEILING — diamond-grid shader ────────────────────────────── */}
@@ -419,103 +525,138 @@ function OfficeScene({ phase, onMonitorClick }: {
         <primitive object={ceilMat} attach="material" />
       </mesh>
 
-      {/* ── WALLS ────────────────────────────────────────────────────── */}
-      {/* back wall */}
-      <mesh position={[0, ROOM_H / 2, -ROOM_D / 2 + 0.08]}>
-        <boxGeometry args={[ROOM_W, ROOM_H, 0.14]} />
-        <meshStandardMaterial color={C.wall} roughness={0.88} />
+      {/* ── WALLS — panel-seam shader ───────────────────────────────── */}
+      {/* back wall (uses a flat plane so the shader UV maps cleanly) */}
+      <mesh position={[0, ROOM_H / 2, -ROOM_D / 2 + 0.05]}>
+        <planeGeometry args={[ROOM_W, ROOM_H]} />
+        <primitive object={wallMat} attach="material" />
       </mesh>
       {/* left wall */}
-      <mesh position={[-ROOM_W / 2 + 0.08, ROOM_H / 2, 0]} rotation-y={Math.PI / 2}>
-        <boxGeometry args={[ROOM_D, ROOM_H, 0.14]} />
-        <meshStandardMaterial color="#E8E8E4" roughness={0.88} />
+      <mesh position={[-ROOM_W / 2 + 0.05, ROOM_H / 2, 0]} rotation-y={Math.PI / 2}>
+        <planeGeometry args={[ROOM_D, ROOM_H]} />
+        <primitive object={wallMat} attach="material" />
       </mesh>
       {/* right wall */}
-      <mesh position={[ROOM_W / 2 - 0.08, ROOM_H / 2, 0]} rotation-y={-Math.PI / 2}>
-        <boxGeometry args={[ROOM_D, ROOM_H, 0.14]} />
-        <meshStandardMaterial color="#ECECEA" roughness={0.88} />
+      <mesh position={[ROOM_W / 2 - 0.05, ROOM_H / 2, 0]} rotation-y={-Math.PI / 2}>
+        <planeGeometry args={[ROOM_D, ROOM_H]} />
+        <primitive object={wallMat} attach="material" />
       </mesh>
 
-      {/* ── DESK ASSEMBLY ────────────────────────────────────────────── */}
-      {/* main desktop surface */}
-      <mesh position={[0.3, 0.74, DESK_Z]} castShadow receiveShadow>
-        <boxGeometry args={[3.6, 0.06, 1.4]} />
+      {/* ── DESK ASSEMBLY — two desks side-by-side ──────────────────── */}
+      {/* LEFT desk surface */}
+      <mesh position={[LEFT_DESK_X, 0.74, DESK_Z]} castShadow receiveShadow>
+        <boxGeometry args={[1.5, 0.06, 1.35]} />
         <meshStandardMaterial color={C.desk} roughness={0.38} metalness={0.03} />
       </mesh>
-      {/* left pedestal body */}
-      <mesh position={[-1.45, 0.38, DESK_Z]} castShadow receiveShadow>
-        <boxGeometry args={[0.72, 0.76, 1.28]} />
+      {/* LEFT pedestal (outer side) */}
+      <mesh position={[LEFT_DESK_X - 0.35, 0.38, DESK_Z]} castShadow receiveShadow>
+        <boxGeometry args={[0.62, 0.76, 1.22]} />
         <meshStandardMaterial color={C.deskLeg} roughness={0.5} />
       </mesh>
-      {/* right pedestal body */}
-      <mesh position={[2.05, 0.38, DESK_Z]} castShadow receiveShadow>
-        <boxGeometry args={[0.72, 0.76, 1.28]} />
-        <meshStandardMaterial color={C.deskLeg} roughness={0.5} />
+      {/* LEFT pedestal drawer lines */}
+      <mesh position={[LEFT_DESK_X - 0.35, 0.52, DESK_Z + 0.62]}>
+        <boxGeometry args={[0.55, 0.005, 0.004]} />
+        <meshStandardMaterial color="#B0B0AC" />
       </mesh>
-      {/* drawer gap line — left pedestal */}
-      <mesh position={[-1.45, 0.52, DESK_Z + 0.645]}>
-        <boxGeometry args={[0.65, 0.005, 0.004]} />
-        <meshStandardMaterial color="#BBBAB6" />
+      <mesh position={[LEFT_DESK_X - 0.35, 0.32, DESK_Z + 0.62]}>
+        <boxGeometry args={[0.55, 0.005, 0.004]} />
+        <meshStandardMaterial color="#B0B0AC" />
       </mesh>
-      <mesh position={[-1.45, 0.32, DESK_Z + 0.645]}>
-        <boxGeometry args={[0.65, 0.005, 0.004]} />
-        <meshStandardMaterial color="#BBBAB6" />
-      </mesh>
-      {/* small drawer handle */}
-      <mesh position={[-1.45, 0.42, DESK_Z + 0.652]}>
-        <boxGeometry args={[0.14, 0.022, 0.008]} />
+      {/* LEFT drawer handle */}
+      <mesh position={[LEFT_DESK_X - 0.35, 0.42, DESK_Z + 0.624]}>
+        <boxGeometry args={[0.13, 0.022, 0.008]} />
         <meshStandardMaterial color="#C8C6C2" roughness={0.3} metalness={0.4} />
       </mesh>
-
-      {/* ── PARTITION SCREENS ────────────────────────────────────────── */}
-      {/* left screen — faces camera */}
-      <mesh position={[-2.25, 0.94, DESK_Z - 0.2]} castShadow receiveShadow>
-        <boxGeometry args={[0.07, 1.88, 2.6]} />
-        <meshStandardMaterial color={C.partition} roughness={0.92} />
-      </mesh>
-      {/* back screen — runs left-right behind desk */}
-      <mesh position={[0.3, 0.94, DESK_Z - 1.00]} castShadow receiveShadow>
-        <boxGeometry args={[5.2, 1.88, 0.07]} />
-        <meshStandardMaterial color={C.partition} roughness={0.92} />
-      </mesh>
-      {/* right screen — partial, shorter */}
-      <mesh position={[2.85, 0.94, DESK_Z - 0.35]} castShadow receiveShadow>
-        <boxGeometry args={[0.07, 1.88, 1.9]} />
-        <meshStandardMaterial color={C.partition} roughness={0.92} />
+      {/* LEFT inner support (where center partition meets) */}
+      <mesh position={[LEFT_DESK_X + 0.71, 0.38, DESK_Z]} castShadow receiveShadow>
+        <boxGeometry args={[0.05, 0.76, 1.22]} />
+        <meshStandardMaterial color={C.deskLeg} roughness={0.5} />
       </mesh>
 
-      {/* ── OFFICE CHAIR ─────────────────────────────────────────────── */}
-      <OfficeChair pos={[0.3, 0, DESK_Z + 1.15]} />
+      {/* RIGHT desk surface */}
+      <mesh position={[RIGHT_DESK_X, 0.74, DESK_Z]} castShadow receiveShadow>
+        <boxGeometry args={[1.5, 0.06, 1.35]} />
+        <meshStandardMaterial color={C.desk} roughness={0.38} metalness={0.03} />
+      </mesh>
+      {/* RIGHT pedestal (outer side) */}
+      <mesh position={[RIGHT_DESK_X + 0.35, 0.38, DESK_Z]} castShadow receiveShadow>
+        <boxGeometry args={[0.62, 0.76, 1.22]} />
+        <meshStandardMaterial color={C.deskLeg} roughness={0.5} />
+      </mesh>
+      {/* RIGHT pedestal drawer lines */}
+      <mesh position={[RIGHT_DESK_X + 0.35, 0.52, DESK_Z + 0.62]}>
+        <boxGeometry args={[0.55, 0.005, 0.004]} />
+        <meshStandardMaterial color="#B0B0AC" />
+      </mesh>
+      <mesh position={[RIGHT_DESK_X + 0.35, 0.32, DESK_Z + 0.62]}>
+        <boxGeometry args={[0.55, 0.005, 0.004]} />
+        <meshStandardMaterial color="#B0B0AC" />
+      </mesh>
+      {/* RIGHT drawer handle */}
+      <mesh position={[RIGHT_DESK_X + 0.35, 0.42, DESK_Z + 0.624]}>
+        <boxGeometry args={[0.13, 0.022, 0.008]} />
+        <meshStandardMaterial color="#C8C6C2" roughness={0.3} metalness={0.4} />
+      </mesh>
+      {/* RIGHT inner support */}
+      <mesh position={[RIGHT_DESK_X - 0.71, 0.38, DESK_Z]} castShadow receiveShadow>
+        <boxGeometry args={[0.05, 0.76, 1.22]} />
+        <meshStandardMaterial color={C.deskLeg} roughness={0.5} />
+      </mesh>
+
+      {/* ── PARTITION SCREENS — T-arrangement (center + back) ───────── */}
+      {/* CENTRE vertical partition between the two desks */}
+      <mesh position={[0, 0.95, DESK_Z]} castShadow receiveShadow>
+        <boxGeometry args={[0.07, 1.85, 1.30]} />
+        <meshStandardMaterial color={C.partition} roughness={0.92} />
+      </mesh>
+      {/* BACK partition spanning both desks */}
+      <mesh position={[0, 0.95, DESK_Z - 0.71]} castShadow receiveShadow>
+        <boxGeometry args={[3.5, 1.85, 0.07]} />
+        <meshStandardMaterial color={C.partition} roughness={0.92} />
+      </mesh>
+      {/* Optional small forward extensions on the outer edges (matches
+          the reference's slight wrap-around at the desk corners) */}
+      <mesh position={[-1.78, 0.95, DESK_Z - 0.25]} castShadow receiveShadow>
+        <boxGeometry args={[0.07, 1.85, 0.95]} />
+        <meshStandardMaterial color={C.partition} roughness={0.92} />
+      </mesh>
+      <mesh position={[1.78, 0.95, DESK_Z - 0.25]} castShadow receiveShadow>
+        <boxGeometry args={[0.07, 1.85, 0.95]} />
+        <meshStandardMaterial color={C.partition} roughness={0.92} />
+      </mesh>
+
+      {/* ── OFFICE CHAIR — pulled up to the right desk ──────────────── */}
+      <OfficeChair pos={[RIGHT_DESK_X, 0, DESK_Z + 1.15]} />
 
       {/* ── CRT MONITOR ──────────────────────────────────────────────── */}
       <CrtMonitor phase={phase} onClick={onMonitorClick} />
 
-      {/* ── A FEW MINIMAL DESK OBJECTS ───────────────────────────────── */}
-      {/* stack of papers */}
-      <mesh position={[-0.7, 0.775, DESK_Z - 0.3]}>
-        <boxGeometry args={[0.32, 0.03, 0.24]} />
+      {/* ── DESK OBJECTS — minimal, matches reference ──────────────── */}
+      {/* small green object beside monitor (reference has a small notes square) */}
+      <mesh position={[LEFT_DESK_X + 0.42, 0.775, DESK_Z]}>
+        <boxGeometry args={[0.10, 0.025, 0.10]} />
+        <meshStandardMaterial color="#B4C892" roughness={0.85} />
+      </mesh>
+      {/* stack of papers — LEFT desk, in front of monitor */}
+      <mesh position={[LEFT_DESK_X + 0.18, 0.775, DESK_Z + 0.42]}>
+        <boxGeometry args={[0.26, 0.022, 0.20]} />
         <meshStandardMaterial color="#F0EDE4" roughness={0.9} />
       </mesh>
-      <mesh position={[-0.7, 0.79, DESK_Z - 0.3]}>
-        <boxGeometry args={[0.30, 0.008, 0.22]} />
-        <meshStandardMaterial color="#EAE7DE" roughness={0.9} />
-      </mesh>
-      {/* coffee mug */}
-      <mesh position={[1.4, 0.785, DESK_Z - 0.1]}>
-        <cylinderGeometry args={[0.055, 0.048, 0.10, 14]} />
+      {/* coffee mug — RIGHT desk, on near edge */}
+      <mesh position={[RIGHT_DESK_X + 0.30, 0.785, DESK_Z + 0.22]}>
+        <cylinderGeometry args={[0.052, 0.046, 0.10, 14]} />
         <meshStandardMaterial color="#DCDAD6" roughness={0.55} />
       </mesh>
-      {/* mug handle (thin arc approximated by box) */}
-      <mesh position={[1.462, 0.785, DESK_Z - 0.1]} rotation-z={Math.PI / 2}>
+      <mesh position={[RIGHT_DESK_X + 0.36, 0.785, DESK_Z + 0.22]} rotation-z={Math.PI / 2}>
         <torusGeometry args={[0.028, 0.008, 6, 10, Math.PI]} />
         <meshStandardMaterial color="#D8D6D2" roughness={0.55} />
       </mesh>
-      {/* telephone (very simple) */}
-      <mesh position={[-1.0, 0.775, DESK_Z + 0.28]}>
+      {/* telephone — RIGHT desk, back-right corner */}
+      <mesh position={[RIGHT_DESK_X + 0.20, 0.775, DESK_Z - 0.35]}>
         <boxGeometry args={[0.22, 0.055, 0.16]} />
         <meshStandardMaterial color="#D0CEC8" roughness={0.6} />
       </mesh>
-      <mesh position={[-1.0, 0.84, DESK_Z + 0.28]}>
+      <mesh position={[RIGHT_DESK_X + 0.20, 0.84, DESK_Z - 0.35]}>
         <boxGeometry args={[0.18, 0.055, 0.06]} />
         <meshStandardMaterial color="#C8C6C0" roughness={0.6} />
       </mesh>
