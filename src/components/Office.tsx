@@ -12,7 +12,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { PerspectiveCamera } from '@react-three/drei';
+import { PerspectiveCamera, ContactShadows, MeshReflectorMaterial } from '@react-three/drei';
 import * as THREE from 'three';
 import InnerDesktop from './InnerDesktop';
 
@@ -60,30 +60,52 @@ const CAM_IDLE_TGT   = new THREE.Vector3(0.15, 0.95, DESK_Z);
 const CAM_MONITOR_POS = new THREE.Vector3(LEFT_DESK_X, 1.12, DESK_Z + 1.55);
 const CAM_MONITOR_TGT = MONITOR_WORLD.clone();
 
-/* ---------- CRT screen shader (scanlines + faint terminal rows) ------ */
+/* ---------- CRT screen shader — pronounced scanlines + faux ASCII ---- */
 const CRT_FRAG = `
   uniform vec3  uColor;
   uniform float uIntensity;
   uniform float uTime;
   varying vec2 vUv;
-  float hash(float x){ return fract(sin(x * 12.9898) * 43758.5453); }
+  float hash1(float x){ return fract(sin(x * 12.9898) * 43758.5453); }
+  float hash2(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
   void main() {
     vec2 uv = vUv;
-    // horizontal scanlines (dark bands every few pixels)
-    float scan = 0.5 + 0.5 * sin(uv.y * 130.0);
-    scan = mix(0.66, 1.0, scan);
-    // vignette darkens corners slightly
+    // CRT vignette + slight pincushion-like darkening
     vec2 cv = uv - 0.5;
-    float vig = 1.0 - smoothstep(0.10, 0.62, length(cv));
-    vig = mix(0.55, 1.0, vig);
-    // faux terminal rows — variable-width "text" bars
-    float row = floor(uv.y * 11.0);
-    float seed = hash(row);
-    float content = step(uv.x, 0.12 + seed * 0.78) * step(0.06, uv.x);
-    content *= step(0.35, seed);   // not every row has content
-    // very slow flicker
-    float flicker = 0.96 + 0.04 * sin(uTime * 8.0);
-    vec3 col = uColor * scan * vig * (0.55 + content * 0.5) * flicker;
+    float vig = 1.0 - smoothstep(0.06, 0.66, length(cv));
+    vig = mix(0.35, 1.0, vig);
+    // strong horizontal scanlines (visible at any distance)
+    float scan = 0.5 + 0.5 * sin(uv.y * 160.0);
+    scan = mix(0.45, 1.10, scan);
+    // terminal rows — 14 rows of "text"
+    float NROWS = 14.0;
+    float row = floor(uv.y * NROWS);
+    float rowSeed = hash1(row);
+    // some rows are blank (empty lines between paragraphs)
+    float rowActive = step(0.18, rowSeed);
+    // row content width — varies per row
+    float rowWidth = 0.10 + rowSeed * 0.76;
+    float inLeftMargin = step(0.06, uv.x);
+    float inRow = step(uv.x, rowWidth) * inLeftMargin * rowActive;
+    // ASCII-character cells — divide each row into ~52 character cells
+    float charX = floor(uv.x * 52.0);
+    float charSeed = hash2(vec2(charX, row));
+    // most cells are filled (~75%), some empty (spaces)
+    float charBright = step(0.25, charSeed);
+    // dim some characters to fake variation in glyph density
+    float charLevel = mix(0.45, 1.0, hash2(vec2(charX + 0.3, row)));
+    float content = inRow * charBright * charLevel;
+    // blinking cursor on bottom-active row
+    float cursorRow = NROWS - 2.0;
+    float onCursorRow = step(cursorRow - 0.5, row) * step(row, cursorRow + 0.5);
+    float cursorX = step(0.06, uv.x) * step(uv.x, 0.085);
+    float cursorBlink = step(0.5, fract(uTime * 0.8));
+    float cursor = onCursorRow * cursorX * cursorBlink;
+    // slow flicker
+    float flicker = 0.93 + 0.07 * sin(uTime * 6.0 + hash1(floor(uTime * 30.0)) * 5.0);
+    // combine
+    vec3 col = uColor * scan * vig * (0.30 + content * 0.95) * flicker;
+    col += uColor * cursor * 0.85;
     gl_FragColor = vec4(col * uIntensity, 1.0);
   }
 `;
@@ -519,6 +541,17 @@ function OfficeScene({ phase, onMonitorClick }: {
         <primitive object={carpetMat} attach="material" />
       </mesh>
 
+      {/* ── ContactShadows under chair + desk area ──────────────────── */}
+      <ContactShadows
+        position={[0.3, 0.012, DESK_Z + 0.7]}
+        opacity={0.42}
+        scale={5.5}
+        blur={2.8}
+        far={1.8}
+        resolution={512}
+        color="#0A1A0F"
+      />
+
       {/* ── CEILING — diamond-grid shader ────────────────────────────── */}
       <mesh rotation-x={Math.PI / 2} position={[0, ROOM_H, 0]}>
         <planeGeometry args={[ROOM_W, ROOM_D]} />
@@ -552,86 +585,128 @@ function OfficeScene({ phase, onMonitorClick }: {
         <primitive object={wallMat} attach="material" />
       </mesh>
 
-      {/* ── DESK ASSEMBLY — two desks side-by-side ──────────────────── */}
-      {/* LEFT desk surface */}
+      {/* ── DESK ASSEMBLY — two desks + L-shape back bridge ─────────── */}
+
+      {/* LEFT desk surface — MeshReflectorMaterial for subtle sheen */}
       <mesh position={[LEFT_DESK_X, 0.74, DESK_Z]} castShadow receiveShadow>
         <boxGeometry args={[1.5, 0.06, 1.35]} />
-        <meshStandardMaterial color={C.desk} roughness={0.38} metalness={0.03} />
+        <MeshReflectorMaterial
+          color={C.desk}
+          blur={[300, 60]}
+          resolution={256}
+          mixBlur={1}
+          mixStrength={0.22}
+          roughness={0.78}
+          depthScale={0.05}
+          minDepthThreshold={0.85}
+          metalness={0.05}
+        />
       </mesh>
-      {/* LEFT pedestal (outer side) */}
-      <mesh position={[LEFT_DESK_X - 0.35, 0.38, DESK_Z]} castShadow receiveShadow>
-        <boxGeometry args={[0.62, 0.76, 1.22]} />
+      {/* LEFT pedestal — beefier, full filing-cabinet volume */}
+      <mesh position={[LEFT_DESK_X - 0.32, 0.36, DESK_Z]} castShadow receiveShadow>
+        <boxGeometry args={[0.85, 0.72, 1.28]} />
         <meshStandardMaterial color={C.deskLeg} roughness={0.5} />
       </mesh>
-      {/* LEFT pedestal drawer lines */}
-      <mesh position={[LEFT_DESK_X - 0.35, 0.52, DESK_Z + 0.62]}>
-        <boxGeometry args={[0.55, 0.005, 0.004]} />
-        <meshStandardMaterial color="#B0B0AC" />
-      </mesh>
-      <mesh position={[LEFT_DESK_X - 0.35, 0.32, DESK_Z + 0.62]}>
-        <boxGeometry args={[0.55, 0.005, 0.004]} />
-        <meshStandardMaterial color="#B0B0AC" />
-      </mesh>
-      {/* LEFT drawer handle */}
-      <mesh position={[LEFT_DESK_X - 0.35, 0.42, DESK_Z + 0.624]}>
-        <boxGeometry args={[0.13, 0.022, 0.008]} />
-        <meshStandardMaterial color="#C8C6C2" roughness={0.3} metalness={0.4} />
-      </mesh>
-      {/* LEFT inner support (where center partition meets) */}
-      <mesh position={[LEFT_DESK_X + 0.71, 0.38, DESK_Z]} castShadow receiveShadow>
-        <boxGeometry args={[0.05, 0.76, 1.22]} />
+      {/* LEFT pedestal — 3 drawer lines */}
+      {[0.18, 0.42, 0.62].map((y, i) => (
+        <mesh key={`ldL-${i}`} position={[LEFT_DESK_X - 0.32, y, DESK_Z + 0.642]}>
+          <boxGeometry args={[0.75, 0.006, 0.004]} />
+          <meshStandardMaterial color="#A8A8A4" />
+        </mesh>
+      ))}
+      {/* LEFT pedestal — 3 drawer handles */}
+      {[0.28, 0.50, 0.64].map((y, i) => (
+        <mesh key={`lhL-${i}`} position={[LEFT_DESK_X - 0.32, y, DESK_Z + 0.648]}>
+          <boxGeometry args={[0.15, 0.018, 0.010]} />
+          <meshStandardMaterial color="#C8C6C2" roughness={0.3} metalness={0.4} />
+        </mesh>
+      ))}
+      {/* LEFT inner support (vertical post at desk gap edge) */}
+      <mesh position={[LEFT_DESK_X + 0.72, 0.36, DESK_Z]} castShadow receiveShadow>
+        <boxGeometry args={[0.06, 0.72, 1.28]} />
         <meshStandardMaterial color={C.deskLeg} roughness={0.5} />
       </mesh>
 
       {/* RIGHT desk surface */}
       <mesh position={[RIGHT_DESK_X, 0.74, DESK_Z]} castShadow receiveShadow>
         <boxGeometry args={[1.5, 0.06, 1.35]} />
-        <meshStandardMaterial color={C.desk} roughness={0.38} metalness={0.03} />
+        <MeshReflectorMaterial
+          color={C.desk}
+          blur={[300, 60]}
+          resolution={256}
+          mixBlur={1}
+          mixStrength={0.22}
+          roughness={0.78}
+          depthScale={0.05}
+          minDepthThreshold={0.85}
+          metalness={0.05}
+        />
       </mesh>
-      {/* RIGHT pedestal (outer side) */}
-      <mesh position={[RIGHT_DESK_X + 0.35, 0.38, DESK_Z]} castShadow receiveShadow>
-        <boxGeometry args={[0.62, 0.76, 1.22]} />
+      {/* RIGHT pedestal — beefier, full filing-cabinet volume */}
+      <mesh position={[RIGHT_DESK_X + 0.32, 0.36, DESK_Z]} castShadow receiveShadow>
+        <boxGeometry args={[0.85, 0.72, 1.28]} />
         <meshStandardMaterial color={C.deskLeg} roughness={0.5} />
       </mesh>
-      {/* RIGHT pedestal drawer lines */}
-      <mesh position={[RIGHT_DESK_X + 0.35, 0.52, DESK_Z + 0.62]}>
-        <boxGeometry args={[0.55, 0.005, 0.004]} />
-        <meshStandardMaterial color="#B0B0AC" />
-      </mesh>
-      <mesh position={[RIGHT_DESK_X + 0.35, 0.32, DESK_Z + 0.62]}>
-        <boxGeometry args={[0.55, 0.005, 0.004]} />
-        <meshStandardMaterial color="#B0B0AC" />
-      </mesh>
-      {/* RIGHT drawer handle */}
-      <mesh position={[RIGHT_DESK_X + 0.35, 0.42, DESK_Z + 0.624]}>
-        <boxGeometry args={[0.13, 0.022, 0.008]} />
-        <meshStandardMaterial color="#C8C6C2" roughness={0.3} metalness={0.4} />
-      </mesh>
+      {/* RIGHT pedestal — 3 drawer lines */}
+      {[0.18, 0.42, 0.62].map((y, i) => (
+        <mesh key={`ldR-${i}`} position={[RIGHT_DESK_X + 0.32, y, DESK_Z + 0.642]}>
+          <boxGeometry args={[0.75, 0.006, 0.004]} />
+          <meshStandardMaterial color="#A8A8A4" />
+        </mesh>
+      ))}
+      {/* RIGHT pedestal — 3 drawer handles */}
+      {[0.28, 0.50, 0.64].map((y, i) => (
+        <mesh key={`lhR-${i}`} position={[RIGHT_DESK_X + 0.32, y, DESK_Z + 0.648]}>
+          <boxGeometry args={[0.15, 0.018, 0.010]} />
+          <meshStandardMaterial color="#C8C6C2" roughness={0.3} metalness={0.4} />
+        </mesh>
+      ))}
       {/* RIGHT inner support */}
-      <mesh position={[RIGHT_DESK_X - 0.71, 0.38, DESK_Z]} castShadow receiveShadow>
-        <boxGeometry args={[0.05, 0.76, 1.22]} />
+      <mesh position={[RIGHT_DESK_X - 0.72, 0.36, DESK_Z]} castShadow receiveShadow>
+        <boxGeometry args={[0.06, 0.72, 1.28]} />
         <meshStandardMaterial color={C.deskLeg} roughness={0.5} />
       </mesh>
 
-      {/* ── PARTITION SCREENS — T-arrangement (center + back) ───────── */}
-      {/* CENTRE vertical partition between the two desks */}
-      <mesh position={[0, 0.95, DESK_Z]} castShadow receiveShadow>
-        <boxGeometry args={[0.07, 1.85, 1.30]} />
+      {/* ── L-SHAPE BACK BRIDGE — connects the two desks ─────────────── */}
+      {/* Small back-jog desktop spanning the gap between the two desks */}
+      <mesh position={[0, 0.74, DESK_Z - 0.5]} castShadow receiveShadow>
+        <boxGeometry args={[1.9, 0.06, 0.45]} />
+        <MeshReflectorMaterial
+          color={C.desk}
+          blur={[300, 60]}
+          resolution={256}
+          mixBlur={1}
+          mixStrength={0.22}
+          roughness={0.78}
+          depthScale={0.05}
+          minDepthThreshold={0.85}
+          metalness={0.05}
+        />
+      </mesh>
+      {/* Small support block under the bridge */}
+      <mesh position={[0, 0.40, DESK_Z - 0.5]} castShadow receiveShadow>
+        <boxGeometry args={[0.30, 0.66, 0.40]} />
+        <meshStandardMaterial color={C.deskLeg} roughness={0.5} />
+      </mesh>
+
+      {/* ── PARTITION SCREENS — T-arrangement ────────────────────────── */}
+      {/* CENTRE vertical partition — sits ON TOP of the desks */}
+      <mesh position={[0, 1.32, DESK_Z]} castShadow receiveShadow>
+        <boxGeometry args={[0.07, 1.10, 1.30]} />
         <meshStandardMaterial color={C.partition} roughness={0.92} />
       </mesh>
-      {/* BACK partition spanning both desks */}
-      <mesh position={[0, 0.95, DESK_Z - 0.71]} castShadow receiveShadow>
-        <boxGeometry args={[3.5, 1.85, 0.07]} />
+      {/* BACK partition — also sits above desk level */}
+      <mesh position={[0, 1.32, DESK_Z - 0.74]} castShadow receiveShadow>
+        <boxGeometry args={[3.5, 1.10, 0.07]} />
         <meshStandardMaterial color={C.partition} roughness={0.92} />
       </mesh>
-      {/* Optional small forward extensions on the outer edges (matches
-          the reference's slight wrap-around at the desk corners) */}
-      <mesh position={[-1.78, 0.95, DESK_Z - 0.25]} castShadow receiveShadow>
-        <boxGeometry args={[0.07, 1.85, 0.95]} />
+      {/* Outer wrap-around partitions — also sit above desk level */}
+      <mesh position={[-1.78, 1.32, DESK_Z - 0.25]} castShadow receiveShadow>
+        <boxGeometry args={[0.07, 1.10, 1.00]} />
         <meshStandardMaterial color={C.partition} roughness={0.92} />
       </mesh>
-      <mesh position={[1.78, 0.95, DESK_Z - 0.25]} castShadow receiveShadow>
-        <boxGeometry args={[0.07, 1.85, 0.95]} />
+      <mesh position={[1.78, 1.32, DESK_Z - 0.25]} castShadow receiveShadow>
+        <boxGeometry args={[0.07, 1.10, 1.00]} />
         <meshStandardMaterial color={C.partition} roughness={0.92} />
       </mesh>
 
