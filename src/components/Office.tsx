@@ -164,6 +164,131 @@ const CRT_FRAG = `
   }
 `;
 
+/* ---------- 3-D coffered ceiling -------------------------------------
+ * Inverted-square-frustum coffers carved up into a slab with matching
+ * diamond-shaped holes punched out. From the floor you look up through
+ * the holes into recessed cells with bright fluorescent panels at the
+ * back — geometric depth, not a shader trick.
+ *
+ *           panel  <-- emissive plane at COFFER_DEPTH
+ *          /     \
+ *         /       \ <-- sloped walls (inverted frustum)
+ *        /         \
+ *  -----+           +-----  <-- slab with diamond hole
+ *  (opening)
+ */
+function CofferedCeiling() {
+  const SPACING      = 3.0;     // grid spacing of coffer centres
+  const HOLE_HALF    = 1.05;    // opening diamond half-diagonal
+  const PANEL_HALF   = 0.55;    // recessed panel half-diagonal
+  const COFFER_DEPTH = 0.45;    // how far up the recess extends
+
+  // 1) coffer positions on a regular grid (inset half-spacing from walls)
+  const positions = useMemo(() => {
+    const arr: [number, number][] = [];
+    const halfW = ROOM_W / 2 - SPACING / 2;
+    const halfD = ROOM_D / 2 - SPACING / 2;
+    for (let x = -halfW; x <= halfW + 0.001; x += SPACING) {
+      for (let z = -halfD; z <= halfD + 0.001; z += SPACING) {
+        arr.push([x, z]);
+      }
+    }
+    return arr;
+  }, []);
+
+  // 2) slab geometry — outer rect minus a diamond hole per coffer
+  const slabGeo = useMemo(() => {
+    const w = ROOM_W / 2 + 0.5;
+    const d = ROOM_D / 2 + 0.5;
+    const shape = new THREE.Shape();
+    shape.moveTo(-w, -d);
+    shape.lineTo( w, -d);
+    shape.lineTo( w,  d);
+    shape.lineTo(-w,  d);
+    shape.lineTo(-w, -d);
+    for (const [x, z] of positions) {
+      const hole = new THREE.Path();
+      hole.moveTo(x - HOLE_HALF, z);
+      hole.lineTo(x,             z + HOLE_HALF);
+      hole.lineTo(x + HOLE_HALF, z);
+      hole.lineTo(x,             z - HOLE_HALF);
+      hole.lineTo(x - HOLE_HALF, z);
+      shape.holes.push(hole);
+    }
+    return new THREE.ShapeGeometry(shape);
+  }, [positions]);
+
+  // 3) ONE coffer wall geometry (inverted frustum) — shared across all
+  const cofferGeo = useMemo(() => {
+    const g = new THREE.BufferGeometry();
+    const v = new Float32Array([
+      // opening diamond at y=0
+      -HOLE_HALF, 0, 0,                       // 0: west
+       0,         0,  HOLE_HALF,              // 1: south
+       HOLE_HALF, 0, 0,                       // 2: east
+       0,         0, -HOLE_HALF,              // 3: north
+      // panel diamond at y=COFFER_DEPTH
+      -PANEL_HALF, COFFER_DEPTH, 0,           // 4
+       0,          COFFER_DEPTH,  PANEL_HALF, // 5
+       PANEL_HALF, COFFER_DEPTH, 0,           // 6
+       0,          COFFER_DEPTH, -PANEL_HALF, // 7
+    ]);
+    const idx = [
+      0, 1, 4,  1, 5, 4,   // SW wall
+      1, 2, 5,  2, 6, 5,   // SE wall
+      2, 3, 6,  3, 7, 6,   // NE wall
+      3, 0, 7,  0, 4, 7,   // NW wall
+    ];
+    g.setAttribute('position', new THREE.BufferAttribute(v, 3));
+    g.setIndex(idx);
+    g.computeVertexNormals();
+    return g;
+  }, []);
+
+  // 4) panel geometry — diamond plane at back of recess (emissive)
+  const panelGeo = useMemo(() => {
+    const g = new THREE.BufferGeometry();
+    const v = new Float32Array([
+      -PANEL_HALF, 0, 0,           // west
+       0,         0,  PANEL_HALF,  // south
+       PANEL_HALF, 0, 0,           // east
+       0,         0, -PANEL_HALF,  // north
+    ]);
+    g.setAttribute('position', new THREE.BufferAttribute(v, 3));
+    g.setIndex([0, 2, 1,  0, 3, 2]);
+    g.computeVertexNormals();
+    return g;
+  }, []);
+
+  return (
+    <group>
+      {/* Slab with diamond holes */}
+      <mesh rotation-x={Math.PI / 2} position={[0, ROOM_H, 0]}>
+        <primitive object={slabGeo} attach="geometry" />
+        <meshStandardMaterial color="#A8AAAC" roughness={0.85} side={THREE.DoubleSide} />
+      </mesh>
+      {/* Coffer walls + emissive panels — one per hole */}
+      {positions.map(([x, z], i) => (
+        <group key={i} position={[x, ROOM_H, z]}>
+          <mesh>
+            <primitive object={cofferGeo} attach="geometry" />
+            <meshStandardMaterial color="#DCDEE0" roughness={0.75} side={THREE.DoubleSide} />
+          </mesh>
+          <mesh position={[0, COFFER_DEPTH - 0.005, 0]}>
+            <primitive object={panelGeo} attach="geometry" />
+            <meshStandardMaterial
+              color="#F4F6F8"
+              emissive="#FFFFFF"
+              emissiveIntensity={0.65}
+              side={THREE.DoubleSide}
+            />
+          </mesh>
+        </group>
+      ))}
+    </group>
+  );
+}
+
 /* ---------- wall panel-seam shader ----------------------------------- */
 // Thin vertical lines + occasional horizontal at standard panel heights,
 // approximating the modular wall panels in the reference image.
@@ -207,63 +332,6 @@ const CARPET_FRAG = `
     // 2) coarser blotches (mild wear pattern)
     float n2 = (hash(floor(p * 0.08)) - 0.5) * 0.025;
     vec3 col = uBase + vec3(n1 + n2);
-    gl_FragColor = vec4(col, 1.0);
-  }
-`;
-
-/* ---------- ceiling diamond-coffer shader (faux 3-D depth) ----------- */
-const CEIL_VERT = `
-  varying vec2 vUv;
-  void main() {
-    vUv = uv;
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-  }
-`;
-
-// Real recessed coffers would be 3-D geometry — but a well-shaded flat
-// ceiling reads almost as well, and runs faster. We fake the depth via:
-//   • bright fluorescent panel at the centre of each diamond
-//   • a gradient "sloped wall" zone around the panel, where the side
-//     facing UP in screen space is lit and the side facing DOWN is
-//     shadowed (this is what gives the 3-D recess illusion)
-//   • a dark ridge / beam where adjacent coffers meet
-const CEIL_FRAG = `
-  uniform vec2 uFreq;
-  varying vec2 vUv;
-  void main() {
-    vec2 p = vUv * uFreq;
-    // rotate 45° to get a diamond grid
-    vec2 q = vec2(p.x + p.y, p.x - p.y);
-    vec2 f = fract(q);
-    vec2 c = (f - 0.5) * 2.0;            // cell-local [-1, 1]
-    float d = max(abs(c.x), abs(c.y));   // Chebyshev distance
-
-    // three concentric zones
-    float panel  = 1.0 - smoothstep(0.42, 0.56, d);  // bright lit panel
-    float ridge  =       smoothstep(0.84, 0.94, d);  // dark frame between coffers
-    float slope  = (1.0 - panel) * (1.0 - ridge);     // sloped wall in between
-
-    // Sloped-wall shading — pick which "wall" of the coffer based on
-    // the dominant axis of c, then shade by sign. The wall facing the
-    // viewer (negative direction in screen space) catches less light;
-    // the far wall catches more. This sells the recess illusion.
-    float wallShade;
-    if (abs(c.x) > abs(c.y)) {
-      wallShade = 0.5 - c.x * 0.30;
-    } else {
-      wallShade = 0.5 - c.y * 0.42;     // vertical walls bias more
-    }
-    wallShade = clamp(wallShade, 0.0, 1.0);
-
-    // Tonemap zone colours
-    vec3 panelCol = vec3(0.96, 0.97, 0.99);                            // bright fluorescent
-    vec3 slopeCol = mix(vec3(0.46, 0.49, 0.52),
-                        vec3(0.88, 0.90, 0.92), wallShade);             // dark→bright slope
-    vec3 ridgeCol = vec3(0.34, 0.36, 0.38);                             // structural beam
-
-    vec3 col = slopeCol;
-    col = mix(col, panelCol, panel);
-    col = mix(col, ridgeCol, ridge);
     gl_FragColor = vec4(col, 1.0);
   }
 `;
@@ -561,42 +629,42 @@ function OfficeChair({ pos }: { pos: [number, number, number] }) {
         <meshStandardMaterial color="#3A3A3A" roughness={0.35} metalness={0.55} />
       </mesh>
 
-      {/* === SEAT === */}
-      {/* seat pan (rounded edges via slightly larger softer top) */}
+      {/* === SEAT (brown leather, matches references) === */}
+      {/* seat pan */}
       <mesh position={[0, 0.49, 0]} castShadow receiveShadow>
         <boxGeometry args={[0.52, 0.08, 0.50]} />
-        <meshStandardMaterial color="#181818" roughness={0.8} />
+        <meshStandardMaterial color="#5C3A22" roughness={0.55} />
       </mesh>
-      {/* seat highlight (rim) */}
+      {/* seat highlight (rim, slightly lighter to suggest stitching) */}
       <mesh position={[0, 0.535, 0]}>
         <boxGeometry args={[0.48, 0.005, 0.46]} />
-        <meshStandardMaterial color="#222" roughness={0.8} />
+        <meshStandardMaterial color="#6E4628" roughness={0.55} />
       </mesh>
 
       {/* === BACKREST === */}
-      {/* short arm connecting seat to back */}
+      {/* short arm connecting seat to back (kept dark metal) */}
       <mesh position={[0, 0.62, -0.22]} castShadow>
         <boxGeometry args={[0.05, 0.20, 0.05]} />
         <meshStandardMaterial color="#2A2A2A" roughness={0.4} metalness={0.45} />
       </mesh>
-      {/* the padded backrest (taller than the seat) */}
+      {/* the padded backrest (taller than the seat) — brown leather */}
       <mesh position={[0, 0.90, -0.24]} castShadow>
         <boxGeometry args={[0.50, 0.55, 0.09]} />
-        <meshStandardMaterial color="#181818" roughness={0.8} />
+        <meshStandardMaterial color="#5C3A22" roughness={0.55} />
       </mesh>
 
       {/* === ARMRESTS === */}
       {([-1, 1] as const).map((side) => (
         <group key={side}>
-          {/* vertical post */}
+          {/* vertical post (dark metal) */}
           <mesh position={[side * 0.28, 0.60, -0.05]} castShadow>
             <boxGeometry args={[0.03, 0.22, 0.03]} />
             <meshStandardMaterial color="#2A2A2A" roughness={0.4} metalness={0.45} />
           </mesh>
-          {/* horizontal arm pad */}
+          {/* horizontal arm pad — brown leather to match seat */}
           <mesh position={[side * 0.28, 0.71, 0.02]} castShadow>
             <boxGeometry args={[0.06, 0.035, 0.30]} />
-            <meshStandardMaterial color="#1A1A1A" roughness={0.7} />
+            <meshStandardMaterial color="#54341E" roughness={0.55} />
           </mesh>
         </group>
       ))}
@@ -740,16 +808,6 @@ function DeskLamp({ pos }: { pos: [number, number, number] }) {
 function OfficeScene({ phase, onMonitorClick }: {
   phase: Phase; onMonitorClick: () => void;
 }) {
-  // Ceiling shader (diamond coffers with faux depth)
-  const ceilMat = useMemo(() => new THREE.ShaderMaterial({
-    uniforms: {
-      uFreq: { value: new THREE.Vector2(12.0, 16.0) },
-    },
-    vertexShader: CEIL_VERT,
-    fragmentShader: CEIL_FRAG,
-    side: THREE.FrontSide,
-  }), []);
-
   // Wall shader (panel seams) — one instance shared across all 3 walls
   const wallMat = useMemo(() => new THREE.ShaderMaterial({
     uniforms: {
@@ -817,12 +875,10 @@ function OfficeScene({ phase, onMonitorClick }: {
         color="#0A1A0F"
       />
 
-      {/* ── CEILING — diamond-coffer shader with faux-3D depth ──────── */}
-      <mesh rotation-x={Math.PI / 2} position={[0, ROOM_H, 0]}>
-        <planeGeometry args={[ROOM_W, ROOM_D]} />
-        <primitive object={ceilMat} attach="material" />
-      </mesh>
-      {/* Scattered ceiling fixtures (smoke detectors / vents) */}
+      {/* ── CEILING — actual 3-D coffered grid (recessed geometry) ──── */}
+      <CofferedCeiling />
+      {/* Scattered ceiling fixtures (smoke detectors / vents) — positioned
+          between coffer holes (avoid the diamond opening centres) */}
       {[
         [-9, -12], [6, -10], [-4, 0], [10, 5], [-10, 12], [4, 14],
       ].map(([x, z], i) => (
