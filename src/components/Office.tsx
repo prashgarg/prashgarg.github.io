@@ -73,8 +73,8 @@ const ROOM_H = 4.5;
 
 /* ---------- palette --------------------------------------------------- */
 const C = {
-  carpet:    '#5A8C68',
-  wall:      '#EAEAE6',
+  carpet:    '#88AB7E',
+  wall:      '#F2F0EC',
   ceiling:   '#D2D4D6',
   desk:      '#E4E2DC',
   deskLeg:   '#DDDBD6',
@@ -107,10 +107,10 @@ const MONITOR_WORLD  = new THREE.Vector3(0.10, 1.05, DESK_Z - 0.35);   // (0.10,
 // surrounded by empty floor. Elevated, slightly off-centre.
 // Idle: cinematic 3/4 wide. Workstation small in frame, empty room
 // dominates. Camera pulled back + slightly elevated for atmosphere.
-const CAM_ENTRY_POS  = new THREE.Vector3(-2.0, 3.0, 9.5);
-const CAM_ENTRY_TGT  = new THREE.Vector3(0.2, 0.7, -5.0);
-const CAM_IDLE_POS   = new THREE.Vector3(-1.4, 2.5, 6.5);
-const CAM_IDLE_TGT   = new THREE.Vector3(0.2, 0.6, -5.0);
+const CAM_ENTRY_POS  = new THREE.Vector3(-1.4, 2.4, 7.0);
+const CAM_ENTRY_TGT  = new THREE.Vector3(0.2, 1.0, -5.0);
+const CAM_IDLE_POS   = new THREE.Vector3(-1.0, 2.0, 4.5);
+const CAM_IDLE_TGT   = new THREE.Vector3(0.2, 0.95, -5.0);
 // Camera ends VERY close to the monitor face — ~0.3 m from the screen.
 // At FOV 58° this makes the monitor screen fill roughly 66%×78% of the
 // viewport, so the bezel reads as a frame around the inner site (Heffer
@@ -281,24 +281,24 @@ function CofferedCeiling() {
 
   return (
     <group>
-      {/* Slab with diamond holes */}
+      {/* Slab with diamond holes — pale grey to match the reference */}
       <mesh rotation-x={Math.PI / 2} position={[0, ROOM_H, 0]}>
         <primitive object={slabGeo} attach="geometry" />
-        <meshStandardMaterial color="#A8AAAC" roughness={0.85} side={THREE.DoubleSide} />
+        <meshStandardMaterial color="#C8CACC" roughness={0.85} side={THREE.DoubleSide} />
       </mesh>
       {/* Coffer walls + emissive panels — one per hole */}
       {positions.map(([x, z], i) => (
         <group key={i} position={[x, ROOM_H, z]}>
           <mesh>
             <primitive object={cofferGeo} attach="geometry" />
-            <meshStandardMaterial color="#DCDEE0" roughness={0.75} side={THREE.DoubleSide} />
+            <meshStandardMaterial color="#E4E6E8" roughness={0.8} side={THREE.DoubleSide} />
           </mesh>
           <mesh position={[0, COFFER_DEPTH - 0.005, 0]}>
             <primitive object={panelGeo} attach="geometry" />
             <meshStandardMaterial
-              color="#F4F6F8"
+              color="#F8FAFC"
               emissive="#FFFFFF"
-              emissiveIntensity={0.65}
+              emissiveIntensity={0.95}
               side={THREE.DoubleSide}
             />
           </mesh>
@@ -375,7 +375,7 @@ function CameraRig({ phase, onArrived, onEntryDone }: {
   useEffect(() => {
     if (!(camera instanceof THREE.PerspectiveCamera)) return;
     const aspect = size.width / Math.max(1, size.height);
-    camera.fov = aspect < 0.75 ? 52 : aspect < 1.2 ? 56 : 58;
+    camera.fov = aspect < 0.75 ? 48 : aspect < 1.2 ? 52 : 54;
     camera.updateProjectionMatrix();
   }, [size, camera]);
 
@@ -704,28 +704,28 @@ function OfficeChair({ pos }: { pos: [number, number, number] }) {
         <meshStandardMaterial color="#3A3A3A" roughness={0.35} metalness={0.55} />
       </mesh>
 
-      {/* === SEAT (brown leather, matches references) === */}
+      {/* === SEAT (black office chair, matches new reference) === */}
       {/* seat pan */}
       <mesh position={[0, 0.49, 0]} castShadow receiveShadow>
         <boxGeometry args={[0.52, 0.08, 0.50]} />
-        <meshStandardMaterial color="#5C3A22" roughness={0.55} />
+        <meshStandardMaterial color="#1A1A1A" roughness={0.75} />
       </mesh>
-      {/* seat highlight (rim, slightly lighter to suggest stitching) */}
+      {/* seat highlight (rim) */}
       <mesh position={[0, 0.535, 0]}>
         <boxGeometry args={[0.48, 0.005, 0.46]} />
-        <meshStandardMaterial color="#6E4628" roughness={0.55} />
+        <meshStandardMaterial color="#2A2A2A" roughness={0.75} />
       </mesh>
 
       {/* === BACKREST === */}
-      {/* short arm connecting seat to back (kept dark metal) */}
+      {/* short arm connecting seat to back (dark metal) */}
       <mesh position={[0, 0.62, -0.22]} castShadow>
         <boxGeometry args={[0.05, 0.20, 0.05]} />
         <meshStandardMaterial color="#2A2A2A" roughness={0.4} metalness={0.45} />
       </mesh>
-      {/* the padded backrest (taller than the seat) — brown leather */}
+      {/* the padded backrest (taller than the seat) — black */}
       <mesh position={[0, 0.90, -0.24]} castShadow>
         <boxGeometry args={[0.50, 0.55, 0.09]} />
-        <meshStandardMaterial color="#5C3A22" roughness={0.55} />
+        <meshStandardMaterial color="#1A1A1A" roughness={0.75} />
       </mesh>
 
       {/* === ARMRESTS === */}
@@ -736,10 +736,10 @@ function OfficeChair({ pos }: { pos: [number, number, number] }) {
             <boxGeometry args={[0.03, 0.22, 0.03]} />
             <meshStandardMaterial color="#2A2A2A" roughness={0.4} metalness={0.45} />
           </mesh>
-          {/* horizontal arm pad — brown leather to match seat */}
+          {/* horizontal arm pad — black */}
           <mesh position={[side * 0.28, 0.71, 0.02]} castShadow>
             <boxGeometry args={[0.06, 0.035, 0.30]} />
-            <meshStandardMaterial color="#54341E" roughness={0.55} />
+            <meshStandardMaterial color="#1C1C1C" roughness={0.75} />
           </mesh>
         </group>
       ))}
@@ -869,32 +869,45 @@ function StationLite({ active = false }: { active?: boolean } = {}) {
         <boxGeometry args={[1.45, 0.34, 0.03]} />
         <meshStandardMaterial color={C.deskLeg} roughness={0.55} />
       </mesh>
-      {/* LEFT pedestal — to the user's left */}
-      <mesh position={[-0.48, 0.36, DESK_DZ]} castShadow receiveShadow>
-        <boxGeometry args={[0.72, 0.72, 1.20]} />
+      {/* LEFT pedestal */}
+      <mesh position={[-0.50, 0.36, DESK_DZ]} castShadow receiveShadow>
+        <boxGeometry args={[0.66, 0.72, 1.20]} />
         <meshStandardMaterial color={C.deskLeg} roughness={0.5} />
       </mesh>
-      {/* Pedestal drawer lines */}
+      {/* LEFT drawer lines */}
       {[0.18, 0.42, 0.62].map((y, i) => (
-        <mesh key={`lp-${i}`} position={[-0.48, y, DESK_DZ + 0.60]}>
-          <boxGeometry args={[0.62, 0.005, 0.004]} />
+        <mesh key={`lp-${i}`} position={[-0.50, y, DESK_DZ + 0.60]}>
+          <boxGeometry args={[0.56, 0.005, 0.004]} />
           <meshStandardMaterial color="#A8A8A4" />
         </mesh>
       ))}
-      {/* RIGHT metal leg (the standard "one pedestal + one leg" pattern)
-          gives the desk a visible support on the right edge */}
-      <mesh position={[0.65, 0.36, DESK_DZ - 0.50]} castShadow>
-        <boxGeometry args={[0.06, 0.72, 0.04]} />
-        <meshStandardMaterial color="#3A3A3A" roughness={0.45} metalness={0.55} />
+      {/* LEFT drawer pulls */}
+      {[0.27, 0.50, 0.65].map((y, i) => (
+        <mesh key={`lph-${i}`} position={[-0.50, y, DESK_DZ + 0.604]}>
+          <boxGeometry args={[0.12, 0.018, 0.008]} />
+          <meshStandardMaterial color="#C8C6C2" roughness={0.3} metalness={0.4} />
+        </mesh>
+      ))}
+      {/* RIGHT pedestal — mirror of left (matches the reference's
+          twin-pedestal modular desk) */}
+      <mesh position={[0.50, 0.36, DESK_DZ]} castShadow receiveShadow>
+        <boxGeometry args={[0.66, 0.72, 1.20]} />
+        <meshStandardMaterial color={C.deskLeg} roughness={0.5} />
       </mesh>
-      <mesh position={[0.65, 0.36, DESK_DZ + 0.50]} castShadow>
-        <boxGeometry args={[0.06, 0.72, 0.04]} />
-        <meshStandardMaterial color="#3A3A3A" roughness={0.45} metalness={0.55} />
-      </mesh>
-      <mesh position={[0.65, 0.04, DESK_DZ]} castShadow>
-        <boxGeometry args={[0.10, 0.04, 1.05]} />
-        <meshStandardMaterial color="#3A3A3A" roughness={0.45} metalness={0.55} />
-      </mesh>
+      {/* RIGHT drawer lines */}
+      {[0.18, 0.42, 0.62].map((y, i) => (
+        <mesh key={`rp-${i}`} position={[0.50, y, DESK_DZ + 0.60]}>
+          <boxGeometry args={[0.56, 0.005, 0.004]} />
+          <meshStandardMaterial color="#A8A8A4" />
+        </mesh>
+      ))}
+      {/* RIGHT drawer pulls */}
+      {[0.27, 0.50, 0.65].map((y, i) => (
+        <mesh key={`rph-${i}`} position={[0.50, y, DESK_DZ + 0.604]}>
+          <boxGeometry args={[0.12, 0.018, 0.008]} />
+          <meshStandardMaterial color="#C8C6C2" roughness={0.3} metalness={0.4} />
+        </mesh>
+      ))}
       {/* Inactive CRT — boxy beige body. SKIPPED on the active station;
           the parent renders an active CRT (with shader + click) instead. */}
       {!active && (
@@ -1022,9 +1035,9 @@ function OfficeScene({ phase, onMonitorClick }: {
   // Wall shader (panel seams) — one instance shared across all 3 walls
   const wallMat = useMemo(() => new THREE.ShaderMaterial({
     uniforms: {
-      uSeams: { value: 5.0 },
-      uWall:  { value: new THREE.Color('#EAEAE6') },
-      uSeam:  { value: new THREE.Color('#B8B8B4') },
+      uSeams: { value: 3.0 },
+      uWall:  { value: new THREE.Color('#F2F0EC') },
+      uSeam:  { value: new THREE.Color('#D4D2CE') },
     },
     vertexShader: WALL_VERT,
     fragmentShader: WALL_FRAG,
@@ -1051,36 +1064,34 @@ function OfficeScene({ phase, onMonitorClick }: {
   return (
     <>
       {/* ── LIGHTING ─────────────────────────────────────────────────── */}
-      {/* Cool ambient — fluorescent rooms have almost no shadow gradient.
-          Bumped to 2.05 for the bright flood-lit look of the references. */}
-      <ambientLight intensity={2.05} color="#EAF0F4" />
+      {/* Cool ambient — fluorescent rooms have almost no shadow gradient. */}
+      <ambientLight intensity={2.15} color="#F0F2F0" />
 
       {/* Dedicated desk fill — compensates for partitions blocking ceiling lights */}
       <pointLight position={[0.3, ROOM_H - 0.5, DESK_Z + 0.5]} intensity={7.5} distance={9} decay={2} color="#F6F9FF" />
 
-      {/* Active-station SPOTLIGHT — narrow downward beam over the south
-          booth so the active workstation reads as the focal point of
-          the scene (subtle but draws the eye). */}
+      {/* Active-station SPOTLIGHT — tamer than before; the reference is
+          more uniformly lit (less obvious puddle of light). */}
       <spotLight
         position={[0.10, ROOM_H - 0.05, DESK_Z + 0.2]}
         target-position={[0.10, 0.8, DESK_Z]}
         angle={0.55}
         penumbra={0.85}
-        intensity={5.0}
+        intensity={3.5}
         distance={6}
         decay={2}
         color="#FFFAF0"
       />
 
-      {/* Ceiling panel lights — even brighter for true fluorescent flood */}
+      {/* Ceiling panel lights — true fluorescent flood */}
       {lightGrid.map(([x, z], i) => (
         <pointLight
           key={i}
           position={[x, ROOM_H - 0.25, z]}
-          intensity={6.5}
-          distance={24}
+          intensity={7.0}
+          distance={26}
           decay={2}
-          color="#F4F7FF"
+          color="#F5F8FF"
         />
       ))}
 
@@ -1257,18 +1268,42 @@ function OfficeScene({ phase, onMonitorClick }: {
         </mesh>
       </group>
 
-      {/* ── CEILING TRIM LINE — thin dark line where walls meet ceiling ── */}
+      {/* ── HVAC GRILLES — small dark vents near the top of the walls ── */}
       {([
-        // back wall trim
-        [[0, ROOM_H - 0.01, -ROOM_D / 2 + 0.07] as const, [ROOM_W, 0.02, 0.02] as const],
-        // left wall trim
-        [[-ROOM_W / 2 + 0.07, ROOM_H - 0.01, 0] as const, [0.02, 0.02, ROOM_D] as const],
-        // right wall trim
-        [[ROOM_W / 2 - 0.07, ROOM_H - 0.01, 0] as const, [0.02, 0.02, ROOM_D] as const],
+        // back wall: 2 vents
+        [[-7, 3.5, -ROOM_D / 2 + 0.10] as const, [0.45, 0.18, 0.03] as const, [0, 0, 0] as const],
+        [[ 7, 3.5, -ROOM_D / 2 + 0.10] as const, [0.45, 0.18, 0.03] as const, [0, 0, 0] as const],
+        // left wall: 2 vents (rotated)
+        [[-ROOM_W / 2 + 0.10, 3.5, -8] as const, [0.03, 0.18, 0.45] as const, [0, 0, 0] as const],
+        [[-ROOM_W / 2 + 0.10, 3.5,  6] as const, [0.03, 0.18, 0.45] as const, [0, 0, 0] as const],
+        // right wall: 2 vents
+        [[ROOM_W / 2 - 0.10, 3.5, -8] as const, [0.03, 0.18, 0.45] as const, [0, 0, 0] as const],
+        [[ROOM_W / 2 - 0.10, 3.5,  6] as const, [0.03, 0.18, 0.45] as const, [0, 0, 0] as const],
       ] as const).map(([p, s], i) => (
+        <mesh key={`vent-${i}`} position={p}>
+          <boxGeometry args={s} />
+          <meshStandardMaterial color="#3A3C3E" roughness={0.55} metalness={0.25} />
+        </mesh>
+      ))}
+
+      {/* ── WALL TRIM — ceiling junction + upper trim line (~2.4m) + baseboard ── */}
+      {([
+        // CEILING JUNCTION trim
+        [[0, ROOM_H - 0.01, -ROOM_D / 2 + 0.07] as const, [ROOM_W, 0.025, 0.025] as const, '#7C7E80'],
+        [[-ROOM_W / 2 + 0.07, ROOM_H - 0.01, 0] as const, [0.025, 0.025, ROOM_D] as const, '#7C7E80'],
+        [[ROOM_W / 2 - 0.07, ROOM_H - 0.01, 0] as const, [0.025, 0.025, ROOM_D] as const, '#7C7E80'],
+        // UPPER TRIM at ~2.4m (door-head height)
+        [[0, 2.40, -ROOM_D / 2 + 0.07] as const, [ROOM_W, 0.05, 0.02] as const, '#9A9C9E'],
+        [[-ROOM_W / 2 + 0.07, 2.40, 0] as const, [0.02, 0.05, ROOM_D] as const, '#9A9C9E'],
+        [[ROOM_W / 2 - 0.07, 2.40, 0] as const, [0.02, 0.05, ROOM_D] as const, '#9A9C9E'],
+        // BASEBOARD at ~0.12m (skirt)
+        [[0, 0.12, -ROOM_D / 2 + 0.07] as const, [ROOM_W, 0.18, 0.03] as const, '#3A3C3E'],
+        [[-ROOM_W / 2 + 0.07, 0.12, 0] as const, [0.03, 0.18, ROOM_D] as const, '#3A3C3E'],
+        [[ROOM_W / 2 - 0.07, 0.12, 0] as const, [0.03, 0.18, ROOM_D] as const, '#3A3C3E'],
+      ] as const).map(([p, s, c], i) => (
         <mesh key={`trim-${i}`} position={p}>
           <boxGeometry args={s} />
-          <meshStandardMaterial color="#7C7E80" roughness={0.5} metalness={0.15} />
+          <meshStandardMaterial color={c as string} roughness={0.5} metalness={0.15} />
         </mesh>
       ))}
 
@@ -1536,7 +1571,7 @@ function VignetteOverlay() {
         pointerEvents: 'none',
         zIndex: 5,
         background:
-          'radial-gradient(ellipse 110% 110% at 50% 50%, transparent 30%, rgba(0,0,0,0.18) 65%, rgba(0,0,0,0.55) 100%)',
+          'radial-gradient(ellipse 115% 115% at 50% 50%, transparent 40%, rgba(0,0,0,0.10) 70%, rgba(0,0,0,0.32) 100%)',
       }}
     />
   );
@@ -1759,10 +1794,10 @@ export default function Office() {
           feel of the references (slight contrast + cool tint). */}
       <div style={{
         position: 'absolute', inset: 0,
-        filter: 'contrast(1.04) saturate(0.95) hue-rotate(-4deg)',
+        filter: 'contrast(1.03) saturate(0.98) hue-rotate(-2deg)',
       }}>
         <Canvas shadows dpr={[1, 1.75]} gl={{ antialias: true }}>
-          <PerspectiveCamera makeDefault position={[CAM_ENTRY_POS.x, CAM_ENTRY_POS.y, CAM_ENTRY_POS.z]} fov={58} />
+          <PerspectiveCamera makeDefault position={[CAM_ENTRY_POS.x, CAM_ENTRY_POS.y, CAM_ENTRY_POS.z]} fov={54} />
           <CameraRig phase={phase} onArrived={handleArrived} onEntryDone={handleEntryDone} />
           <OfficeScene phase={phase} onMonitorClick={handleClick} />
         </Canvas>
