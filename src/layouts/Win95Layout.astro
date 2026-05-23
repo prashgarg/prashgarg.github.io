@@ -7,6 +7,7 @@
  * portfolio-inner-site (MIT). All CSS and markup original.
  */
 import '../styles/global.css';
+import { papers, talks } from '../data/site';
 
 interface Props {
   title?: string;
@@ -32,6 +33,28 @@ const navItems = [
   { href: '/talks',    label: 'Talks',     id: 'talks'    },
   { href: '/library',  label: 'Library',   id: 'library'  },
   { href: '/now',      label: 'Now',       id: 'now'      },
+];
+
+// Searchable index for the Cmd+K palette. Flatten papers + talks + pages
+// into a single array of {type, label, sub, url, haystack} records that
+// the client-side palette can fuzzy-match against.
+const paletteIndex = [
+  ...navItems.filter(n => n.id !== 'home').map(n => ({
+    type: 'page', label: n.label, sub: 'page', url: n.href,
+    haystack: `${n.label} ${n.id}`.toLowerCase(),
+  })),
+  ...papers.map(p => ({
+    type: 'paper', label: p.title,
+    sub: `${p.venue || 'working'}${p.year ? ' · ' + p.year : ''}`,
+    url: `/research/${p.slug}`,
+    haystack: `${p.title} ${p.coauthors.join(' ')} ${p.venue || ''} ${p.year || ''}`.toLowerCase(),
+  })),
+  ...talks.map(t => ({
+    type: 'talk', label: t.venue,
+    sub: `${t.location} · ${t.date}`,
+    url: t.url || '/talks',
+    haystack: `${t.venue} ${t.location} ${t.date} ${t.title || ''}`.toLowerCase(),
+  })),
 ];
 ---
 <!doctype html>
@@ -262,6 +285,19 @@ const navItems = [
       box-shadow: var(--sunken);
       white-space: nowrap;
     }
+    /* system-tray mute button */
+    .w95-traybtn {
+      width: 26px; height: 22px;
+      background: var(--face);
+      border: none; cursor: pointer; padding: 0;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: inset -1px -1px var(--fr), inset 1px 1px var(--hi),
+                  inset -2px -2px var(--sh),  inset 2px 2px var(--face);
+    }
+    .w95-traybtn:active {
+      box-shadow: inset -1px -1px var(--hi), inset 1px 1px var(--fr),
+                  inset -2px -2px var(--face), inset 2px 2px var(--sh);
+    }
 
     /* ---- scrollbar styling ---- */
     .w95-body::-webkit-scrollbar { width: 16px; }
@@ -342,6 +378,20 @@ const navItems = [
         Start
       </a>
       <div class="w95-taskbar-spacer"></div>
+      <!-- system tray: mute button -->
+      <button class="w95-traybtn" id="w95-mute" title="Mute/Unmute ambient">
+        <!-- volume-on icon (speaker + waves) -->
+        <svg id="w95-vol-on" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 149.48 122.85" width="12" height="12" fill="#2b2b2b">
+          <path d="M87.87,61.64q0,25.53,0,51c0,4-1.16,7.34-4.91,9.36A7.37,7.37,0,0,1,74.24,121q-13.39-12.1-26.88-24.1c-3.16-2.82-6.26-5.7-9.54-8.38a6.53,6.53,0,0,0-3.7-1.41C27.56,87,21,87.05,14.44,87,5.08,87,.1,82.08,0,72.79Q0,61.08,0,49.38c.07-8.78,5.39-14,14.21-14.05,6.73,0,13.46,0,20.18-.06a5.09,5.09,0,0,0,3.06-1.15q17.58-15.46,35-31.06C75.59.3,78.82-.71,82.75,1S87.83,6,87.85,9.85c.06,13.53,0,27.06,0,40.59Z" transform="translate(0 -0.15)"/>
+          <path d="M149.48,62.67c-1.15,16.31-7.19,28.67-18.4,38.5-3.33,2.92-7.63,3-10.05.29s-1.94-6.62,1.24-9.53c5.68-5.18,10.33-11,12.44-18.54,4.23-15,1.13-28.3-9.75-39.63-1.09-1.13-2.32-2.14-3.38-3.3-2.52-2.75-2.65-6.65-.36-9a6.76,6.76,0,0,1,9.05-.27c9.84,8.43,16.26,18.91,18.37,31.79C149.24,56.64,149.3,60.38,149.48,62.67Z" transform="translate(0 -0.15)"/>
+          <path d="M123,61.54a25.75,25.75,0,0,1-8.75,19.53c-2.85,2.56-7,2.71-9.43.29S102.2,74.9,105,72c2.27-2.34,4.46-4.66,4.94-8.08.67-4.66-.48-8.68-4-11.92-1.91-1.75-3.34-3.76-2.87-6.51.41-2.4,1.52-4.35,4-5.19A6.85,6.85,0,0,1,114.19,42,25.77,25.77,0,0,1,123,61.54Z" transform="translate(0 -0.15)"/>
+        </svg>
+        <!-- volume-off icon (speaker + X) — hidden when unmuted -->
+        <svg id="w95-vol-off" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 153.1 122.85" width="12" height="12" fill="#2b2b2b" style="display:none">
+          <path d="M87.87,61.64q0,25.53,0,51c0,4-1.16,7.34-4.91,9.36A7.37,7.37,0,0,1,74.24,121q-13.39-12.1-26.88-24.1c-3.16-2.82-6.26-5.7-9.54-8.38a6.53,6.53,0,0,0-3.7-1.41C27.56,87,21,87.05,14.44,87,5.08,87,.1,82.08,0,72.79Q0,61.08,0,49.38c.07-8.78,5.39-14,14.21-14.05,6.73,0,13.46,0,20.18-.06a5.09,5.09,0,0,0,3.06-1.15q17.58-15.46,35-31.06C75.59.3,78.82-.71,82.75,1S87.83,6,87.85,9.85c.06,13.53,0,27.06,0,40.59Z" transform="translate(0 -0.15)"/>
+          <path d="M137.18,62.29c4.61,4.19,9.06,8.13,13.38,12.2,2.66,2.52,3.19,5.58,1.78,8.23-1.8,3.37-6.94,5.37-11.37,1.06q-5.72-5.55-11.43-11.1c-.44-.43-.9-.84-1.95-1.8-4.19,4.33-8.24,8.66-12.45,12.84-3,3-6,3.3-9.23,1.32a6,6,0,0,1-2-8.51,13.79,13.79,0,0,1,2-2.42c4.06-4,8.15-7.92,12.38-12-.54-.56-1-1.06-1.45-1.52-3.8-3.7-7.63-7.38-11.41-11.11-2.75-2.73-3.26-5.5-1.63-8.34,2.31-4,7.53-4.55,11.28-.88,4.24,4.15,8.27,8.5,12.51,12.89,1.06-1,1.56-1.4,2-1.86,3.77-3.74,7.52-7.49,11.31-11.22,2.56-2.52,5.4-3.15,8.26-1.91a6.27,6.27,0,0,1,3.1,8.84,13.16,13.16,0,0,1-2.2,2.75C146,53.72,142,57.66,137.18,62.29Z" transform="translate(0 -0.15)"/>
+        </svg>
+      </button>
       <div class="w95-clock" id="w95-clock">12:00 PM</div>
     </div>
 
@@ -393,6 +443,198 @@ const navItems = [
         }
         tick();
         setInterval(tick, 5000);
+      })();
+    </script>
+
+    <script is:inline>
+      /* ----- ambient audio + mute toggle (mirrors StudyAudio in Study.tsx) ----- */
+      (function ambientAudio() {
+        var SS_MUTED = 'pg_muted';
+        var muted = false;
+        try { muted = sessionStorage.getItem(SS_MUTED) === '1'; } catch(e) {}
+
+        var volOn  = document.getElementById('w95-vol-on');
+        var volOff = document.getElementById('w95-vol-off');
+
+        function updateIcon() {
+          if (volOn)  volOn.style.display  = muted ? 'none'  : 'block';
+          if (volOff) volOff.style.display = muted ? 'block' : 'none';
+        }
+        updateIcon();
+
+        var audio = new Audio('/audio/ambient.mp3');
+        audio.loop   = true;
+        audio.volume = 0.32;
+        audio.muted  = muted;
+
+        function tryPlay() {
+          audio.play().catch(function() {
+            // autoplay blocked — resume on first interaction
+            document.addEventListener('pointerdown', function resume() {
+              audio.play().catch(function(){});
+              document.removeEventListener('pointerdown', resume);
+            });
+          });
+        }
+        tryPlay();
+
+        var btn = document.getElementById('w95-mute');
+        if (btn) {
+          btn.addEventListener('mousedown', function() {
+            muted = !muted;
+            audio.muted = muted;
+            try { sessionStorage.setItem(SS_MUTED, muted ? '1' : '0'); } catch(e) {}
+            updateIcon();
+          });
+        }
+      })();
+    </script>
+
+    <!-- ===== Cmd+K command palette ===== -->
+    <style>
+      .cmdk-backdrop {
+        position: fixed; inset: 0; z-index: 200;
+        background: rgba(0,0,0,0.55);
+        display: none;
+        align-items: flex-start;
+        justify-content: center;
+        padding-top: 12vh;
+        animation: cmdk-fade 0.14s ease-out;
+      }
+      .cmdk-backdrop.open { display: flex; }
+      @keyframes cmdk-fade { from { opacity: 0 } to { opacity: 1 } }
+      .cmdk-panel {
+        width: min(92vw, 620px);
+        background: var(--color-cream, #f8f4ec);
+        border: 2px solid #2b2b2b;
+        box-shadow: 0 24px 60px rgba(0,0,0,0.45);
+        font-family: 'Inter', system-ui, sans-serif;
+        animation: cmdk-rise 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      @keyframes cmdk-rise { from { transform: translateY(8px); opacity: 0 } to { transform: translateY(0); opacity: 1 } }
+      .cmdk-input-wrap { display: flex; align-items: center; gap: 10px; padding: 14px 18px; border-bottom: 1px solid rgba(0,0,0,0.15); }
+      .cmdk-input { flex: 1; background: transparent; border: none; outline: none; font-size: 16px; font-family: inherit; color: #1a1a1a; }
+      .cmdk-input::placeholder { color: rgba(0,0,0,0.40); }
+      .cmdk-hint { font-size: 11px; color: rgba(0,0,0,0.45); border: 1px solid rgba(0,0,0,0.20); padding: 2px 6px; border-radius: 3px; }
+      .cmdk-results { max-height: 50vh; overflow-y: auto; padding: 6px 0; }
+      .cmdk-result {
+        display: grid;
+        grid-template-columns: 60px 1fr auto;
+        align-items: baseline;
+        gap: 14px;
+        padding: 10px 18px;
+        cursor: pointer;
+        border-left: 3px solid transparent;
+        min-height: 38px;
+      }
+      .cmdk-result.active { background: rgba(0,0,0,0.06); border-left-color: #d99300; }
+      .cmdk-result-type {
+        font-size: 10px; text-transform: uppercase; letter-spacing: 0.10em;
+        color: rgba(0,0,0,0.50); font-weight: 600;
+      }
+      .cmdk-result-label {
+        font-size: 14px; color: #1a1a1a; line-height: 1.3;
+        overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      }
+      .cmdk-result-sub {
+        font-size: 11px; color: rgba(0,0,0,0.55); white-space: nowrap;
+        max-width: 200px; overflow: hidden; text-overflow: ellipsis;
+      }
+      .cmdk-empty { padding: 24px 18px; text-align: center; font-size: 13px; color: rgba(0,0,0,0.45); }
+      .cmdk-footer { padding: 8px 18px; border-top: 1px solid rgba(0,0,0,0.15); display: flex; gap: 12px; font-size: 11px; color: rgba(0,0,0,0.50); }
+      .cmdk-footer kbd {
+        font-family: inherit; padding: 1px 5px; border: 1px solid rgba(0,0,0,0.25);
+        border-radius: 3px; background: rgba(0,0,0,0.04); font-size: 10px;
+      }
+    </style>
+    <div class="cmdk-backdrop" id="cmdk-backdrop" role="dialog" aria-label="Command palette">
+      <div class="cmdk-panel" onclick="event.stopPropagation()">
+        <div class="cmdk-input-wrap">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(0,0,0,0.45)" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
+          <input id="cmdk-input" class="cmdk-input" type="text" placeholder="Search papers, talks, pages..." autocomplete="off" spellcheck="false" />
+          <span class="cmdk-hint">Esc</span>
+        </div>
+        <div class="cmdk-results" id="cmdk-results"></div>
+        <div class="cmdk-footer">
+          <span><kbd>↑↓</kbd> navigate</span>
+          <span><kbd>↵</kbd> open</span>
+          <span style="margin-left: auto;"><kbd>⌘K</kbd> toggle</span>
+        </div>
+      </div>
+    </div>
+    <script is:inline define:vars={{ paletteIndex }}>
+      (function cmdkPalette() {
+        const backdrop = document.getElementById('cmdk-backdrop');
+        const input    = document.getElementById('cmdk-input');
+        const list     = document.getElementById('cmdk-results');
+        let active = 0;
+        let filtered = paletteIndex;
+
+        function render(q) {
+          q = (q || '').trim().toLowerCase();
+          filtered = q === ''
+            ? paletteIndex.slice(0, 8)
+            : paletteIndex.filter(r => r.haystack.indexOf(q) !== -1).slice(0, 20);
+          active = 0;
+          if (filtered.length === 0) {
+            list.innerHTML = '<div class="cmdk-empty">No matches for "' + q + '"</div>';
+            return;
+          }
+          list.innerHTML = filtered.map((r, i) =>
+            '<div class="cmdk-result' + (i === 0 ? ' active' : '') + '" data-i="' + i + '">' +
+              '<span class="cmdk-result-type">' + r.type + '</span>' +
+              '<span class="cmdk-result-label">' + escapeHtml(r.label) + '</span>' +
+              '<span class="cmdk-result-sub">' + escapeHtml(r.sub) + '</span>' +
+            '</div>'
+          ).join('');
+          list.querySelectorAll('.cmdk-result').forEach(el => {
+            el.addEventListener('click', () => {
+              const i = parseInt(el.getAttribute('data-i'), 10);
+              go(filtered[i]);
+            });
+            el.addEventListener('mouseenter', () => {
+              setActive(parseInt(el.getAttribute('data-i'), 10));
+            });
+          });
+        }
+        function escapeHtml(s) {
+          return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+        }
+        function setActive(i) {
+          active = Math.max(0, Math.min(filtered.length - 1, i));
+          list.querySelectorAll('.cmdk-result').forEach((el, idx) => {
+            el.classList.toggle('active', idx === active);
+          });
+        }
+        function go(r) {
+          if (!r) return;
+          close();
+          if (/^https?:/.test(r.url)) window.open(r.url, '_blank');
+          else window.location.href = r.url;
+        }
+        function open() {
+          backdrop.classList.add('open');
+          input.value = '';
+          render('');
+          setTimeout(() => input.focus(), 30);
+        }
+        function close() { backdrop.classList.remove('open'); }
+
+        window.addEventListener('keydown', (e) => {
+          // Cmd+K or Ctrl+K toggles
+          if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+            e.preventDefault();
+            backdrop.classList.contains('open') ? close() : open();
+            return;
+          }
+          if (!backdrop.classList.contains('open')) return;
+          if (e.key === 'Escape') { e.preventDefault(); close(); }
+          else if (e.key === 'ArrowDown') { e.preventDefault(); setActive(active + 1); }
+          else if (e.key === 'ArrowUp')   { e.preventDefault(); setActive(active - 1); }
+          else if (e.key === 'Enter')     { e.preventDefault(); go(filtered[active]); }
+        });
+        backdrop.addEventListener('click', close);
+        input.addEventListener('input', e => render(e.target.value));
       })();
     </script>
   </body>

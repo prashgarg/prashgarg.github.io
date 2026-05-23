@@ -25,6 +25,24 @@ const grouped = Array.from(byTopic.values())
   <section>
     <div class="max-w-3xl mx-auto px-4 pt-14 pb-8">
       <h1 class="font-display text-3xl md:text-4xl font-bold">Talks</h1>
+      <p class="mt-2 text-sm text-ink/55 dark:text-cream/55">{talks.length} talks across {grouped.length} topics, 2022–{Math.max(...talks.map(t => t.year))}</p>
+
+      <!-- Search bar -->
+      <div class="mt-5 relative">
+        <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink/40 dark:text-cream/40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
+        <input
+          id="talks-search"
+          type="text"
+          placeholder="Search by venue, location, or topic..."
+          class="w-full pl-10 pr-10 py-2 text-sm border-2 border-ink dark:border-cream rounded-md bg-white dark:bg-ink-2 focus:outline-none focus:bg-brand-yellow/10 placeholder:text-ink/40 dark:placeholder:text-cream/40"
+        />
+        <button
+          id="talks-search-clear"
+          class="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 hidden items-center justify-center rounded hover:bg-ink/10 dark:hover:bg-cream/10"
+          aria-label="Clear search"
+        ><svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 6l12 12M6 18L18 6"/></svg></button>
+      </div>
+      <div id="talks-search-status" class="mt-2 text-xs text-ink/50 dark:text-cream/50 hidden"></div>
     </div>
   </section>
 
@@ -32,7 +50,7 @@ const grouped = Array.from(byTopic.values())
     {grouped.map((g) => {
       const paper = g.topic.paperSlug ? papers.find(p => p.slug === g.topic.paperSlug) : undefined;
       return (
-        <div id={g.topic.slug}>
+        <div id={g.topic.slug} data-topic-section>
           <h2 class="font-display text-base font-semibold leading-snug">
             {paper
               ? <a href={`/research/${paper.slug}`} class="hover:underline">{g.topic.label}</a>
@@ -40,7 +58,11 @@ const grouped = Array.from(byTopic.values())
           </h2>
           <ul class="mt-2 space-y-1 text-sm text-ink/80 dark:text-cream/80">
             {g.items.map(t => (
-              <li class="flex gap-3">
+              <li
+                class="flex gap-3"
+                data-talk
+                data-search={`${t.venue} ${t.location} ${t.date} ${g.topic.label}`.toLowerCase()}
+              >
                 <span class="shrink-0 w-24 text-xs font-mono text-ink/55 dark:text-cream/55">{t.date}</span>
                 <span class="min-w-0">
                   {t.url
@@ -55,4 +77,44 @@ const grouped = Array.from(byTopic.values())
       );
     })}
   </section>
+
+  <script is:inline>
+    (function () {
+      const input  = document.getElementById('talks-search');
+      const clear  = document.getElementById('talks-search-clear');
+      const status = document.getElementById('talks-search-status');
+      const talks  = document.querySelectorAll('[data-talk]');
+      const sections = document.querySelectorAll('[data-topic-section]');
+      function apply(q) {
+        let shown = 0;
+        talks.forEach(t => {
+          const hay = t.getAttribute('data-search') || '';
+          const ok = q === '' || hay.indexOf(q) !== -1;
+          t.style.display = ok ? '' : 'none';
+          if (ok) shown++;
+        });
+        sections.forEach(s => {
+          const vis = s.querySelectorAll('[data-talk]:not([style*="display: none"])');
+          s.style.display = vis.length ? '' : 'none';
+        });
+        if (q !== '') {
+          status.textContent = shown + ' talk' + (shown === 1 ? '' : 's') + ' matching "' + q + '"';
+          status.classList.remove('hidden');
+        } else {
+          status.classList.add('hidden');
+        }
+      }
+      input.addEventListener('input', e => {
+        const q = e.target.value.trim().toLowerCase();
+        clear.style.display = q ? 'flex' : 'none';
+        apply(q);
+      });
+      clear.addEventListener('click', () => {
+        input.value = '';
+        clear.style.display = 'none';
+        apply('');
+        input.focus();
+      });
+    })();
+  </script>
 </Layout>
