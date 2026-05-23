@@ -1835,29 +1835,29 @@ function OfficeScene({ phase, onMonitorClick }: {
         </mesh>
       ))}
 
-      {/* ── DOOR (BACK wall, off-centre — visible behind the cubicles) ──
-          Previously sat on the left wall at x=-18, well outside the idle
-          frame. Relocated to the back wall so it actually reads as the
-          dark doorway in the reference image. */}
-      {/* dark doorway void — set INTO the back wall (z just inside it) */}
-      <mesh position={[-6.0, 1.20, -ROOM_D / 2 + 0.10]}>
-        <boxGeometry args={[1.05, 2.40, 0.06]} />
-        <meshStandardMaterial color="#0A0A0C" roughness={0.85} />
+      {/* ── DOOR (BACK wall, further LEFT and BIGGER) ────────────────
+          Moved from x=-6 → x=-9 so it sits clearly outside the
+          pod silhouette in the idle frame. Made wider (1.05→1.35 m)
+          and taller (2.40→2.60 m) so it reads as the dark rectangular
+          doorway in the reference. */}
+      {/* dark doorway void */}
+      <mesh position={[-9.0, 1.30, -ROOM_D / 2 + 0.10]}>
+        <boxGeometry args={[1.35, 2.60, 0.06]} />
+        <meshStandardMaterial color="#070708" roughness={0.85} />
       </mesh>
       {/* door frame (lighter trim around the opening) */}
-      <mesh position={[-6.0, 1.22, -ROOM_D / 2 + 0.14]}>
-        <boxGeometry args={[1.18, 2.55, 0.10]} />
+      <mesh position={[-9.0, 1.32, -ROOM_D / 2 + 0.14]}>
+        <boxGeometry args={[1.50, 2.78, 0.10]} />
         <meshStandardMaterial color="#C8C6C2" roughness={0.7} />
       </mesh>
-      {/* door leaf — open ~30° INTO the room (toward camera) so you
-          see the edge against the void */}
-      <group position={[-5.55, 1.20, -ROOM_D / 2 + 0.30]} rotation-y={-0.50}>
+      {/* door leaf — open ~30° INTO the room */}
+      <group position={[-8.45, 1.30, -ROOM_D / 2 + 0.32]} rotation-y={-0.50}>
         <mesh castShadow>
-          <boxGeometry args={[0.95, 2.35, 0.055]} />
+          <boxGeometry args={[1.20, 2.55, 0.055]} />
           <meshStandardMaterial color={C.door} roughness={0.7} />
         </mesh>
         {/* door knob */}
-        <mesh position={[0.38, 0, 0.04]}>
+        <mesh position={[0.48, 0, 0.04]}>
           <sphereGeometry args={[0.034, 12, 8]} />
           <meshStandardMaterial color="#8A8880" roughness={0.25} metalness={0.65} />
         </mesh>
