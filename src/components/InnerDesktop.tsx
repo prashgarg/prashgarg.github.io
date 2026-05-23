@@ -15,7 +15,7 @@
  *   - minimize to taskbar button (click _ or the taskbar chip)
  */
 import { useEffect, useRef, useState } from 'react';
-import { papers, talks } from '../data/site';
+import { papers, talks, affiliations } from '../data/site';
 
 // Compute the most recent paper for the homepage "Latest" card.
 // Sort by year desc, then by published > accepted > rr > working > other.
@@ -27,6 +27,10 @@ const LATEST_PAPER = [...papers].sort((a, b) => {
 })[0];
 const LATEST_PAPER_COUNT = papers.length;
 const LATEST_TALK_COUNT = talks.length;
+
+// Current affiliations (excluding past PhD and incoming Bocconi)
+const CURRENT_AFFILIATIONS = affiliations.filter((a: any) => a.current);
+const INCOMING_AFFILIATION = affiliations.find((a: any) => a.incoming);
 
 /* ---------- Win95 CSS injected once ----------------------------------- */
 const GFONTS_HREF = 'https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;700&display=swap';
@@ -830,14 +834,18 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
                 <div className="win95-home-header">
                   <div className="win95-home-name">Prashant<br/>Garg</div>
                   <div className="win95-home-subtitle">
-                    Economist · Cambridge · Imperial · LSE
+                    Economist · Research Associate at Cambridge
                   </div>
                   <div className="win95-home-stats">
                     <span>{LATEST_PAPER_COUNT} papers</span>
                     <span className="dot">·</span>
                     <span>{LATEST_TALK_COUNT} talks</span>
-                    <span className="dot">·</span>
-                    <span>Bocconi · Sept&nbsp;2026</span>
+                    {INCOMING_AFFILIATION && (
+                      <>
+                        <span className="dot">·</span>
+                        <span title="Incoming">→ {(INCOMING_AFFILIATION as any).org}</span>
+                      </>
+                    )}
                   </div>
                 </div>
 

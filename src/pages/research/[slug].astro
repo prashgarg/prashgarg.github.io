@@ -66,7 +66,7 @@ const bibTeX = [
         <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M11 5l-7 7 7 7"/></svg>
         All research
       </a>
-      <div class="flex items-center gap-2">
+      <div class="flex items-center gap-2 flex-wrap">
         <button
           type="button"
           id="cite-btn"
@@ -84,6 +84,34 @@ const bibTeX = [
           <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
           Copy link
         </button>
+        <a
+          href={`https://x.com/intent/tweet?text=${encodeURIComponent(paper.title)}&url=${encodeURIComponent(`https://prashantgarg.org/research/${paper.slug}`)}`}
+          target="_blank"
+          rel="noopener"
+          class="inline-flex items-center justify-center w-9 h-9 border-2 border-ink dark:border-cream rounded-md bg-white dark:bg-ink-2 hover:bg-brand-yellow"
+          aria-label="Share on X (Twitter)"
+          title="Share on X"
+        >
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+        </a>
+        <a
+          href={`https://bsky.app/intent/compose?text=${encodeURIComponent(paper.title + ' https://prashantgarg.org/research/' + paper.slug)}`}
+          target="_blank"
+          rel="noopener"
+          class="inline-flex items-center justify-center w-9 h-9 border-2 border-ink dark:border-cream rounded-md bg-white dark:bg-ink-2 hover:bg-brand-yellow"
+          aria-label="Share on Bluesky"
+          title="Share on Bluesky"
+        >
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M6.335 5.066c2.797 2.092 5.81 6.34 6.916 8.614v6.166c0-.146-.056.061-.179.494-.667 2.34-2.835 7.51-6.832 3.376-2.105-2.176-1.13-4.353 2.701-5.001-2.193.37-4.658-.245-5.337-2.65-.196-.694-.559-5.864-.559-6.518 0-2.952 2.581-4.706 3.29-4.481zm11.33 0c-2.797 2.092-5.81 6.34-6.916 8.614v6.166c0-.146.056.061.179.494.667 2.34 2.835 7.51 6.832 3.376 2.105-2.176 1.13-4.353-2.701-5.001 2.193.37 4.658-.245 5.337-2.65.196-.694.559-5.864.559-6.518 0-2.952-2.581-4.706-3.29-4.481z"/></svg>
+        </a>
+        <a
+          href={`mailto:?subject=${encodeURIComponent(paper.title)}&body=${encodeURIComponent(paper.title + '\n\nhttps://prashantgarg.org/research/' + paper.slug)}`}
+          class="inline-flex items-center justify-center w-9 h-9 border-2 border-ink dark:border-cream rounded-md bg-white dark:bg-ink-2 hover:bg-brand-yellow"
+          aria-label="Share via email"
+          title="Share via email"
+        >
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 8l9 6 9-6M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+        </a>
       </div>
     </div>
 
