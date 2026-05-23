@@ -1764,9 +1764,17 @@ function OfficeScene({ phase, onMonitorClick }: {
       </mesh>
       </group>{/* end SOUTH_DX accessories group */}
 
-      {/* ── WALL CLOCKS — one on each side wall (matches reference) ─── */}
+      {/* ── WALL CLOCKS — one on each side wall + one on back wall
+          (the back-wall clock is the one actually visible from the
+          idle camera given the room is wider than the camera FOV). */}
       <WallClock pos={[ROOM_W / 2 - 0.12, 2.8, 3]} />
       <WallClock pos={[-ROOM_W / 2 + 0.12, 2.8, -2]} />
+      {/* back-wall clock — right of centre, ~3m up. WallClock has a
+          built-in -π/2 y-rotation (for side walls), so counter-rotate
+          by +π/2 to face +z (toward camera). */}
+      <group position={[7.5, 3.0, -ROOM_D / 2 + 0.06]} rotation-y={Math.PI / 2}>
+        <WallClock pos={[0, 0, 0]} />
+      </group>
 
       {/* ── FRAMED PICTURE — on the back wall between the two desks ── */}
       <group position={[0, 1.85, -ROOM_D / 2 + 0.06]}>
