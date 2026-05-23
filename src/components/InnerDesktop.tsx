@@ -70,6 +70,17 @@ const WIN95_STYLE = `
   0%   { opacity: 0; }
   100% { opacity: 1; }
 }
+/* When embedded, the inner window is forced to fill the CRT box. Drop
+   the desktop-mode min sizes so the chrome doesn't overflow on smaller
+   CRT projections. */
+.win95-desktop.embedded .win95-window {
+  min-width:  0;
+  min-height: 0;
+}
+/* Sidebar shrinks too — 220 px is a lot of a ~600 px-wide CRT. */
+.win95-desktop.embedded .win95-nav {
+  width: 170px;
+}
 
 /* ---------- window chrome ----------------------------------------- */
 .win95-window {
@@ -759,7 +770,11 @@ interface InnerDesktopProps {
 export default function InnerDesktop({ onClose, embedded = false }: InnerDesktopProps) {
   const [time, setTime] = useState(getTime);
   const [win, setWin] = useState<WinState>(getInitial);
-  const [isMaximized, setIsMaximized] = useState(false);
+  // When embedded inside the CRT (the desktop container is only as big
+  // as the CRT screen rect), default to MAXIMIZED so the inner window
+  // fills the bezel cleanly instead of overflowing the right edge with
+  // its 520 px min-width chrome.
+  const [isMaximized, setIsMaximized] = useState(embedded);
   const [preMax, setPreMax] = useState<WinState | null>(null);
   const [isMinimized, setIsMinimized] = useState(false);
   const [isActive, setIsActive] = useState(true);
