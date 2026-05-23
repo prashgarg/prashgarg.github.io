@@ -1302,11 +1302,20 @@ function OfficeScene({ phase, onMonitorClick }: {
         <boxGeometry args={[4.0, 1.10, 0.07]} />
         <meshStandardMaterial {...(partitionFabric as any)} color={C.partition} roughness={0.92} normalScale={[0.55, 0.55] as any} />
       </mesh>
-      {/* NS arm — only extends NORTH of cross centre so it doesn't cut
-          through the active CRT in the south booth (was 4.0 long, full
-          ±2.0 from centre; now 2.0 long, only north). */}
+      {/* NS arm — full-height NORTH portion separates east/west booths
+          above desks. South of the cross we drop a LOW stub (below
+          monitor height) so the cross reads as a + from oblique angles
+          instead of a T, but the active CRT is never occluded. */}
       <mesh position={[0, 1.32, DESK_Z - 0.74 - 1.0]} castShadow receiveShadow>
         <boxGeometry args={[0.07, 1.10, 2.0]} />
+        <meshStandardMaterial {...(partitionFabric as any)} color={C.partition} roughness={0.92} normalScale={[0.55, 0.55] as any} />
+      </mesh>
+      {/* South stub — short panel below desk height (top at y=0.70,
+          below desk surface at y=0.74 and well below monitor base at
+          y≈0.82). Sits between the active CRT booth and where the
+          NS line would continue toward the camera. */}
+      <mesh position={[0, 0.35, DESK_Z - 0.74 + 0.55]} castShadow receiveShadow>
+        <boxGeometry args={[0.07, 0.70, 1.10]} />
         <meshStandardMaterial {...(partitionFabric as any)} color={C.partition} roughness={0.92} normalScale={[0.55, 0.55] as any} />
       </mesh>
 
@@ -1486,25 +1495,29 @@ function OfficeScene({ phase, onMonitorClick }: {
         </mesh>
       ))}
 
-      {/* ── DOOR (left wall, deeper in scene so it's visible from idle) ── */}
-      {/* dark doorway void — looks like an opening when slightly ajar */}
-      <mesh position={[-ROOM_W / 2 + 0.06, 1.20, -2.5]}>
-        <boxGeometry args={[0.06, 2.40, 1.05]} />
-        <meshStandardMaterial color="#0E0E10" roughness={0.85} />
+      {/* ── DOOR (BACK wall, off-centre — visible behind the cubicles) ──
+          Previously sat on the left wall at x=-18, well outside the idle
+          frame. Relocated to the back wall so it actually reads as the
+          dark doorway in the reference image. */}
+      {/* dark doorway void — set INTO the back wall (z just inside it) */}
+      <mesh position={[-6.0, 1.20, -ROOM_D / 2 + 0.10]}>
+        <boxGeometry args={[1.05, 2.40, 0.06]} />
+        <meshStandardMaterial color="#0A0A0C" roughness={0.85} />
       </mesh>
       {/* door frame (lighter trim around the opening) */}
-      <mesh position={[-ROOM_W / 2 + 0.10, 1.22, -2.5]}>
-        <boxGeometry args={[0.10, 2.55, 1.18]} />
+      <mesh position={[-6.0, 1.22, -ROOM_D / 2 + 0.14]}>
+        <boxGeometry args={[1.18, 2.55, 0.10]} />
         <meshStandardMaterial color="#C8C6C2" roughness={0.7} />
       </mesh>
-      {/* door leaf — open ~25° so you see the edge against the void */}
-      <group position={[-ROOM_W / 2 + 0.16, 1.20, -2.9]} rotation-y={0.42}>
+      {/* door leaf — open ~30° INTO the room (toward camera) so you
+          see the edge against the void */}
+      <group position={[-5.55, 1.20, -ROOM_D / 2 + 0.30]} rotation-y={-0.50}>
         <mesh castShadow>
-          <boxGeometry args={[0.055, 2.35, 0.95]} />
+          <boxGeometry args={[0.95, 2.35, 0.055]} />
           <meshStandardMaterial color={C.door} roughness={0.7} />
         </mesh>
         {/* door knob */}
-        <mesh position={[0.04, 0, 0.38]}>
+        <mesh position={[0.38, 0, 0.04]}>
           <sphereGeometry args={[0.034, 12, 8]} />
           <meshStandardMaterial color="#8A8880" roughness={0.25} metalness={0.65} />
         </mesh>

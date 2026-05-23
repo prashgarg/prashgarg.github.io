@@ -1504,6 +1504,7 @@ function TapHint() {
 
 /* ---------- top-level ------------------------------------------------ */
 const SS_PHASE = 'pg_phase';
+const SS_MUTED = 'pg_muted';
 
 export default function Study() {
   // Fresh visit → 'splash' (BIOS screen) → 'entering' → 'idle'.
@@ -1527,7 +1528,13 @@ export default function Study() {
     try { sessionStorage.removeItem(SS_PHASE); } catch { /* ignore */ }
     setPhase('idle');
   };
-  const [muted, setMuted] = useState(false);
+  const [muted, setMuted] = useState<boolean>(() => {
+    try { return sessionStorage.getItem(SS_MUTED) === '1'; } catch { return false; }
+  });
+  // persist mute state so InnerDesktop picks it up on page navigation
+  useEffect(() => {
+    try { sessionStorage.setItem(SS_MUTED, muted ? '1' : '0'); } catch { /* ignore */ }
+  }, [muted]);
   // audio is audible only while the 3D scene is the active view
   const audioActive = phase === 'idle' || phase === 'dollying' || phase === 'on-monitor';
 
