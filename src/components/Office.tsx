@@ -103,7 +103,7 @@ const DESK_Z         = -4.5;
 // sit in the SW quadrant — desk to the LEFT of centre, monitor in the
 // SW corner of the +. All world anchors that follow the active monitor
 // (camera targets, accessories, projector) use SOUTH_DX.
-const SOUTH_DX       = -0.83;
+const SOUTH_DX       = -0.62;
 const MONITOR_WORLD  = new THREE.Vector3(SOUTH_DX + 0.10, 1.05, DESK_Z - 0.35);   // (-0.73, 1.05, -4.85)
 
 // IDLE wide view — empty-office atmosphere (reference 3) where the
@@ -1053,10 +1053,17 @@ function StationLite({ active = false }: { active?: boolean } = {}) {
       <group position={[0.05, 0, CHAIR_Z]} rotation-y={Math.PI}>
         <OfficeChair pos={[0, 0, 0]} />
       </group>
-      {/* Chair mat under chair */}
-      <mesh rotation-x={-Math.PI / 2} position={[0.05, 0.011, CHAIR_Z]}>
-        <circleGeometry args={[0.62, 32]} />
-        <meshStandardMaterial color="#1E2823" roughness={0.85} />
+      {/* Chair mat under chair — CLEAR PLASTIC office chair mat with a
+          dark rim. Subtle dark wash over the carpet underneath, with a
+          slim darker chamfered edge — matches the reference. */}
+      <mesh rotation-x={-Math.PI / 2} position={[0.05, 0.011, CHAIR_Z]} renderOrder={2}>
+        <circleGeometry args={[0.65, 48]} />
+        <meshStandardMaterial color="#3A4A40" roughness={0.55} metalness={0.15} transparent opacity={0.50} />
+      </mesh>
+      {/* darker rim of the mat */}
+      <mesh rotation-x={-Math.PI / 2} position={[0.05, 0.013, CHAIR_Z]} renderOrder={3}>
+        <ringGeometry args={[0.62, 0.66, 48]} />
+        <meshStandardMaterial color="#1A2218" roughness={0.65} transparent opacity={0.85} />
       </mesh>
     </>
   );
@@ -1641,23 +1648,21 @@ function OfficeScene({ phase, onMonitorClick }: {
           ONE quadrant of the central + partition. Shift `p` along each
           station's local +x moves it sideways into its quadrant. CCW
           pinwheel viewed from above. SOUTH is the active station. */}
-      {/* SOUTH (active) — SW quadrant. Shifted WEST so desk lives left
-          of the centre NS arm; chair sits south of the EW arm. */}
-      <group position={[-0.83, 0, DESK_Z]}>
+      {/* SOUTH (active) — SW quadrant. Shifted by SOUTH_DX so the
+          pinwheel scale matches the central divider cluster. */}
+      <group position={[SOUTH_DX, 0, DESK_Z]}>
         <StationLite active />
       </group>
-      {/* NORTH — NE quadrant. Shifted EAST (after 180° rotation that
-          becomes the symmetric pinwheel position). */}
-      <group position={[0.83, 0, DESK_Z - 1.42]} rotation-y={Math.PI}>
+      {/* NORTH — NE quadrant. Symmetric pinwheel shift after 180°. */}
+      <group position={[-SOUTH_DX, 0, DESK_Z - 1.42]} rotation-y={Math.PI}>
         <StationLite />
       </group>
-      {/* EAST — SE quadrant. Shifted SOUTH along its local +x (which
-          maps to world +z after the +π/2 rotation). */}
-      <group position={[1.5, 0, DESK_Z + 0.09]} rotation-y={Math.PI / 2}>
+      {/* EAST — SE quadrant. Same pinwheel offset along its local +x. */}
+      <group position={[1.3, 0, DESK_Z + Math.abs(SOUTH_DX) + 0.05]} rotation-y={Math.PI / 2}>
         <StationLite />
       </group>
-      {/* WEST — NW quadrant. Shifted NORTH along its local +x. */}
-      <group position={[-1.5, 0, DESK_Z - 1.57]} rotation-y={-Math.PI / 2}>
+      {/* WEST — NW quadrant. */}
+      <group position={[-1.3, 0, DESK_Z - 1.42 - Math.abs(SOUTH_DX) - 0.05]} rotation-y={-Math.PI / 2}>
         <StationLite />
       </group>
 
