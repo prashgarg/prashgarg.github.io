@@ -97,11 +97,14 @@ function easeOutCubic(t: number) { return 1 - Math.pow(1 - t, 3); }
 // Desk and monitor sit at centre of the room (z=0 in room-depth terms,
 // which in world coords is z = -4.5 when the camera enters from z ≈ +13)
 const DESK_Z         = -4.5;
-// Symmetric 4-station layout: all 4 booths share identical StationLite
-// geometry. The active station (SOUTH) puts its monitor on the desk at
-// the same local position as the lite stations (local 0.1, 1.05, -0.35),
-// so MONITOR_WORLD reflects that.
-const MONITOR_WORLD  = new THREE.Vector3(0.10, 1.05, DESK_Z - 0.35);   // (0.10, 1.05, -4.85)
+// PINWHEEL 4-station layout: each booth is the same StationLite rotated
+// 90° around the centre, so each owns one quadrant of the central +
+// partition. Active SOUTH station shifts WEST by 0.83 (`SOUTH_DX`) to
+// sit in the SW quadrant — desk to the LEFT of centre, monitor in the
+// SW corner of the +. All world anchors that follow the active monitor
+// (camera targets, accessories, projector) use SOUTH_DX.
+const SOUTH_DX       = -0.83;
+const MONITOR_WORLD  = new THREE.Vector3(SOUTH_DX + 0.10, 1.05, DESK_Z - 0.35);   // (-0.73, 1.05, -4.85)
 
 // IDLE wide view — empty-office atmosphere (reference 3) where the
 // 4-booth cubicle cross (reference 4) sits prominently in the frame
@@ -111,24 +114,26 @@ const MONITOR_WORLD  = new THREE.Vector3(0.10, 1.05, DESK_Z - 0.35);   // (0.10,
 // Closer + lower + horizontal-ish view → workstation larger in frame,
 // less floor visible, walls + ceiling more balanced (matches reference)
 // Centred camera so the workstation sits dead-centre horizontally
+// Camera positions stay roughly on centre (camera x=0.10) but TARGETS
+// shift with SOUTH_DX so the camera looks at the new pinwheel desk.
 const CAM_ENTRY_POS  = new THREE.Vector3(0.10, 2.0, 6.0);
-const CAM_ENTRY_TGT  = new THREE.Vector3(0.10, 1.10, -5.0);
+const CAM_ENTRY_TGT  = new THREE.Vector3(SOUTH_DX + 0.10, 1.10, -5.0);
 const CAM_IDLE_POS   = new THREE.Vector3(0.10, 1.7, 3.8);
-const CAM_IDLE_TGT   = new THREE.Vector3(0.10, 1.10, -5.0);
+const CAM_IDLE_TGT   = new THREE.Vector3(SOUTH_DX + 0.10, 1.10, -5.0);
 // Camera ends VERY close to the monitor face — ~0.3 m from the screen.
 // At FOV 58° this makes the monitor screen fill roughly 66%×78% of the
 // viewport, so the bezel reads as a frame around the inner site (Heffer
 // pattern). Camera is dead-centred on the monitor so the screen always
 // projects to viewport center.
-const CAM_MONITOR_POS = new THREE.Vector3(0.10, 1.05, DESK_Z + 0.20);   // (0.10, 1.05, -4.30)
+const CAM_MONITOR_POS = new THREE.Vector3(SOUTH_DX + 0.10, 1.05, DESK_Z + 0.20);
 const CAM_MONITOR_TGT = MONITOR_WORLD.clone();
 
 // Lean-in close-up frame — looks STEEPLY DOWN at the desk so the chair
 // back tucks into the bottom-foreground (not blocking the keyboard +
 // monitor). Camera is high enough that the chair-top is well below
 // the target line.
-const CAM_LEAN_POS   = new THREE.Vector3(0.10, 2.45, -1.60);
-const CAM_LEAN_TGT   = new THREE.Vector3(0.10, 0.78, -4.65);
+const CAM_LEAN_POS   = new THREE.Vector3(SOUTH_DX + 0.10, 2.45, -1.60);
+const CAM_LEAN_TGT   = new THREE.Vector3(SOUTH_DX + 0.10, 0.78, -4.65);
 
 /* ---------- CRT screen shader — pronounced scanlines + faux ASCII ---- */
 const CRT_FRAG = `
@@ -1228,9 +1233,9 @@ function OfficeScene({ phase, onMonitorClick }: {
     fragmentShader: WALL_FRAG,
   }), []);
 
-  // Shared wood normal for the white MDR-style cross dividers between
-  // the 4 stations (tiled long for the EW arm, fine enough for the NS).
-  const deskCrossNormals = useDeskNormalProps(4, 1.2);
+  // Dark green fabric normal for the MDR partitions at the pinwheel
+  // centre (tiled wide so the weave reads at the panel scale).
+  const partitionFabric = usePartitionFabricProps(8, 3);
 
   // Carpet shader (subtle texture)
   const carpetMat = useMemo(() => new THREE.ShaderMaterial({
@@ -1347,61 +1352,67 @@ function OfficeScene({ phase, onMonitorClick }: {
       />
 
       {/* ── SEVERANCE MDR DIVIDERS ──────────────────────────────────
-          Integrated WHITE cross dividers between the 4 stations — not
-          loose green fabric cubicle walls. Same off-white as the desks
-          (sharing the wood normal map for consistency) so they read as
-          built-in MDR furniture, not generic office partitions. Tall
-          enough to occlude monitors between adjacent workers. */}
-      {/* EW arm — west desk to east desk */}
-      <mesh position={[0, 1.30, DESK_Z - 0.74]} castShadow receiveShadow>
-        <boxGeometry args={[3.20, 1.12, 0.06]} />
-        <meshStandardMaterial {...(deskCrossNormals as any)} color={C.desk} roughness={0.45} metalness={0.02} normalScale={[0.16, 0.16] as any} />
+          Freestanding DARK GREEN FABRIC partitions forming a + at the
+          centre of the pinwheel. Top about 1.5 m (chest-high when
+          standing, fully covers seated workers' monitors from each
+          other). Each arm has a slim dark metal top/edge trim. */}
+      {/* EW arm */}
+      <mesh position={[0, 0.95, DESK_Z - 0.74]} castShadow receiveShadow>
+        <boxGeometry args={[2.60, 1.40, 0.06]} />
+        <meshStandardMaterial {...(partitionFabric as any)} color={C.partition} roughness={0.92} normalScale={[0.55, 0.55] as any} />
       </mesh>
-      {/* NS arm — south desk to north desk */}
-      <mesh position={[0, 1.30, DESK_Z - 0.74]} castShadow receiveShadow>
-        <boxGeometry args={[0.06, 1.12, 1.50]} />
-        <meshStandardMaterial {...(deskCrossNormals as any)} color={C.desk} roughness={0.45} metalness={0.02} normalScale={[0.16, 0.16] as any} />
+      {/* NS arm */}
+      <mesh position={[0, 0.95, DESK_Z - 0.74]} castShadow receiveShadow>
+        <boxGeometry args={[0.06, 1.40, 2.20]} />
+        <meshStandardMaterial {...(partitionFabric as any)} color={C.partition} roughness={0.92} normalScale={[0.55, 0.55] as any} />
       </mesh>
-      {/* Slim dark top trim along each arm — subtle line that gives the
-          dividers a finished MDR-furniture edge instead of a raw box. */}
-      <mesh position={[0, 1.87, DESK_Z - 0.74]}>
-        <boxGeometry args={[3.22, 0.025, 0.08]} />
-        <meshStandardMaterial color="#2A2A2A" roughness={0.6} />
+      {/* Slim dark metal top edge — gives the panels a finished frame. */}
+      <mesh position={[0, 1.66, DESK_Z - 0.74]}>
+        <boxGeometry args={[2.62, 0.04, 0.09]} />
+        <meshStandardMaterial color="#1F1F1F" roughness={0.55} metalness={0.4} />
       </mesh>
-      <mesh position={[0, 1.87, DESK_Z - 0.74]}>
-        <boxGeometry args={[0.08, 0.025, 1.52]} />
-        <meshStandardMaterial color="#2A2A2A" roughness={0.6} />
+      <mesh position={[0, 1.66, DESK_Z - 0.74]}>
+        <boxGeometry args={[0.09, 0.04, 2.22]} />
+        <meshStandardMaterial color="#1F1F1F" roughness={0.55} metalness={0.4} />
       </mesh>
 
-      {/* ── 4 SYMMETRIC BOOTHS ───────────────────────────────────────
-          All 4 booths share identical StationLite geometry. Only the
-          SOUTH booth is the "active" one (active CRT + accessories). */}
-      {/* SOUTH (active) */}
-      <group position={[0, 0, DESK_Z]}>
+      {/* ── 4 PINWHEEL BOOTHS ────────────────────────────────────────
+          Real Severance MDR layout: each station is the same pose
+          rotated 90° around the centre, so each desk occupies exactly
+          ONE quadrant of the central + partition. Shift `p` along each
+          station's local +x moves it sideways into its quadrant. CCW
+          pinwheel viewed from above. SOUTH is the active station. */}
+      {/* SOUTH (active) — SW quadrant. Shifted WEST so desk lives left
+          of the centre NS arm; chair sits south of the EW arm. */}
+      <group position={[-0.83, 0, DESK_Z]}>
         <StationLite active />
       </group>
-      {/* NORTH — user faces south */}
-      <group position={[0, 0, DESK_Z - 1.42]} rotation-y={Math.PI}>
+      {/* NORTH — NE quadrant. Shifted EAST (after 180° rotation that
+          becomes the symmetric pinwheel position). */}
+      <group position={[0.83, 0, DESK_Z - 1.42]} rotation-y={Math.PI}>
         <StationLite />
       </group>
-      {/* EAST — user faces west. Pulled in to x=1.5 (was 3.0) so the
-          four-station pod clusters tightly around the centre — the
-          Severance MDR layout where monitors meet back-to-back. */}
-      <group position={[1.5, 0, DESK_Z - 0.74]} rotation-y={Math.PI / 2}>
+      {/* EAST — SE quadrant. Shifted SOUTH along its local +x (which
+          maps to world +z after the +π/2 rotation). */}
+      <group position={[1.5, 0, DESK_Z + 0.09]} rotation-y={Math.PI / 2}>
         <StationLite />
       </group>
-      {/* WEST — user faces east. Mirror of east, also pulled in to ±1.5. */}
-      <group position={[-1.5, 0, DESK_Z - 0.74]} rotation-y={-Math.PI / 2}>
+      {/* WEST — NW quadrant. Shifted NORTH along its local +x. */}
+      <group position={[-1.5, 0, DESK_Z - 1.57]} rotation-y={-Math.PI / 2}>
         <StationLite />
       </group>
 
-      {/* ── ACTIVE CRT on the south booth (click target) ──────────── */}
+      {/* ── ACTIVE STATION ITEMS — CRT + every desk accessory ─────────
+          Wrapped in a group at (SOUTH_DX, 0, 0) so the whole bundle
+          rides with the south station's pinwheel shift. (CrtMonitor
+          uses MONITOR_WORLD internally which already includes SOUTH_DX,
+          so it's mounted OUTSIDE this group.) */}
       <CrtMonitor phase={phase} onClick={onMonitorClick} />
 
+      <group position={[SOUTH_DX, 0, 0]}>
       {/* ── DESK ACCESSORIES — all on the south booth only ──────────
-          Positioned in world coords corresponding to the south booth's
-          desk surface at z = DESK_Z (-4.5), centred at x = 0.10 to align
-          with the active CRT. */}
+          Local positions kept identical to before; the parent group
+          applies the SOUTH_DX x-shift. */}
 
       {/* keyboard — directly in front of monitor */}
       <Keyboard pos={[0.05, 0.77, DESK_Z + 0.30]} />
@@ -1492,6 +1503,7 @@ function OfficeScene({ phase, onMonitorClick }: {
         <cylinderGeometry args={[0.005, 0.005, 0.14, 8]} />
         <meshStandardMaterial color="#1A1A1A" roughness={0.55} />
       </mesh>
+      </group>{/* end SOUTH_DX accessories group */}
 
       {/* ── WALL CLOCKS — one on each side wall (matches reference) ─── */}
       <WallClock pos={[ROOM_W / 2 - 0.12, 2.8, 3]} />
