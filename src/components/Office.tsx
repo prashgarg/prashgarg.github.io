@@ -2339,7 +2339,7 @@ export default function Office() {
           gl={{
             antialias: true,
             toneMapping: THREE.ACESFilmicToneMapping,
-            toneMappingExposure: 1.05,
+            toneMappingExposure: 1.20,
           }}
         >
           <PerspectiveCamera makeDefault position={[CAM_ENTRY_POS.x, CAM_ENTRY_POS.y, CAM_ENTRY_POS.z]} fov={54} />
@@ -2351,7 +2351,9 @@ export default function Office() {
               + bright ceiling panels. */}
           <EffectComposer multisampling={0} disableNormalPass={false}>
             <N8AO aoRadius={0.5} intensity={1.4} aoSamples={16} denoiseSamples={4} color="black" />
-            <Bloom intensity={0.32} luminanceThreshold={0.85} luminanceSmoothing={0.4} mipmapBlur />
+            {/* Stronger bloom — Severance MDR is shot bright/overexposed,
+                ceiling panels glow into the surrounding cells. */}
+            <Bloom intensity={0.65} luminanceThreshold={0.75} luminanceSmoothing={0.5} mipmapBlur />
           </EffectComposer>
         </Canvas>
       </div>
