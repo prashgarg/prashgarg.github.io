@@ -367,6 +367,52 @@ const CARPET_FRAG = `
 `;
 
 /* ---------- camera rig ----------------------------------------------- */
+/**
+ * Projects the CRT screen plane into viewport pixels every frame and
+ * writes the bounding rect to CSS variables on <html>. The embedded
+ * InnerDesktop overlay reads these vars so it sits EXACTLY inside the
+ * CRT bezel — instead of an arbitrary 66vw × 78vh box that overflows.
+ *
+ * Why every frame: the camera dollies smoothly, so the screen rect is
+ * animated through several seconds; we want the overlay to slot in only
+ * once the camera arrives. We still update during idle (the screen is
+ * tiny then, so the overlay isn't shown anyway) — cheap enough.
+ */
+function CrtScreenProjector() {
+  const { camera, size } = useThree();
+  // Screen plane lives at MONITOR_WORLD + local offset [0, 0.02, 0.207],
+  // size 0.34 × 0.26 (see CrtMonitor). Four corners in world space:
+  const corners = useMemo(() => {
+    const cx = MONITOR_WORLD.x, cy = MONITOR_WORLD.y + 0.02, cz = MONITOR_WORLD.z + 0.207;
+    const hw = 0.17, hh = 0.13;
+    return [
+      new THREE.Vector3(cx - hw, cy - hh, cz),
+      new THREE.Vector3(cx + hw, cy - hh, cz),
+      new THREE.Vector3(cx - hw, cy + hh, cz),
+      new THREE.Vector3(cx + hw, cy + hh, cz),
+    ];
+  }, []);
+  const v = useMemo(() => new THREE.Vector3(), []);
+  useFrame(() => {
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const c of corners) {
+      v.copy(c).project(camera);
+      const px = (v.x + 1) * 0.5 * size.width;
+      const py = (1 - v.y) * 0.5 * size.height;
+      if (px < minX) minX = px;
+      if (py < minY) minY = py;
+      if (px > maxX) maxX = px;
+      if (py > maxY) maxY = py;
+    }
+    const root = document.documentElement.style;
+    root.setProperty('--crt-left', `${minX}px`);
+    root.setProperty('--crt-top',  `${minY}px`);
+    root.setProperty('--crt-w',    `${maxX - minX}px`);
+    root.setProperty('--crt-h',    `${maxY - minY}px`);
+  });
+  return null;
+}
+
 function CameraRig({ phase, onArrived, onEntryDone }: {
   phase: Phase; onArrived: () => void; onEntryDone: () => void;
 }) {
@@ -1684,8 +1730,13 @@ function BootOverlay({ onDone }: { onDone: () => void }) {
       onClick={() => { skipped.current = true; setDone(true); }}
       style={{
         position: 'fixed',
-        top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-        width: 'min(66vw, 880px)', height: 'min(78vh, 670px)',
+        // Use the live CRT screen projection (set by CrtScreenProjector
+        // every frame). Fallbacks keep the overlay sensible if the
+        // projector hasn't written the vars yet.
+        top:    'var(--crt-top,  50%)' as any,
+        left:   'var(--crt-left, 50%)' as any,
+        width:  'var(--crt-w,    min(66vw, 880px))' as any,
+        height: 'var(--crt-h,    min(78vh, 670px))' as any,
         zIndex: 9999,
         background: '#0E0D0B', color: '#A4D9C5',
         // subtle CRT scanlines for the boot terminal background
@@ -1999,6 +2050,7 @@ export default function Office() {
         >
           <PerspectiveCamera makeDefault position={[CAM_ENTRY_POS.x, CAM_ENTRY_POS.y, CAM_ENTRY_POS.z]} fov={54} />
           <CameraRig phase={phase} onArrived={handleArrived} onEntryDone={handleEntryDone} />
+          <CrtScreenProjector />
           <OfficeScene phase={phase} onMonitorClick={handleClick} />
           {/* Post-processing: N8AO for ambient occlusion (grime in corners
               where geometry meets), Bloom for soft halo around the CRT

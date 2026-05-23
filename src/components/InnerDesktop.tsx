@@ -51,24 +51,24 @@ const WIN95_STYLE = `
   font-family: MSSerif, 'Arial', sans-serif;
   user-select: none;
 }
-/* Embedded mode — sized to match where the monitor SCREEN projects to
-   the viewport at the close-up dolly position (~0.3 m from screen face).
-   The 3D office scene stays visible around the edges, with the CRT
-   bezel acting as the visible frame around the inner site. */
+/* Embedded mode — sized to the EXACT pixel rect of the CRT screen plane
+   as projected to the viewport every frame. CSS vars --crt-left/top/w/h
+   are written by CrtScreenProjector inside the R3F canvas. Fallbacks
+   keep the overlay sensible if the projector hasn't run yet. */
 .win95-desktop.embedded {
   inset: auto;
-  top: 50%;
-  left: 50%;
-  width: min(66vw, 880px);
-  height: min(78vh, 670px);
-  transform: translate(-50%, -50%);
+  top:    var(--crt-top,  50%);
+  left:   var(--crt-left, 50%);
+  width:  var(--crt-w,    min(66vw, 880px));
+  height: var(--crt-h,    min(78vh, 670px));
+  transform: none;
   box-shadow: 0 0 0 2px #2b2b2b, 0 18px 50px rgba(0,0,0,0.55);
   /* fade-in when boot completes and InnerDesktop mounts */
   animation: w95-fadein 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 @keyframes w95-fadein {
-  0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.985); }
-  100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  0%   { opacity: 0; }
+  100% { opacity: 1; }
 }
 
 /* ---------- window chrome ----------------------------------------- */
