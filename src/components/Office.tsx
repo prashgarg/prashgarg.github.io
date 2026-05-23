@@ -121,7 +121,7 @@ const MONITOR_WORLD  = new THREE.Vector3(SOUTH_DX + 0.10, 1.05, DESK_Z - 0.35); 
 // occupies ~30%, floor ~25%.
 const CAM_ENTRY_POS  = new THREE.Vector3(0.10, 1.95, 5.5);
 const CAM_ENTRY_TGT  = new THREE.Vector3(SOUTH_DX + 0.10, 1.05, -5.0);
-const CAM_IDLE_POS   = new THREE.Vector3(0.30, 1.55, 5.2);
+const CAM_IDLE_POS   = new THREE.Vector3(1.20, 1.55, 5.2);
 const CAM_IDLE_TGT   = new THREE.Vector3(SOUTH_DX + 0.10, 1.10, -5.0);
 // Camera ends VERY close to the monitor face — ~0.3 m from the screen.
 // At FOV 58° this makes the monitor screen fill roughly 66%×78% of the
