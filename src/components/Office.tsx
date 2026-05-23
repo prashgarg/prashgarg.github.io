@@ -1900,6 +1900,51 @@ function OfficeScene({ phase, onMonitorClick }: {
         </mesh>
       ))}
 
+      {/* ── HALLWAY DEPTH inside the doorway — a slim recessed floor +
+          back-wall slice suggesting the corridor continues into a lit
+          hallway, breaking the flat dark void into something that
+          reads as space beyond the threshold. */}
+      <group position={[-9.0, 0, -ROOM_D / 2 - 0.05]}>
+        {/* recessed hallway floor (lit) */}
+        <mesh rotation-x={-Math.PI / 2} position={[0, 0.01, -0.8]}>
+          <planeGeometry args={[1.20, 1.6]} />
+          <meshStandardMaterial color="#7E8C82" roughness={0.85} />
+        </mesh>
+        {/* hallway back wall (dimmer than the MDR room) */}
+        <mesh position={[0, 1.30, -1.6]}>
+          <planeGeometry args={[1.20, 2.60]} />
+          <meshStandardMaterial color="#5A645E" roughness={0.85} emissive="#A0B0A6" emissiveIntensity={0.06} />
+        </mesh>
+        {/* small far-end fluorescent strip suggesting the corridor extends */}
+        <mesh position={[0, 2.40, -1.59]}>
+          <boxGeometry args={[1.00, 0.06, 0.02]} />
+          <meshStandardMaterial color="#FFFFFF" emissive="#FFFFFF" emissiveIntensity={1.5} />
+        </mesh>
+      </group>
+
+      {/* ── FLOOR LAMP — tall standing accent in the visible RIGHT-MID
+          area of the room (camera-visible from idle). Severance MDR has
+          these subtle vertical accents breaking up the empty floor. */}
+      <group position={[5.5, 0, -1.0]}>
+        {/* base disc */}
+        <mesh position={[0, 0.025, 0]} castShadow receiveShadow>
+          <cylinderGeometry args={[0.18, 0.20, 0.05, 24]} />
+          <meshStandardMaterial color="#3A3A3A" roughness={0.5} metalness={0.5} />
+        </mesh>
+        {/* slim chrome pole */}
+        <mesh position={[0, 0.90, 0]} castShadow>
+          <cylinderGeometry args={[0.020, 0.022, 1.75, 12]} />
+          <meshStandardMaterial color="#8C8C8C" roughness={0.35} metalness={0.7} />
+        </mesh>
+        {/* cream paper shade — conical drum */}
+        <mesh position={[0, 1.94, 0]} castShadow>
+          <cylinderGeometry args={[0.18, 0.22, 0.36, 24]} />
+          <meshStandardMaterial color="#F2EBD8" roughness={0.85} emissive="#F2EBD8" emissiveIntensity={0.20} />
+        </mesh>
+        {/* warm point light from the shade */}
+        <pointLight position={[0, 1.94, 0]} intensity={2.5} distance={5.0} decay={2} color="#FFE9B0" />
+      </group>
+
       {/* ── DOOR (BACK wall, further LEFT and BIGGER) ────────────────
           Moved from x=-6 → x=-9 so it sits clearly outside the
           pod silhouette in the idle frame. Made wider (1.05→1.35 m)
