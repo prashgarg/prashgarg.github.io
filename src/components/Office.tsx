@@ -1225,8 +1225,9 @@ function OfficeScene({ phase, onMonitorClick }: {
     fragmentShader: WALL_FRAG,
   }), []);
 
-  // Partition fabric props (shared across all partition arms)
-  const partitionFabric = usePartitionFabricProps(8, 2);
+  // Shared wood normal for the white MDR-style cross dividers between
+  // the 4 stations (tiled long for the EW arm, fine enough for the NS).
+  const deskCrossNormals = useDeskNormalProps(4, 1.2);
 
   // Carpet shader (subtle texture)
   const carpetMat = useMemo(() => new THREE.ShaderMaterial({
@@ -1342,11 +1343,32 @@ function OfficeScene({ phase, onMonitorClick }: {
         size={[ROOM_D, ROOM_H]}
       />
 
-      {/* ── NO PARTITIONS ────────────────────────────────────────────
-          Severance MDR style: the 4 stations cluster around an open
-          centre with the 4 monitors meeting back-to-back. No cubicle
-          walls between workers. The room itself does the dividing —
-          vast institutional white volume. */}
+      {/* ── SEVERANCE MDR DIVIDERS ──────────────────────────────────
+          Integrated WHITE cross dividers between the 4 stations — not
+          loose green fabric cubicle walls. Same off-white as the desks
+          (sharing the wood normal map for consistency) so they read as
+          built-in MDR furniture, not generic office partitions. Tall
+          enough to occlude monitors between adjacent workers. */}
+      {/* EW arm — west desk to east desk */}
+      <mesh position={[0, 1.30, DESK_Z - 0.74]} castShadow receiveShadow>
+        <boxGeometry args={[3.20, 1.12, 0.06]} />
+        <meshStandardMaterial {...(deskCrossNormals as any)} color={C.desk} roughness={0.45} metalness={0.02} normalScale={[0.16, 0.16] as any} />
+      </mesh>
+      {/* NS arm — south desk to north desk */}
+      <mesh position={[0, 1.30, DESK_Z - 0.74]} castShadow receiveShadow>
+        <boxGeometry args={[0.06, 1.12, 1.50]} />
+        <meshStandardMaterial {...(deskCrossNormals as any)} color={C.desk} roughness={0.45} metalness={0.02} normalScale={[0.16, 0.16] as any} />
+      </mesh>
+      {/* Slim dark top trim along each arm — subtle line that gives the
+          dividers a finished MDR-furniture edge instead of a raw box. */}
+      <mesh position={[0, 1.87, DESK_Z - 0.74]}>
+        <boxGeometry args={[3.22, 0.025, 0.08]} />
+        <meshStandardMaterial color="#2A2A2A" roughness={0.6} />
+      </mesh>
+      <mesh position={[0, 1.87, DESK_Z - 0.74]}>
+        <boxGeometry args={[0.08, 0.025, 1.52]} />
+        <meshStandardMaterial color="#2A2A2A" roughness={0.6} />
+      </mesh>
 
       {/* ── 4 SYMMETRIC BOOTHS ───────────────────────────────────────
           All 4 booths share identical StationLite geometry. Only the
