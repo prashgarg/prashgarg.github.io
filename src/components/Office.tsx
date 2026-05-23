@@ -109,10 +109,11 @@ const MONITOR_WORLD  = new THREE.Vector3(0.10, 1.05, DESK_Z - 0.35);   // (0.10,
 // dominates. Camera pulled back + slightly elevated for atmosphere.
 // Closer + lower + horizontal-ish view → workstation larger in frame,
 // less floor visible, walls + ceiling more balanced (matches reference)
-const CAM_ENTRY_POS  = new THREE.Vector3(-1.0, 2.0, 6.0);
-const CAM_ENTRY_TGT  = new THREE.Vector3(0.2, 1.10, -5.0);
-const CAM_IDLE_POS   = new THREE.Vector3(-0.8, 1.7, 3.8);
-const CAM_IDLE_TGT   = new THREE.Vector3(0.2, 1.10, -5.0);
+// Centred camera so the workstation sits dead-centre horizontally
+const CAM_ENTRY_POS  = new THREE.Vector3(0.10, 2.0, 6.0);
+const CAM_ENTRY_TGT  = new THREE.Vector3(0.10, 1.10, -5.0);
+const CAM_IDLE_POS   = new THREE.Vector3(0.10, 1.7, 3.8);
+const CAM_IDLE_TGT   = new THREE.Vector3(0.10, 1.10, -5.0);
 // Camera ends VERY close to the monitor face — ~0.3 m from the screen.
 // At FOV 58° this makes the monitor screen fill roughly 66%×78% of the
 // viewport, so the bezel reads as a frame around the inner site (Heffer
@@ -340,7 +341,7 @@ const WALL_FRAG = `
   }
 `;
 
-/* ---------- carpet noise shader (subtle weave) ----------------------- */
+/* ---------- carpet noise shader (subtle weave + vacuum tracks) ------ */
 const CARPET_FRAG = `
   uniform vec3 uBase;
   uniform vec2 uRes;
@@ -352,7 +353,14 @@ const CARPET_FRAG = `
     float n1 = (hash(floor(p)) - 0.5) * 0.045;
     // 2) coarser blotches (mild wear pattern)
     float n2 = (hash(floor(p * 0.08)) - 0.5) * 0.025;
-    vec3 col = uBase + vec3(n1 + n2);
+    // 3) vacuum tracks — slow horizontal sinusoidal lightening,
+    //    with a per-band random offset so the streaks read as
+    //    directional carpet sweep marks
+    float bandIdx = floor(vUv.y * 18.0);
+    float bandRand = hash(vec2(bandIdx, 7.0));
+    float band = sin(vUv.x * 9.0 + bandRand * 6.28) * 0.5 + 0.5;
+    float track = (band - 0.5) * 0.022;
+    vec3 col = uBase + vec3(n1 + n2 + track);
     gl_FragColor = vec4(col, 1.0);
   }
 `;
@@ -495,39 +503,40 @@ function WallClock({ pos }: { pos: [number, number, number] }) {
   });
   return (
     <group position={pos} rotation={[0, -Math.PI / 2, 0]}>
-      {/* face — larger so it's visible from the wider idle camera */}
+      {/* face — bigger (radius 0.40 → 0.55) so it reads from the
+          new closer idle camera */}
       <mesh>
-        <circleGeometry args={[0.40, 48]} />
+        <circleGeometry args={[0.55, 48]} />
         <meshStandardMaterial color={C.clock} roughness={0.7} />
       </mesh>
       <mesh>
-        <ringGeometry args={[0.37, 0.43, 48]} />
+        <ringGeometry args={[0.52, 0.58, 48]} />
         <meshStandardMaterial color="#3A3A3A" roughness={0.5} side={THREE.DoubleSide} />
       </mesh>
-      {/* 12 hour-marker ticks */}
+      {/* 12 hour-marker ticks (proportionally larger) */}
       {Array.from({ length: 12 }).map((_, i) => {
         const a = (i / 12) * Math.PI * 2;
-        const len = i % 3 === 0 ? 0.06 : 0.035;
+        const len = i % 3 === 0 ? 0.085 : 0.050;
         return (
-          <mesh key={`tk-${i}`} position={[Math.sin(a) * 0.33, Math.cos(a) * 0.33, 0.009]} rotation={[0, 0, -a]}>
-            <boxGeometry args={[0.012, len, 0.005]} />
+          <mesh key={`tk-${i}`} position={[Math.sin(a) * 0.46, Math.cos(a) * 0.46, 0.009]} rotation={[0, 0, -a]}>
+            <boxGeometry args={[0.016, len, 0.005]} />
             <meshStandardMaterial color="#1A1A1A" />
           </mesh>
         );
       })}
       {/* hour hand */}
-      <mesh ref={hrRef} position={[0, 0.09, 0.012]}>
-        <boxGeometry args={[0.030, 0.21, 0.007]} />
+      <mesh ref={hrRef} position={[0, 0.125, 0.012]}>
+        <boxGeometry args={[0.040, 0.30, 0.007]} />
         <meshStandardMaterial color="#1A1A1A" />
       </mesh>
       {/* minute hand */}
-      <mesh ref={minRef} position={[0, 0.12, 0.016]}>
-        <boxGeometry args={[0.020, 0.28, 0.006]} />
+      <mesh ref={minRef} position={[0, 0.17, 0.016]}>
+        <boxGeometry args={[0.026, 0.40, 0.006]} />
         <meshStandardMaterial color="#1A1A1A" />
       </mesh>
       {/* centre dot */}
       <mesh position={[0, 0, 0.020]}>
-        <circleGeometry args={[0.022, 16]} />
+        <circleGeometry args={[0.030, 16]} />
         <meshStandardMaterial color="#1A1A1A" />
       </mesh>
     </group>
@@ -580,10 +589,10 @@ function PowerLed({ position }: { position: [number, number, number] }) {
 function CrtMonitor({ phase, onClick }: { phase: Phase; onClick?: () => void }) {
   const [hovered, setHovered] = useState(false);
   const clickable = phase === 'idle';
-  // CRT shader material — phosphor green with scanlines + terminal rows
+  // CRT shader material — teal-blue terminal (matches the reference)
   const crtMat = useMemo(() => new THREE.ShaderMaterial({
     uniforms: {
-      uColor:     { value: new THREE.Color('#7ED9A8') },
+      uColor:     { value: new THREE.Color('#6CB8E0') },
       uIntensity: { value: 1.2 },
       uTime:      { value: 0 },
     },
@@ -643,15 +652,14 @@ function CrtMonitor({ phase, onClick }: { phase: Phase; onClick?: () => void }) 
         <planeGeometry args={[0.34, 0.26]} />
         <primitive object={crtMat} attach="material" />
       </mesh>
-      {/* subtle screen glow light onto the desk + chair — slightly
-          brighter so the CRT's presence is felt from a distance */}
+      {/* subtle screen glow light — teal/blue to match the new CRT colour */}
       {clickable && (
         <pointLight
           position={[0, 0.02, 0.35]}
           intensity={hovered ? 1.0 : 0.5}
           distance={3.0}
           decay={2}
-          color="#7ED9A8"
+          color="#6CB8E0"
         />
       )}
       {/* neck */}
@@ -1072,18 +1080,7 @@ function OfficeScene({ phase, onMonitorClick }: {
       {/* Dedicated desk fill — compensates for partitions blocking ceiling lights */}
       <pointLight position={[0.3, ROOM_H - 0.5, DESK_Z + 0.5]} intensity={7.5} distance={9} decay={2} color="#F6F9FF" />
 
-      {/* Active-station SPOTLIGHT — tamer than before; the reference is
-          more uniformly lit (less obvious puddle of light). */}
-      <spotLight
-        position={[0.10, ROOM_H - 0.05, DESK_Z + 0.2]}
-        target-position={[0.10, 0.8, DESK_Z]}
-        angle={0.55}
-        penumbra={0.85}
-        intensity={3.5}
-        distance={6}
-        decay={2}
-        color="#FFFAF0"
-      />
+      {/* (Active-station spotlight removed — reference is uniform flood) */}
 
       {/* Ceiling panel lights — true fluorescent flood */}
       {lightGrid.map(([x, z], i) => (
@@ -1230,6 +1227,32 @@ function OfficeScene({ phase, onMonitorClick }: {
       <mesh position={[0.55, 0.81, DESK_Z - 0.441]} rotation-y={-0.20}>
         <planeGeometry args={[0.10, 0.075]} />
         <meshStandardMaterial color="#8AA5C8" roughness={0.8} />
+      </mesh>
+
+      {/* tissue box — small white cube on the right-front of desk */}
+      <mesh position={[0.50, 0.83, DESK_Z + 0.45]}>
+        <boxGeometry args={[0.14, 0.10, 0.10]} />
+        <meshStandardMaterial color="#F8F6F2" roughness={0.85} />
+      </mesh>
+      {/* tissue slot — small darker indent on top */}
+      <mesh position={[0.50, 0.885, DESK_Z + 0.45]}>
+        <boxGeometry args={[0.08, 0.006, 0.04]} />
+        <meshStandardMaterial color="#C8C6C2" roughness={0.9} />
+      </mesh>
+
+      {/* pen holder — small cylinder cup beside monitor */}
+      <mesh position={[-0.35, 0.81, DESK_Z - 0.15]}>
+        <cylinderGeometry args={[0.045, 0.04, 0.10, 14]} />
+        <meshStandardMaterial color="#3A3C3E" roughness={0.6} />
+      </mesh>
+      {/* pens poking out of holder */}
+      <mesh position={[-0.35, 0.91, DESK_Z - 0.15]} rotation-z={0.08}>
+        <cylinderGeometry args={[0.005, 0.005, 0.10, 6]} />
+        <meshStandardMaterial color="#5BA8B0" />
+      </mesh>
+      <mesh position={[-0.36, 0.90, DESK_Z - 0.14]} rotation-z={-0.12} rotation-x={0.08}>
+        <cylinderGeometry args={[0.005, 0.005, 0.10, 6]} />
+        <meshStandardMaterial color="#D33A3A" />
       </mesh>
 
       {/* in-tray with a small stack of papers — back-centre of desk */}
