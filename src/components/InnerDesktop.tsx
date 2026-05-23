@@ -15,6 +15,18 @@
  *   - minimize to taskbar button (click _ or the taskbar chip)
  */
 import { useEffect, useRef, useState } from 'react';
+import { papers, talks } from '../data/site';
+
+// Compute the most recent paper for the homepage "Latest" card.
+// Sort by year desc, then by published > accepted > rr > working > other.
+const STATUS_RANK: Record<string, number> = { published: 5, accepted: 4, rr: 3, working: 2, other: 1 };
+const LATEST_PAPER = [...papers].sort((a, b) => {
+  const yearDiff = (b.year || 0) - (a.year || 0);
+  if (yearDiff !== 0) return yearDiff;
+  return (STATUS_RANK[b.status] || 0) - (STATUS_RANK[a.status] || 0);
+})[0];
+const LATEST_PAPER_COUNT = papers.length;
+const LATEST_TALK_COUNT = talks.length;
 
 /* ---------- Win95 CSS injected once ----------------------------------- */
 const GFONTS_HREF = 'https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;700&display=swap';
@@ -199,31 +211,100 @@ const WIN95_STYLE = `
 .win95-home {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  align-items: stretch;
+  justify-content: flex-start;
   height: 100%;
-  padding: 36px;
+  padding: 28px 40px 24px;
   box-sizing: border-box;
+  overflow-y: auto;
+}
+.win95-home-header {
   text-align: center;
+  margin-bottom: 22px;
 }
 .win95-home-name {
   font-family: 'Cormorant Garamond', Georgia, serif;
-  font-size: 64px;
-  line-height: 0.9;
+  font-size: 56px;
+  line-height: 0.95;
   color: #1a1a1a;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 .win95-home-subtitle {
   font-family: Millennium, 'Times New Roman', serif;
-  font-size: 18px;
+  font-size: 15px;
   color: #444;
-  margin-bottom: 40px;
+  margin-bottom: 14px;
+}
+.win95-home-stats {
+  display: flex;
+  gap: 14px;
+  justify-content: center;
+  font-family: MSSerif, Arial, sans-serif;
+  font-size: 11px;
+  color: #444;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.win95-home-stats .dot {
+  color: #8a8a8a;
+}
+/* Sectioned card grid below the header */
+.win95-home-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.win95-card {
+  background: #FFFFFF;
+  padding: 12px 14px;
+  box-shadow: inset -1px -1px #fff, inset 1px 1px #86898d,
+              inset -2px -2px #c3c6ca, inset 2px 2px #2b2b2b;
+  display: flex;
+  flex-direction: column;
+}
+.win95-card-label {
+  font-family: MSSerif, Arial, sans-serif;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.10em;
+  color: #6a6a6a;
+  margin-bottom: 6px;
+}
+.win95-card-title {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 17px;
+  line-height: 1.25;
+  color: #1a1a1a;
+  margin-bottom: 6px;
+}
+.win95-card-meta {
+  font-family: MSSerif, Arial, sans-serif;
+  font-size: 11px;
+  color: #555;
+  margin-bottom: 8px;
+}
+.win95-card-link {
+  font-family: MSSerif, Arial, sans-serif;
+  font-size: 12px;
+  color: #0000a3;
+  text-decoration: underline;
+  cursor: pointer;
+  margin-top: auto;
+}
+.win95-card-text {
+  font-family: Millennium, serif;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #2a2a2a;
 }
 .win95-home-buttons {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
   justify-content: center;
+  margin-top: auto;
+  padding-top: 8px;
 }
 .win95-btn {
   font-family: Millennium, serif;
@@ -746,10 +827,52 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
 
             <div className="win95-content">
               <div className="win95-home">
-                <div className="win95-home-name">Prashant<br/>Garg</div>
-                <div className="win95-home-subtitle">
-                  Economist · Cambridge · Imperial · LSE
+                <div className="win95-home-header">
+                  <div className="win95-home-name">Prashant<br/>Garg</div>
+                  <div className="win95-home-subtitle">
+                    Economist · Cambridge · Imperial · LSE
+                  </div>
+                  <div className="win95-home-stats">
+                    <span>{LATEST_PAPER_COUNT} papers</span>
+                    <span className="dot">·</span>
+                    <span>{LATEST_TALK_COUNT} talks</span>
+                    <span className="dot">·</span>
+                    <span>Bocconi · Sept&nbsp;2026</span>
+                  </div>
                 </div>
+
+                {/* Two-card grid: most recent paper + current focus ("now") */}
+                <div className="win95-home-grid">
+                  {LATEST_PAPER && (
+                    <div className="win95-card">
+                      <div className="win95-card-label">Latest paper</div>
+                      <div className="win95-card-title">{LATEST_PAPER.title}</div>
+                      <div className="win95-card-meta">
+                        {LATEST_PAPER.venue || 'Working paper'}{LATEST_PAPER.year ? ` · ${LATEST_PAPER.year}` : ''}
+                        {LATEST_PAPER.coauthors.length ? ` · with ${LATEST_PAPER.coauthors.join(', ')}` : ''}
+                      </div>
+                      <a
+                        className="win95-card-link"
+                        href={`/research/${LATEST_PAPER.slug}`}
+                        onMouseDown={() => playUiClick('down')}
+                        onMouseUp={() => playUiClick('up')}
+                      >Open paper →</a>
+                    </div>
+                  )}
+                  <div className="win95-card">
+                    <div className="win95-card-label">Now</div>
+                    <div className="win95-card-text">
+                      Cambridge, May 2026. Working on the <strong>Global Automation Atlas</strong> — mapping where automation arrives across global production networks and what it displaces.
+                    </div>
+                    <a
+                      className="win95-card-link"
+                      href="/now"
+                      onMouseDown={() => playUiClick('down')}
+                      onMouseUp={() => playUiClick('up')}
+                    >Read more →</a>
+                  </div>
+                </div>
+
                 <div className="win95-home-buttons">
                   {NAV_LINKS.map(l => (
                     <button
