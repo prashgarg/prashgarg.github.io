@@ -532,6 +532,23 @@ function WallClock({ pos }: { pos: [number, number, number] }) {
   );
 }
 
+/* ---------- power LED (slow pulse) ---------------------------------- */
+function PowerLed({ position }: { position: [number, number, number] }) {
+  const ref = useRef<THREE.MeshStandardMaterial>(null);
+  useFrame((state) => {
+    if (!ref.current) return;
+    // 1.6 Hz heartbeat-style pulse
+    const t = state.clock.elapsedTime;
+    ref.current.emissiveIntensity = 1.2 + Math.sin(t * 1.6) * 0.55;
+  });
+  return (
+    <mesh position={position}>
+      <sphereGeometry args={[0.009, 10, 8]} />
+      <meshStandardMaterial ref={ref} color="#6BE08C" emissive="#6BE08C" emissiveIntensity={1.5} />
+    </mesh>
+  );
+}
+
 /* ---------- CRT monitor (click target) ------------------------------- */
 function CrtMonitor({ phase, onClick }: { phase: Phase; onClick?: () => void }) {
   const [hovered, setHovered] = useState(false);
@@ -580,11 +597,8 @@ function CrtMonitor({ phase, onClick }: { phase: Phase; onClick?: () => void }) 
         <boxGeometry args={[0.44, 0.36, 0.01]} />
         <meshStandardMaterial color="#B8B4AC" roughness={0.5} />
       </mesh>
-      {/* power LED — tiny green dot below screen */}
-      <mesh position={[0.16, -0.18, 0.21]}>
-        <sphereGeometry args={[0.008, 8, 6]} />
-        <meshStandardMaterial color="#6BE08C" emissive="#6BE08C" emissiveIntensity={1.5} />
-      </mesh>
+      {/* power LED — tiny green dot below screen, pulses softly */}
+      <PowerLed position={[0.16, -0.18, 0.21]} />
       {/* power button */}
       <mesh position={[0.20, -0.18, 0.21]}>
         <boxGeometry args={[0.03, 0.012, 0.005]} />
@@ -705,6 +719,55 @@ function OfficeChair({ pos }: { pos: [number, number, number] }) {
         </group>
       ))}
     </group>
+  );
+}
+
+/* ---------- floating dust particles (atmosphere) -------------------- */
+// Slow-drifting points scattered through the room volume. Catches the
+// fluorescent light and gives the empty room a subtle "lived in" feel
+// without distracting from the workstation focal point.
+function DustParticles() {
+  const ref = useRef<THREE.Points>(null);
+  const COUNT = 90;
+  const positions = useMemo(() => {
+    const arr = new Float32Array(COUNT * 3);
+    for (let i = 0; i < COUNT; i++) {
+      arr[i * 3]     = (Math.random() - 0.5) * 28;
+      arr[i * 3 + 1] = 0.5 + Math.random() * 3.4;
+      arr[i * 3 + 2] = -10 + (Math.random() - 0.5) * 24;
+    }
+    return arr;
+  }, []);
+  const seeds = useMemo(() => {
+    const arr = new Float32Array(COUNT);
+    for (let i = 0; i < COUNT; i++) arr[i] = Math.random() * 6.28;
+    return arr;
+  }, []);
+  useFrame((state) => {
+    if (!ref.current) return;
+    const pos = ref.current.geometry.attributes.position.array as Float32Array;
+    const t = state.clock.elapsedTime;
+    for (let i = 0; i < COUNT; i++) {
+      // gentle vertical bob + slow horizontal sway
+      pos[i * 3 + 1] = 0.5 + ((seeds[i] + t * 0.08) % 3.4);
+      pos[i * 3]    += Math.sin(t * 0.07 + seeds[i]) * 0.0008;
+    }
+    ref.current.geometry.attributes.position.needsUpdate = true;
+  });
+  return (
+    <points ref={ref}>
+      <bufferGeometry>
+        <bufferAttribute attach="attributes-position" array={positions} count={COUNT} itemSize={3} />
+      </bufferGeometry>
+      <pointsMaterial
+        size={0.035}
+        color="#FFFFFF"
+        sizeAttenuation
+        transparent
+        opacity={0.25}
+        depthWrite={false}
+      />
+    </points>
   );
 }
 
@@ -907,6 +970,9 @@ function OfficeScene({ phase, onMonitorClick }: {
         <planeGeometry args={[ROOM_W, ROOM_D]} />
         <primitive object={carpetMat} attach="material" />
       </mesh>
+
+      {/* ── DUST PARTICLES — atmospheric haze ─────────────────────── */}
+      <DustParticles />
 
       {/* ── ContactShadows under chair + desk area ──────────────────── */}
       <ContactShadows
@@ -1280,6 +1346,32 @@ function VolumeOffIcon() {
   );
 }
 
+/* ---------- phase-transition flash ---------------------------------- */
+// Brief dark fade overlay that triggers on every phase change. Smooths
+// the visual jumps between BIOS→entering, dollying→booting, etc.
+function PhaseFlash({ phase }: { phase: Phase }) {
+  const [opacity, setOpacity] = useState(0);
+  useEffect(() => {
+    // Quick fade-in then fade-out on each phase change
+    setOpacity(0.45);
+    const t = setTimeout(() => setOpacity(0), 250);
+    return () => clearTimeout(t);
+  }, [phase]);
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: '#000',
+        pointerEvents: 'none',
+        opacity,
+        transition: 'opacity 0.4s ease-out',
+        zIndex: 7, // above scene & vignette, below HUD & overlays
+      }}
+    />
+  );
+}
+
 /* ---------- vignette overlay ----------------------------------------- */
 // Soft radial darkening at the corners — pulls the eye toward the
 // centre of the frame and adds cinematic atmosphere. Sits beneath the
@@ -1507,6 +1599,7 @@ export default function Office() {
       </div>
       {phase !== 'splash' && <VignetteOverlay />}
       {phase !== 'splash' && <GrainOverlay />}
+      <PhaseFlash phase={phase} />
       <StudyAudio active={audioActive} muted={muted} />
       {phase !== 'splash' && (
         <HudOverlay muted={muted} onMuteToggle={() => setMuted(m => !m)} />
