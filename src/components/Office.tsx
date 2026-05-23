@@ -747,6 +747,48 @@ function OfficeChair({ pos }: { pos: [number, number, number] }) {
   );
 }
 
+/* ---------- coffee steam (rising wisps from mug) -------------------- */
+function CoffeeSteam({ origin }: { origin: [number, number, number] }) {
+  const ref = useRef<THREE.Points>(null);
+  const COUNT = 12;
+  const positions = useMemo(() => new Float32Array(COUNT * 3), []);
+  const seeds = useMemo(() => {
+    const s = new Float32Array(COUNT);
+    for (let i = 0; i < COUNT; i++) s[i] = Math.random();
+    return s;
+  }, []);
+  useFrame((state) => {
+    if (!ref.current) return;
+    const t = state.clock.elapsedTime;
+    for (let i = 0; i < COUNT; i++) {
+      const cycle = (t * 0.35 + seeds[i]) % 1.0;   // 0..1 lifecycle
+      // y rises from 0 to 0.35 over the cycle
+      positions[i * 3]     = Math.sin(cycle * 6.0 + seeds[i] * 6.28) * 0.035 * cycle;
+      positions[i * 3 + 1] = cycle * 0.40;
+      positions[i * 3 + 2] = Math.cos(cycle * 5.5 + seeds[i] * 4.0) * 0.025 * cycle;
+    }
+    ref.current.geometry.attributes.position.needsUpdate = true;
+    // fade material by averaging lifecycle — peaks mid, fades at top
+    const mat = ref.current.material as THREE.PointsMaterial;
+    mat.opacity = 0.22;
+  });
+  return (
+    <points ref={ref} position={origin}>
+      <bufferGeometry>
+        <bufferAttribute attach="attributes-position" array={positions} count={COUNT} itemSize={3} />
+      </bufferGeometry>
+      <pointsMaterial
+        size={0.04}
+        color="#FFFFFF"
+        sizeAttenuation
+        transparent
+        opacity={0.22}
+        depthWrite={false}
+      />
+    </points>
+  );
+}
+
 /* ---------- floating dust particles (atmosphere) -------------------- */
 // Slow-drifting points scattered through the room volume. Catches the
 // fluorescent light and gives the empty room a subtle "lived in" feel
@@ -1139,6 +1181,8 @@ function OfficeScene({ phase, onMonitorClick }: {
         <torusGeometry args={[0.028, 0.008, 6, 10, Math.PI]} />
         <meshStandardMaterial color="#D8D6D2" roughness={0.55} />
       </mesh>
+      {/* rising coffee steam — subtle white wisps above the mug */}
+      <CoffeeSteam origin={[0.65, 0.84, DESK_Z + 0.15]} />
 
       {/* small framed picture — back-right of desk */}
       <mesh position={[0.55, 0.81, DESK_Z - 0.45]} rotation-y={-0.20}>
