@@ -116,9 +116,12 @@ const MONITOR_WORLD  = new THREE.Vector3(SOUTH_DX + 0.10, 1.05, DESK_Z - 0.35); 
 // Centred camera so the workstation sits dead-centre horizontally
 // Camera positions stay roughly on centre (camera x=0.10) but TARGETS
 // shift with SOUTH_DX so the camera looks at the new pinwheel desk.
-const CAM_ENTRY_POS  = new THREE.Vector3(0.10, 2.0, 6.0);
-const CAM_ENTRY_TGT  = new THREE.Vector3(SOUTH_DX + 0.10, 1.10, -5.0);
-const CAM_IDLE_POS   = new THREE.Vector3(0.10, 1.7, 3.8);
+// Idle framing tuned to match the Severance MDR reference photo:
+// camera low (eye-level seated ≈1.5 m), pod fills ~45% of frame, ceiling
+// occupies ~30%, floor ~25%.
+const CAM_ENTRY_POS  = new THREE.Vector3(0.10, 1.95, 5.5);
+const CAM_ENTRY_TGT  = new THREE.Vector3(SOUTH_DX + 0.10, 1.05, -5.0);
+const CAM_IDLE_POS   = new THREE.Vector3(0.10, 1.45, 2.8);
 const CAM_IDLE_TGT   = new THREE.Vector3(SOUTH_DX + 0.10, 1.10, -5.0);
 // Camera ends VERY close to the monitor face — ~0.3 m from the screen.
 // At FOV 58° this makes the monitor screen fill roughly 66%×78% of the
@@ -1218,6 +1221,118 @@ function usePartitionFabricProps(repeatX = 8, repeatY = 2) {
   return props;
 }
 
+/**
+ * One framed sage-green fabric panel — used 4× by MdrDividerCluster.
+ * Built per the Severance MDR prop: chrome frame on all 4 edges, sage
+ * fabric in the middle, sits on 2 small white pedestal feet that lift
+ * it off the floor.
+ *
+ * Local frame is axis-aligned in X (width) and Y (height), with the
+ * panel thickness Z = 0.03. Caller is responsible for rotation +
+ * placement.
+ */
+function MdrPanel({ w, h, fabric }: { w: number; h: number; fabric: any }) {
+  const FRAME_THICK = 0.022;        // chrome frame bar thickness
+  const FRAME_DEPTH = 0.045;        // frame depth (slightly proud of fabric)
+  const PANEL_DEPTH = 0.028;
+  const FOOT_W = 0.16, FOOT_H = 0.08, FOOT_D = 0.18;
+  const yMid  = h / 2;              // panel local origin is at its bottom
+  return (
+    <group>
+      {/* fabric panel — main green field */}
+      <mesh position={[0, yMid, 0]} castShadow receiveShadow>
+        <boxGeometry args={[w - FRAME_THICK * 2, h - FRAME_THICK * 2, PANEL_DEPTH]} />
+        <meshStandardMaterial {...fabric} color={C.partition} roughness={0.92} normalScale={[0.55, 0.55] as any} />
+      </mesh>
+      {/* TOP chrome bar */}
+      <mesh position={[0, h - FRAME_THICK / 2, 0]} castShadow>
+        <boxGeometry args={[w, FRAME_THICK, FRAME_DEPTH]} />
+        <meshStandardMaterial color="#C8C8C8" roughness={0.32} metalness={0.85} />
+      </mesh>
+      {/* BOTTOM chrome bar */}
+      <mesh position={[0, FRAME_THICK / 2, 0]} castShadow>
+        <boxGeometry args={[w, FRAME_THICK, FRAME_DEPTH]} />
+        <meshStandardMaterial color="#C8C8C8" roughness={0.32} metalness={0.85} />
+      </mesh>
+      {/* LEFT chrome bar */}
+      <mesh position={[-w / 2 + FRAME_THICK / 2, yMid, 0]} castShadow>
+        <boxGeometry args={[FRAME_THICK, h - FRAME_THICK * 2, FRAME_DEPTH]} />
+        <meshStandardMaterial color="#C8C8C8" roughness={0.32} metalness={0.85} />
+      </mesh>
+      {/* RIGHT chrome bar */}
+      <mesh position={[w / 2 - FRAME_THICK / 2, yMid, 0]} castShadow>
+        <boxGeometry args={[FRAME_THICK, h - FRAME_THICK * 2, FRAME_DEPTH]} />
+        <meshStandardMaterial color="#C8C8C8" roughness={0.32} metalness={0.85} />
+      </mesh>
+      {/* TWO WHITE PEDESTAL FEET — lift panel off the floor */}
+      {([-1, 1] as const).map(side => (
+        <mesh key={side} position={[side * (w / 2 - FOOT_W / 2 - 0.05), -FOOT_H / 2, 0]} castShadow receiveShadow>
+          <boxGeometry args={[FOOT_W, FOOT_H, FOOT_D]} />
+          <meshStandardMaterial color={C.desk} roughness={0.45} metalness={0.02} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+/**
+ * The 4-panel + cluster at the centre of the pinwheel pod. Each panel
+ * sits in one half-arm and separates ONE pair of adjacent stations.
+ * They meet at a small WHITE CENTRAL COLUMN that hides the panel ends.
+ *
+ *      ┌──┐ ┌──┐      panels:  N-half NS,  E-half EW
+ *      │NW│ │NE│              S-half NS,  W-half EW
+ *      ├──┼─┼──┤   centre column at (cx, _, cz)
+ *      │SW│ │SE│
+ *      └──┘ └──┘
+ *
+ * Panel height ≈ 1.10 m, panel width ≈ 1.30 m, panel base at y=0.50 so
+ * worker monitors clear underneath but seated face is covered.
+ */
+function MdrDividerCluster({ cx, cz, fabric }: { cx: number; cz: number; fabric: any }) {
+  const PANEL_H   = 1.05;
+  const PANEL_W   = 1.25;
+  const PANEL_BASE_Y = 0.52;        // bottom of panel (foot top is below)
+  const HALF_GAP  = 0.06;           // half-width of the central column
+  const COL_W     = 0.34;
+  const COL_H     = 1.70;
+  // Each half-arm panel is centred at HALF_GAP + PANEL_W/2 from the +.
+  const PANEL_OFFSET = HALF_GAP + PANEL_W / 2;
+  return (
+    <group position={[cx, 0, cz]}>
+      {/* CENTRAL WHITE COLUMN — hides the 4 panel ends + acts as the
+          junction post the panels visually attach to. */}
+      <mesh position={[0, COL_H / 2, 0]} castShadow receiveShadow>
+        <boxGeometry args={[COL_W, COL_H, COL_W]} />
+        <meshStandardMaterial color={C.desk} roughness={0.50} metalness={0.02} />
+      </mesh>
+      {/* small black sensor / cable port detail near the top */}
+      <mesh position={[0, COL_H * 0.72, COL_W / 2 + 0.001]}>
+        <boxGeometry args={[0.06, 0.04, 0.005]} />
+        <meshStandardMaterial color="#181818" roughness={0.5} />
+      </mesh>
+
+      {/* EW arm — WEST half (between SW and NW) — runs along x. */}
+      <group position={[-PANEL_OFFSET, PANEL_BASE_Y, 0]}>
+        <MdrPanel w={PANEL_W} h={PANEL_H} fabric={fabric} />
+      </group>
+      {/* EW arm — EAST half (between SE and NE). */}
+      <group position={[+PANEL_OFFSET, PANEL_BASE_Y, 0]}>
+        <MdrPanel w={PANEL_W} h={PANEL_H} fabric={fabric} />
+      </group>
+      {/* NS arm — SOUTH half (between SW and SE) — runs along z, so the
+          panel local +x maps to world +z after a 90° y-rotation. */}
+      <group position={[0, PANEL_BASE_Y, +PANEL_OFFSET]} rotation-y={Math.PI / 2}>
+        <MdrPanel w={PANEL_W} h={PANEL_H} fabric={fabric} />
+      </group>
+      {/* NS arm — NORTH half (between NW and NE). */}
+      <group position={[0, PANEL_BASE_Y, -PANEL_OFFSET]} rotation-y={Math.PI / 2}>
+        <MdrPanel w={PANEL_W} h={PANEL_H} fabric={fabric} />
+      </group>
+    </group>
+  );
+}
+
 /* ---------- main 3-D scene ------------------------------------------- */
 function OfficeScene({ phase, onMonitorClick }: {
   phase: Phase; onMonitorClick: () => void;
@@ -1351,30 +1466,14 @@ function OfficeScene({ phase, onMonitorClick }: {
         size={[ROOM_D, ROOM_H]}
       />
 
-      {/* ── SEVERANCE MDR DIVIDERS ──────────────────────────────────
-          Freestanding DARK GREEN FABRIC partitions forming a + at the
-          centre of the pinwheel. Top about 1.5 m (chest-high when
-          standing, fully covers seated workers' monitors from each
-          other). Each arm has a slim dark metal top/edge trim. */}
-      {/* EW arm */}
-      <mesh position={[0, 0.95, DESK_Z - 0.74]} castShadow receiveShadow>
-        <boxGeometry args={[2.60, 1.40, 0.06]} />
-        <meshStandardMaterial {...(partitionFabric as any)} color={C.partition} roughness={0.92} normalScale={[0.55, 0.55] as any} />
-      </mesh>
-      {/* NS arm */}
-      <mesh position={[0, 0.95, DESK_Z - 0.74]} castShadow receiveShadow>
-        <boxGeometry args={[0.06, 1.40, 2.20]} />
-        <meshStandardMaterial {...(partitionFabric as any)} color={C.partition} roughness={0.92} normalScale={[0.55, 0.55] as any} />
-      </mesh>
-      {/* Slim dark metal top edge — gives the panels a finished frame. */}
-      <mesh position={[0, 1.66, DESK_Z - 0.74]}>
-        <boxGeometry args={[2.62, 0.04, 0.09]} />
-        <meshStandardMaterial color="#1F1F1F" roughness={0.55} metalness={0.4} />
-      </mesh>
-      <mesh position={[0, 1.66, DESK_Z - 0.74]}>
-        <boxGeometry args={[0.09, 0.04, 2.22]} />
-        <meshStandardMaterial color="#1F1F1F" roughness={0.55} metalness={0.4} />
-      </mesh>
+      {/* ── SEVERANCE MDR DIVIDER PANELS ────────────────────────────
+          Per the reference: 4 SEPARATE framed sage-green fabric panels
+          meet at a central white column. Each panel has a slim chrome
+          frame on all 4 edges and sits suspended above the floor on
+          small white pedestal feet. Half-arms (not full arms) — each
+          panel separates one PAIR of adjacent stations only.
+          Centre of the + is at (CX, _, CZ). */}
+      <MdrDividerCluster cx={0} cz={DESK_Z - 0.74} fabric={partitionFabric as any} />
 
       {/* ── 4 PINWHEEL BOOTHS ────────────────────────────────────────
           Real Severance MDR layout: each station is the same pose
