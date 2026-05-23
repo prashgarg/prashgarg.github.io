@@ -82,7 +82,7 @@ const C = {
   partition: '#3D5C44',
   chair:     '#1C1C1C',
   chairMetal:'#3A3A3A',
-  monitor:   '#C8C4BC',
+  monitor:   '#E2DED6',   // Lumon terminal off-white (cleaner, brighter than beige)
   monitorScreen: '#3A5040',
   clock:     '#F4F2EE',
   door:      '#DCDAD6',
@@ -728,8 +728,30 @@ function CrtMonitor({ phase, onClick }: { phase: Phase; onClick?: () => void }) 
       {/* base */}
       <mesh position={[0, -0.36, 0.06]}>
         <boxGeometry args={[0.30, 0.04, 0.26]} />
-        <meshStandardMaterial color="#BEB9B2" roughness={0.5} />
+        <meshStandardMaterial color="#CFCBC3" roughness={0.5} />
       </mesh>
+
+      {/* ── LUMON TRACKBALL — distinctive white sphere on a base, sits
+          to the RIGHT of the CRT on the desk. The MDR terminal has
+          this as its primary input device (used to navigate refinement
+          data). Reads as a large white ball at desk height. */}
+      <group position={[0.65, -0.39, 0.10]}>
+        {/* base pedestal */}
+        <mesh castShadow receiveShadow>
+          <cylinderGeometry args={[0.075, 0.085, 0.025, 20]} />
+          <meshStandardMaterial color={C.monitor} roughness={0.55} />
+        </mesh>
+        {/* ring rim */}
+        <mesh position={[0, 0.013, 0]}>
+          <torusGeometry args={[0.075, 0.006, 8, 24]} />
+          <meshStandardMaterial color="#9E9A92" roughness={0.5} metalness={0.4} />
+        </mesh>
+        {/* the ball itself */}
+        <mesh position={[0, 0.075, 0]} castShadow>
+          <sphereGeometry args={[0.075, 24, 18]} />
+          <meshStandardMaterial color="#F0EDE6" roughness={0.35} metalness={0.05} />
+        </mesh>
+      </group>
     </group>
   );
 }
@@ -1104,6 +1126,63 @@ function DeskLamp({ pos }: { pos: [number, number, number] }) {
 // and tiles it via texture.repeat. The base color is tinted via .color so
 // we keep the sage/cream palette while gaining real surface micro-detail.
 
+/**
+ * Subtle vacuum-track overlay — sage-on-sage radial bands that fan
+ * outward from the pod centre (the cleaning crew vacuums around the
+ * desks). Rendered as a slightly-elevated plane on top of the carpet
+ * with a custom ShaderMaterial. Tint is barely-there; only visible
+ * under the bright fluorescent flood.
+ */
+function CarpetVacuumTracks({ width, depth, cx, cz }: {
+  width: number; depth: number; cx: number; cz: number;
+}) {
+  const mat = useMemo(() => new THREE.ShaderMaterial({
+    uniforms: {
+      uCenter: { value: new THREE.Vector2(cx, cz) },
+      uTint:   { value: new THREE.Color('#A8C2A6') },
+    },
+    transparent: true,
+    depthWrite: false,
+    polygonOffset: true,
+    polygonOffsetFactor: -1,
+    polygonOffsetUnits: -1,
+    vertexShader: `
+      varying vec2 vWorld;
+      void main() {
+        vec4 wp = modelMatrix * vec4(position, 1.0);
+        vWorld = wp.xz;
+        gl_Position = projectionMatrix * viewMatrix * wp;
+      }
+    `,
+    fragmentShader: `
+      uniform vec2  uCenter;
+      uniform vec3  uTint;
+      varying vec2  vWorld;
+      void main() {
+        vec2  d  = vWorld - uCenter;
+        float r  = length(d);
+        // radial track bands: thin lighter rings every ~0.55 m, faint
+        float ring = abs(fract(r * 1.80) - 0.5);
+        float band = smoothstep(0.45, 0.30, ring);
+        // wedge streaks — vacuum sweeps in radial arcs
+        float ang  = atan(d.y, d.x);
+        float wedge = 0.5 + 0.5 * sin(ang * 14.0 + r * 1.2);
+        wedge = smoothstep(0.55, 0.95, wedge);
+        // fade off with distance so tracks live near the pod
+        float falloff = smoothstep(8.0, 1.2, r);
+        float a = (band * 0.18 + wedge * 0.10) * falloff;
+        gl_FragColor = vec4(uTint, a);
+      }
+    `,
+  }), [cx, cz]);
+  return (
+    <mesh rotation-x={-Math.PI / 2} position={[0, 0.005, 0]}>
+      <planeGeometry args={[width, depth]} />
+      <primitive object={mat} attach="material" />
+    </mesh>
+  );
+}
+
 function TexturedCarpet({ width, depth }: { width: number; depth: number }) {
   // Skip the colour map (it's brown — would override our sage-green tint).
   // Use only normal + roughness + AO so the texture adds surface micro-
@@ -1420,6 +1499,7 @@ function OfficeScene({ phase, onMonitorClick }: {
 
       {/* ── FLOOR — real CC0 carpet PBR texture ────────────────────── */}
       <TexturedCarpet width={ROOM_W} depth={ROOM_D} />
+      <CarpetVacuumTracks width={ROOM_W} depth={ROOM_D} cx={0} cz={DESK_Z - 0.74} />
 
       {/* ── DUST PARTICLES — atmospheric haze ─────────────────────── */}
       <DustParticles />
