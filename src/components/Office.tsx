@@ -532,6 +532,31 @@ function WallClock({ pos }: { pos: [number, number, number] }) {
   );
 }
 
+/* ---------- smoke detector with periodic blinking LED --------------- */
+function SmokeDetector({ x, z, phaseOffset }: { x: number; z: number; phaseOffset: number }) {
+  const ledRef = useRef<THREE.MeshStandardMaterial>(null);
+  useFrame((state) => {
+    if (!ledRef.current) return;
+    // Blink red ~every 4 s for ~120 ms each (real smoke detector behaviour)
+    const t = (state.clock.elapsedTime + phaseOffset) % 4.0;
+    ledRef.current.emissiveIntensity = t < 0.12 ? 2.2 : 0.0;
+  });
+  return (
+    <group position={[x, ROOM_H - 0.04, z]}>
+      {/* round body */}
+      <mesh rotation-x={Math.PI / 2}>
+        <circleGeometry args={[0.14, 18]} />
+        <meshStandardMaterial color="#6A6C70" roughness={0.5} metalness={0.2} />
+      </mesh>
+      {/* small red LED */}
+      <mesh rotation-x={Math.PI / 2} position={[0.045, -0.002, 0]}>
+        <circleGeometry args={[0.012, 10]} />
+        <meshStandardMaterial ref={ledRef} color="#FF2020" emissive="#FF2020" emissiveIntensity={0} />
+      </mesh>
+    </group>
+  );
+}
+
 /* ---------- power LED (slow pulse) ---------------------------------- */
 function PowerLed({ position }: { position: [number, number, number] }) {
   const ref = useRef<THREE.MeshStandardMaterial>(null);
@@ -887,7 +912,7 @@ function Keyboard({ pos }: { pos: [number, number, number] }) {
   );
 }
 
-/* ---------- desk lamp (banker's style, small) ----------------------- */
+/* ---------- desk lamp (banker's style, small, emits warm light) ----- */
 function DeskLamp({ pos }: { pos: [number, number, number] }) {
   return (
     <group position={pos}>
@@ -901,11 +926,24 @@ function DeskLamp({ pos }: { pos: [number, number, number] }) {
         <cylinderGeometry args={[0.012, 0.012, 0.28, 10]} />
         <meshStandardMaterial color="#E8E6E2" roughness={0.4} metalness={0.1} />
       </mesh>
-      {/* lampshade — slanted box */}
+      {/* lampshade — slanted box, faintly emissive underside */}
       <mesh position={[0.05, 0.31, 0]} rotation-z={-0.45} castShadow>
         <boxGeometry args={[0.16, 0.07, 0.13]} />
-        <meshStandardMaterial color="#F2F0EC" roughness={0.6} />
+        <meshStandardMaterial
+          color="#F2F0EC"
+          roughness={0.6}
+          emissive="#FFD8A0"
+          emissiveIntensity={0.20}
+        />
       </mesh>
+      {/* warm pool of light cast onto the desk surface */}
+      <pointLight
+        position={[0.12, 0.25, 0]}
+        intensity={1.6}
+        distance={1.4}
+        decay={2}
+        color="#FFCD7E"
+      />
     </group>
   );
 }
@@ -1001,15 +1039,16 @@ function OfficeScene({ phase, onMonitorClick }: {
 
       {/* ── CEILING — actual 3-D coffered grid (recessed geometry) ──── */}
       <CofferedCeiling />
-      {/* Scattered ceiling fixtures (smoke detectors / vents) — positioned
-          between coffer holes (avoid the diamond opening centres) */}
+      {/* Scattered ceiling fixtures (smoke detectors with blinking LEDs) */}
       {[
-        [-9, -12], [6, -10], [-4, 0], [10, 5], [-10, 12], [4, 14],
-      ].map(([x, z], i) => (
-        <mesh key={`fix-${i}`} position={[x, ROOM_H - 0.04, z]} rotation-x={Math.PI / 2}>
-          <circleGeometry args={[0.14, 16]} />
-          <meshStandardMaterial color="#5A5C60" roughness={0.45} metalness={0.25} />
-        </mesh>
+        [-9, -12, 0.0],   // [x, z, phaseOffset]
+        [ 6, -10, 0.7],
+        [-4,   0, 1.4],
+        [10,   5, 2.1],
+        [-10, 12, 2.8],
+        [ 4,  14, 3.5],
+      ].map(([x, z, ph], i) => (
+        <SmokeDetector key={`fix-${i}`} x={x as number} z={z as number} phaseOffset={ph as number} />
       ))}
 
       {/* ── WALLS — panel-seam shader ───────────────────────────────── */}
