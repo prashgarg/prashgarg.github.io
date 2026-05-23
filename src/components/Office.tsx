@@ -146,19 +146,50 @@ const CRT_FRAG = `
   varying vec2 vUv;
   float hash1(float x){ return fract(sin(x * 12.9898) * 43758.5453); }
   float hash2(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
-  // Cheap stylised "digit" — bright square cell with a hash-driven
-  // pixel pattern that suggests a 3×5 glyph without actual font data.
+  // 7-segment-style "digit" rendered in a 3×5 pixel grid. Picks one
+  // of 10 segment combinations from a seed so each cell looks like a
+  // proper number rather than a vague bracket shape.
   float digitGlyph(vec2 local, float seed) {
     // local in [0,1]; bring to a 3×5 cell grid
     vec2 g = floor(local * vec2(3.0, 5.0));
-    float h = hash2(g + vec2(seed * 13.0, seed * 7.0));
-    // top + bottom rows always lit (digits have horizontal bars), sides
-    // partially lit — gives a vague 7-segment / pixel-digit silhouette
-    float top    = step(4.5, g.y);
-    float bottom = step(g.y, 0.5);
-    float side   = step(g.x, 0.5) + step(2.5, g.x);
-    float pix    = step(0.40, h);
-    return clamp(top + bottom + side * pix * 0.85, 0.0, 1.0);
+    float x = g.x, y = g.y;
+    // pick one of 10 digit shapes
+    float d = floor(seed * 10.0);
+    // 7 segments encoded as on/off flags per digit (0..9):
+    //   A = top    horizontal,   B = top-right vertical
+    //   C = bot-right vertical,  D = bottom horizontal
+    //   E = bot-left vertical,   F = top-left vertical
+    //   G = middle horizontal
+    // For each digit, write segments active. Use simple lookups.
+    float A=0., B=0., C=0., D=0., E=0., F=0., G=0.;
+    if (d < 0.5)        { A=1.;B=1.;C=1.;D=1.;E=1.;F=1.;       } // 0
+    else if (d < 1.5)   {       B=1.;C=1.;                     } // 1
+    else if (d < 2.5)   { A=1.;B=1.;      D=1.;E=1.;     G=1.; } // 2
+    else if (d < 3.5)   { A=1.;B=1.;C=1.;D=1.;           G=1.; } // 3
+    else if (d < 4.5)   {       B=1.;C=1.;          F=1.;G=1.; } // 4
+    else if (d < 5.5)   { A=1.;     C=1.;D=1.;      F=1.;G=1.; } // 5
+    else if (d < 6.5)   { A=1.;     C=1.;D=1.;E=1.;F=1.;G=1.; } // 6
+    else if (d < 7.5)   { A=1.;B=1.;C=1.;                     } // 7
+    else if (d < 8.5)   { A=1.;B=1.;C=1.;D=1.;E=1.;F=1.;G=1.; } // 8
+    else                { A=1.;B=1.;C=1.;D=1.;      F=1.;G=1.; } // 9
+    // map pixel position to which segment is lit
+    float top    = step(3.5, y);                              // y=4
+    float bot    = step(y, 0.5);                              // y=0
+    float mid    = step(1.5, y) * step(y, 2.5);              // y=2
+    float left   = step(x, 0.5);                              // x=0
+    float right  = step(1.5, x);                              // x=2
+    float center = step(0.5, x) * step(x, 1.5);              // x=1
+    float upper  = step(2.5, y) * step(y, 3.5);              // y=3
+    float lower  = step(0.5, y) * step(y, 1.5);              // y=1
+    float lit = 0.0;
+    lit += top    * center * A;
+    lit += upper  * right  * B;
+    lit += lower  * right  * C;
+    lit += bot    * center * D;
+    lit += lower  * left   * E;
+    lit += upper  * left   * F;
+    lit += mid    * center * G;
+    return lit;
   }
   void main() {
     vec2 uv = vUv;
