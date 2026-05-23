@@ -293,24 +293,27 @@ function CofferedCeiling() {
 
   return (
     <group>
-      {/* Slab with diamond holes — pale grey to match the reference */}
+      {/* Slab with diamond holes — pale GREEN-TINTED grey (reference has
+          strong sage cast pooling on the ceiling from the carpet bounce). */}
       <mesh rotation-x={Math.PI / 2} position={[0, ROOM_H, 0]}>
         <primitive object={slabGeo} attach="geometry" />
-        <meshStandardMaterial color="#C8CACC" roughness={0.85} side={THREE.DoubleSide} />
+        <meshStandardMaterial color="#B8C8BC" roughness={0.85} side={THREE.DoubleSide} />
       </mesh>
-      {/* Coffer walls + emissive panels — one per hole */}
+      {/* Coffer walls + emissive panels — one per hole. Coffer walls
+          have a stronger green tint (deeper in the recess where bounce
+          light pools). Panel emissive bumped for brighter fluorescent. */}
       {positions.map(([x, z], i) => (
         <group key={i} position={[x, ROOM_H, z]}>
           <mesh>
             <primitive object={cofferGeo} attach="geometry" />
-            <meshStandardMaterial color="#E4E6E8" roughness={0.8} side={THREE.DoubleSide} />
+            <meshStandardMaterial color="#CCDAC8" roughness={0.8} side={THREE.DoubleSide} />
           </mesh>
           <mesh position={[0, COFFER_DEPTH - 0.005, 0]}>
             <primitive object={panelGeo} attach="geometry" />
             <meshStandardMaterial
-              color="#F8FAFC"
+              color="#F0F8F2"
               emissive="#FFFFFF"
-              emissiveIntensity={0.95}
+              emissiveIntensity={1.25}
               side={THREE.DoubleSide}
             />
           </mesh>
@@ -810,13 +813,22 @@ function OfficeChair({ pos }: { pos: [number, number, number] }) {
         <boxGeometry args={[0.05, 0.20, 0.05]} />
         <meshStandardMaterial color="#2A2A2A" roughness={0.4} metalness={0.45} />
       </mesh>
-      {/* padded backrest — shorter low-back design (was 0.55 tall, center
-          y=0.90 → top y≈1.18 which sat right in front of the CRT screen
-          from the idle camera). Now height 0.34, center y=0.74 → top
-          y=0.91, comfortably below the CRT screen bottom (y≈0.94). */}
-      <RoundedBox args={[0.50, 0.34, 0.09]} radius={0.025} smoothness={3} position={[0, 0.74, -0.24]} castShadow>
-        <meshStandardMaterial {...(fabric as any)} color="#1A1A1A" roughness={0.78} normalScale={[0.40, 0.40] as any} />
+      {/* padded backrest — sculpted 2-piece low-back. Lower lumbar pad
+          + upper shoulder pad with a thin gap between, matching the
+          mid-century executive chair silhouette in the reference. */}
+      {/* lumbar pad */}
+      <RoundedBox args={[0.46, 0.16, 0.10]} radius={0.025} smoothness={3} position={[0, 0.66, -0.24]} castShadow>
+        <meshStandardMaterial {...(fabric as any)} color="#0F0F0F" roughness={0.78} normalScale={[0.40, 0.40] as any} />
       </RoundedBox>
+      {/* shoulder pad — slightly narrower, set back a touch */}
+      <RoundedBox args={[0.50, 0.18, 0.10]} radius={0.028} smoothness={3} position={[0, 0.86, -0.245]} castShadow>
+        <meshStandardMaterial {...(fabric as any)} color="#0F0F0F" roughness={0.78} normalScale={[0.40, 0.40] as any} />
+      </RoundedBox>
+      {/* slim chrome strip framing where the two pads meet (Aeron-ish) */}
+      <mesh position={[0, 0.755, -0.20]}>
+        <boxGeometry args={[0.46, 0.005, 0.012]} />
+        <meshStandardMaterial color="#9A9A9A" roughness={0.4} metalness={0.7} />
+      </mesh>
 
       {/* === ARMRESTS === */}
       {([-1, 1] as const).map((side) => (
@@ -1505,6 +1517,28 @@ function OfficeScene({ phase, onMonitorClick }: {
       {/* ── FLOOR — real CC0 carpet PBR texture ────────────────────── */}
       <TexturedCarpet width={ROOM_W} depth={ROOM_D} />
       <CarpetVacuumTracks width={ROOM_W} depth={ROOM_D} cx={0} cz={DESK_Z - 0.74} />
+      {/* Subtle floor sheen patch directly under the pod — picks up
+          the bright fluorescents from the ceiling and gives the carpet
+          a faint specular pool near the desks (matches the reference). */}
+      <mesh rotation-x={-Math.PI / 2} position={[0, 0.008, DESK_Z - 0.74]} renderOrder={1}>
+        <circleGeometry args={[3.6, 48]} />
+        <MeshReflectorMaterial
+          color="#9DB39A"
+          roughness={0.88}
+          metalness={0.05}
+          mirror={0.06}
+          mixBlur={4.0}
+          mixStrength={0.55}
+          resolution={512}
+          blur={[200, 200]}
+          minDepthThreshold={0.4}
+          maxDepthThreshold={1.4}
+          depthScale={0.5}
+          depthToBlurRatioBias={0.25}
+          transparent
+          opacity={0.45}
+        />
+      </mesh>
 
       {/* ── DUST PARTICLES — atmospheric haze ─────────────────────── */}
       <DustParticles />
@@ -1707,22 +1741,27 @@ function OfficeScene({ phase, onMonitorClick }: {
         </mesh>
       </group>
 
-      {/* ── HVAC GRILLES — larger dark vents, more visible from idle ── */}
+      {/* ── HVAC GRILLES — larger and DARKER (#1F2123), row of vents
+          across the back wall (visible from idle) plus side walls. */}
       {([
-        // back wall: 3 vents at top
-        [[-9, 3.7, -ROOM_D / 2 + 0.10] as const, [0.95, 0.32, 0.05] as const],
-        [[ 0, 3.7, -ROOM_D / 2 + 0.10] as const, [0.95, 0.32, 0.05] as const],
-        [[ 9, 3.7, -ROOM_D / 2 + 0.10] as const, [0.95, 0.32, 0.05] as const],
-        // left wall: 2 vents
-        [[-ROOM_W / 2 + 0.10, 3.7, -10] as const, [0.05, 0.32, 0.95] as const],
-        [[-ROOM_W / 2 + 0.10, 3.7,   4] as const, [0.05, 0.32, 0.95] as const],
-        // right wall: 2 vents
-        [[ROOM_W / 2 - 0.10, 3.7, -10] as const, [0.05, 0.32, 0.95] as const],
-        [[ROOM_W / 2 - 0.10, 3.7,   4] as const, [0.05, 0.32, 0.95] as const],
+        // back wall: 5 vents in a row, larger
+        [[-12, 3.78, -ROOM_D / 2 + 0.10] as const, [1.30, 0.42, 0.05] as const],
+        [[ -6, 3.78, -ROOM_D / 2 + 0.10] as const, [1.30, 0.42, 0.05] as const],
+        [[  0, 3.78, -ROOM_D / 2 + 0.10] as const, [1.30, 0.42, 0.05] as const],
+        [[  6, 3.78, -ROOM_D / 2 + 0.10] as const, [1.30, 0.42, 0.05] as const],
+        [[ 12, 3.78, -ROOM_D / 2 + 0.10] as const, [1.30, 0.42, 0.05] as const],
+        // left wall: 3 vents
+        [[-ROOM_W / 2 + 0.10, 3.78, -12] as const, [0.05, 0.42, 1.30] as const],
+        [[-ROOM_W / 2 + 0.10, 3.78,   0] as const, [0.05, 0.42, 1.30] as const],
+        [[-ROOM_W / 2 + 0.10, 3.78,  12] as const, [0.05, 0.42, 1.30] as const],
+        // right wall: 3 vents
+        [[ROOM_W / 2 - 0.10, 3.78, -12] as const, [0.05, 0.42, 1.30] as const],
+        [[ROOM_W / 2 - 0.10, 3.78,   0] as const, [0.05, 0.42, 1.30] as const],
+        [[ROOM_W / 2 - 0.10, 3.78,  12] as const, [0.05, 0.42, 1.30] as const],
       ] as const).map(([p, s], i) => (
         <mesh key={`vent-${i}`} position={p}>
           <boxGeometry args={s} />
-          <meshStandardMaterial color="#3A3C3E" roughness={0.55} metalness={0.25} />
+          <meshStandardMaterial color="#1F2123" roughness={0.6} metalness={0.2} />
         </mesh>
       ))}
 
