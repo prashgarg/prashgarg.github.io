@@ -143,6 +143,10 @@ const CRT_FRAG = `
     // strong horizontal scanlines (visible at any distance)
     float scan = 0.5 + 0.5 * sin(uv.y * 160.0);
     scan = mix(0.45, 1.10, scan);
+    // ROLLING SCANLINE — classic CRT artifact, a brighter band that
+    // drifts slowly down the screen. Periodic in y.
+    float rollY = mod(uv.y - uTime * 0.18, 1.0);
+    float rollBand = exp(-pow((rollY - 0.5) * 6.0, 2.0)) * 0.20;
     // terminal rows — 14 rows of "text"
     float NROWS = 14.0;
     float row = floor(uv.y * NROWS);
@@ -169,9 +173,12 @@ const CRT_FRAG = `
     float cursor = onCursorRow * cursorX * cursorBlink;
     // slow flicker
     float flicker = 0.93 + 0.07 * sin(uTime * 6.0 + hash1(floor(uTime * 30.0)) * 5.0);
+    // SLOW BREATHING — subtle 6-second sine to make the CRT feel alive
+    float breath = 0.94 + 0.06 * sin(uTime * 1.05);
     // combine
-    vec3 col = uColor * scan * vig * (0.30 + content * 0.95) * flicker;
+    vec3 col = uColor * scan * vig * (0.30 + content * 0.95) * flicker * breath;
     col += uColor * cursor * 0.85;
+    col += uColor * rollBand;          // the rolling scanline band
     gl_FragColor = vec4(col * uIntensity, 1.0);
   }
 `;
@@ -486,27 +493,39 @@ function WallClock({ pos }: { pos: [number, number, number] }) {
   });
   return (
     <group position={pos} rotation={[0, -Math.PI / 2, 0]}>
+      {/* face — larger so it's visible from the wider idle camera */}
       <mesh>
-        <circleGeometry args={[0.24, 48]} />
+        <circleGeometry args={[0.40, 48]} />
         <meshStandardMaterial color={C.clock} roughness={0.7} />
       </mesh>
       <mesh>
-        <ringGeometry args={[0.22, 0.26, 48]} />
-        <meshStandardMaterial color="#404040" roughness={0.5} side={THREE.DoubleSide} />
+        <ringGeometry args={[0.37, 0.43, 48]} />
+        <meshStandardMaterial color="#3A3A3A" roughness={0.5} side={THREE.DoubleSide} />
       </mesh>
+      {/* 12 hour-marker ticks */}
+      {Array.from({ length: 12 }).map((_, i) => {
+        const a = (i / 12) * Math.PI * 2;
+        const len = i % 3 === 0 ? 0.06 : 0.035;
+        return (
+          <mesh key={`tk-${i}`} position={[Math.sin(a) * 0.33, Math.cos(a) * 0.33, 0.009]} rotation={[0, 0, -a]}>
+            <boxGeometry args={[0.012, len, 0.005]} />
+            <meshStandardMaterial color="#1A1A1A" />
+          </mesh>
+        );
+      })}
       {/* hour hand */}
-      <mesh ref={hrRef} position={[0, 0.055, 0.012]}>
-        <boxGeometry args={[0.022, 0.13, 0.007]} />
+      <mesh ref={hrRef} position={[0, 0.09, 0.012]}>
+        <boxGeometry args={[0.030, 0.21, 0.007]} />
         <meshStandardMaterial color="#1A1A1A" />
       </mesh>
       {/* minute hand */}
-      <mesh ref={minRef} position={[0, 0.075, 0.016]}>
-        <boxGeometry args={[0.014, 0.17, 0.006]} />
+      <mesh ref={minRef} position={[0, 0.12, 0.016]}>
+        <boxGeometry args={[0.020, 0.28, 0.006]} />
         <meshStandardMaterial color="#1A1A1A" />
       </mesh>
       {/* centre dot */}
-      <mesh position={[0, 0, 0.018]}>
-        <circleGeometry args={[0.012, 16]} />
+      <mesh position={[0, 0, 0.020]}>
+        <circleGeometry args={[0.022, 16]} />
         <meshStandardMaterial color="#1A1A1A" />
       </mesh>
     </group>
@@ -575,8 +594,10 @@ function CrtMonitor({ phase, onClick }: { phase: Phase; onClick?: () => void }) 
       <mesh
         position={[0, 0.02, 0.207]}
         onClick={clickable ? onClick : undefined}
-        onPointerEnter={() => { if (clickable) setHovered(true); }}
-        onPointerLeave={() => setHovered(false)}
+        onPointerEnter={(e) => {
+          if (clickable) { setHovered(true); document.body.style.cursor = 'pointer'; }
+        }}
+        onPointerLeave={() => { setHovered(false); document.body.style.cursor = 'default'; }}
       >
         <planeGeometry args={[0.34, 0.26]} />
         <primitive object={crtMat} attach="material" />
@@ -1043,16 +1064,21 @@ function OfficeScene({ phase, onMonitorClick }: {
         </mesh>
       ))}
 
-      {/* ── DOOR (left wall, slightly ajar) ──────────────────────────── */}
-      {/* door frame */}
-      <mesh position={[-ROOM_W / 2 + 0.12, 1.2, 8.5]}>
-        <boxGeometry args={[0.14, 2.5, 1.08]} />
-        <meshStandardMaterial color="#D6D4D0" roughness={0.7} />
+      {/* ── DOOR (left wall, deeper in scene so it's visible from idle) ── */}
+      {/* dark doorway void — looks like an opening when slightly ajar */}
+      <mesh position={[-ROOM_W / 2 + 0.06, 1.20, -2.5]}>
+        <boxGeometry args={[0.06, 2.40, 1.05]} />
+        <meshStandardMaterial color="#0E0E10" roughness={0.85} />
       </mesh>
-      {/* door leaf — open ~20° so you see the edge */}
-      <group position={[-ROOM_W / 2 + 0.16, 1.2, 8.0]} rotation-y={0.35}>
+      {/* door frame (lighter trim around the opening) */}
+      <mesh position={[-ROOM_W / 2 + 0.10, 1.22, -2.5]}>
+        <boxGeometry args={[0.10, 2.55, 1.18]} />
+        <meshStandardMaterial color="#C8C6C2" roughness={0.7} />
+      </mesh>
+      {/* door leaf — open ~25° so you see the edge against the void */}
+      <group position={[-ROOM_W / 2 + 0.16, 1.20, -2.9]} rotation-y={0.42}>
         <mesh castShadow>
-          <boxGeometry args={[0.055, 2.4, 0.96]} />
+          <boxGeometry args={[0.055, 2.35, 0.95]} />
           <meshStandardMaterial color={C.door} roughness={0.7} />
         </mesh>
         {/* door knob */}
@@ -1061,11 +1087,6 @@ function OfficeScene({ phase, onMonitorClick }: {
           <meshStandardMaterial color="#8A8880" roughness={0.25} metalness={0.65} />
         </mesh>
       </group>
-      {/* slight darkness behind door (void) */}
-      <mesh position={[-ROOM_W / 2 + 0.04, 1.2, 8.5]}>
-        <boxGeometry args={[0.05, 2.4, 1.0]} />
-        <meshStandardMaterial color="#181818" />
-      </mesh>
     </>
   );
 }
@@ -1381,7 +1402,8 @@ function HudOverlay({ muted, onMuteToggle }: { muted: boolean; onMuteToggle: () 
     return () => clearTimeout(t);
   }, []); // eslint-disable-line
   useEffect(() => { if (!showTime) return; const id = setInterval(() => setTimeText(getTime()), 5000); return () => clearInterval(id); }, [showTime]);
-  // Henry-style HUD chips — bigger, more letter-spacing, monospaced
+  // Henry-style HUD chips — bigger, more letter-spacing, monospaced.
+  // Animated fade+slide in via the chip-in keyframe.
   const chip: React.CSSProperties = {
     background: '#000', color: '#fff',
     fontFamily: "ui-monospace,'SF Mono',Menlo,Consolas,monospace",
@@ -1390,12 +1412,19 @@ function HudOverlay({ muted, onMuteToggle }: { muted: boolean; onMuteToggle: () 
     display: 'inline-block',
     letterSpacing: '0.06em',
     whiteSpace: 'nowrap',
+    animation: 'hud-chip-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) both',
   };
   const chipName: React.CSSProperties = { ...chip, fontSize: 17, lineHeight: '24px' };
   const muteOpacity = muteActive ? 0.2 : muteHovering ? 0.8 : 1.0;
   const muteScale   = muteActive ? 0.8 : 1.0;
   return (
     <div style={{ position: 'fixed', bottom: 20, left: 20, zIndex: 8, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 5 }}>
+      <style>{`
+        @keyframes hud-chip-in {
+          from { opacity: 0; transform: translateX(-8px); }
+          to   { opacity: 1; transform: translateX(0); }
+        }
+      `}</style>
       {nameText && <div style={chipName}>{nameText}</div>}
       {showSub  && <div style={chip}>{subText}</div>}
       {showTime && <div style={chip}>{timeText}</div>}
