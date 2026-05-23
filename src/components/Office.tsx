@@ -1111,6 +1111,26 @@ function OfficeScene({ phase, onMonitorClick }: {
         <meshStandardMaterial color="#8AA5C8" roughness={0.8} />
       </mesh>
 
+      {/* in-tray with a small stack of papers — back-centre of desk */}
+      <mesh position={[-0.10, 0.78, DESK_Z - 0.45]}>
+        <boxGeometry args={[0.20, 0.025, 0.16]} />
+        <meshStandardMaterial color="#8E8C88" roughness={0.4} metalness={0.3} />
+      </mesh>
+      <mesh position={[-0.10, 0.80, DESK_Z - 0.45]}>
+        <boxGeometry args={[0.17, 0.015, 0.13]} />
+        <meshStandardMaterial color="#F0EDE4" roughness={0.9} />
+      </mesh>
+      <mesh position={[-0.09, 0.812, DESK_Z - 0.45]}>
+        <boxGeometry args={[0.17, 0.005, 0.13]} />
+        <meshStandardMaterial color="#E8E4DA" roughness={0.9} />
+      </mesh>
+
+      {/* small pen — long thin cylinder on top of the papers stack */}
+      <mesh position={[-0.10, 0.83, DESK_Z - 0.40]} rotation-z={Math.PI/2} rotation-x={0.15}>
+        <cylinderGeometry args={[0.005, 0.005, 0.14, 8]} />
+        <meshStandardMaterial color="#1A1A1A" roughness={0.55} />
+      </mesh>
+
       {/* ── WALL CLOCKS — one on each side wall (matches reference) ─── */}
       <WallClock pos={[ROOM_W / 2 - 0.12, 2.8, 3]} />
       <WallClock pos={[-ROOM_W / 2 + 0.12, 2.8, -2]} />
@@ -1226,7 +1246,14 @@ function BiosScreen({ onDone }: { onDone: () => void }) {
 
   const mono = "ui-monospace, 'SF Mono', Menlo, Monaco, Consolas, monospace";
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: mono }}>
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 9999,
+      background: '#000',
+      // very subtle CRT scanlines for the BIOS background — period 3px
+      backgroundImage: 'repeating-linear-gradient(to bottom, rgba(255,255,255,0.022) 0px, rgba(255,255,255,0.022) 1px, transparent 1px, transparent 3px)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontFamily: mono,
+    }}>
       <div style={{ width: 'min(92vw, 500px)', padding: 24, opacity: biosGone ? 0 : 1, transition: 'opacity 0.32s ease', pointerEvents: biosGone ? 'none' : 'auto', position: showPopup ? 'absolute' : 'static' }}>
         {LINES.slice(0, step).map((line, i) => (
           <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', lineHeight: line.type === 'blank' ? '0.85em' : '1.85em', color: line.type === 'header' ? '#fff' : line.type === 'sub' ? 'rgba(255,255,255,0.52)' : line.type === 'footer' ? 'rgba(255,255,255,0.28)' : '#a4d9c5', fontSize: line.type === 'header' ? 14 : line.type === 'footer' ? 10 : 12, letterSpacing: line.type === 'header' ? '0.10em' : '0.04em' }}>
@@ -1326,6 +1353,8 @@ function BootOverlay({ onDone }: { onDone: () => void }) {
         width: 'min(66vw, 880px)', height: 'min(78vh, 670px)',
         zIndex: 9999,
         background: '#0E0D0B', color: '#A4D9C5',
+        // subtle CRT scanlines for the boot terminal background
+        backgroundImage: 'repeating-linear-gradient(to bottom, rgba(164,217,197,0.045) 0px, rgba(164,217,197,0.045) 1px, transparent 1px, transparent 3px)',
         fontFamily: "ui-monospace,'SF Mono',Menlo,Monaco,Consolas,monospace",
         display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
         paddingTop: '10%', cursor: 'pointer',
