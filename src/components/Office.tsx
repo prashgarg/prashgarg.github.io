@@ -850,51 +850,76 @@ function DustParticles() {
  *   • monitor sits at local -Z (against the partition arm)
  */
 function StationLite({ active = false }: { active?: boolean } = {}) {
+  // Desk shifted back -0.06 so its back edge touches the cross partition
+  // (EW/NS arm at z=DESK_Z-0.74). Chair pulled in closer so the booth
+  // reads as ONE workstation instead of three floating pieces.
+  const DESK_DZ = -0.06;   // shift desk back by this much in local Z
+  const CHAIR_Z = 1.00;    // chair seat distance in front of desk centre
+                            // (was 1.20 → too much gap before; now tucked in)
   return (
     <>
       {/* Desk surface */}
-      <mesh position={[0, 0.74, 0]} castShadow receiveShadow>
+      <mesh position={[0, 0.74, DESK_DZ]} castShadow receiveShadow>
         <boxGeometry args={[1.55, 0.06, 1.30]} />
         <meshStandardMaterial color={C.desk} roughness={0.42} metalness={0.02} />
       </mesh>
-      {/* Pedestal (single, offset to one side — to the user's LEFT) */}
-      <mesh position={[-0.48, 0.36, 0]} castShadow receiveShadow>
+      {/* Desk modesty panel — vertical front skirt, hides what's under the
+          desk and visually anchors the desk as one solid unit */}
+      <mesh position={[0, 0.55, DESK_DZ + 0.62]}>
+        <boxGeometry args={[1.45, 0.34, 0.03]} />
+        <meshStandardMaterial color={C.deskLeg} roughness={0.55} />
+      </mesh>
+      {/* LEFT pedestal — to the user's left */}
+      <mesh position={[-0.48, 0.36, DESK_DZ]} castShadow receiveShadow>
         <boxGeometry args={[0.72, 0.72, 1.20]} />
         <meshStandardMaterial color={C.deskLeg} roughness={0.5} />
       </mesh>
       {/* Pedestal drawer lines */}
       {[0.18, 0.42, 0.62].map((y, i) => (
-        <mesh key={`lp-${i}`} position={[-0.48, y, 0.60]}>
+        <mesh key={`lp-${i}`} position={[-0.48, y, DESK_DZ + 0.60]}>
           <boxGeometry args={[0.62, 0.005, 0.004]} />
           <meshStandardMaterial color="#A8A8A4" />
         </mesh>
       ))}
+      {/* RIGHT metal leg (the standard "one pedestal + one leg" pattern)
+          gives the desk a visible support on the right edge */}
+      <mesh position={[0.65, 0.36, DESK_DZ - 0.50]} castShadow>
+        <boxGeometry args={[0.06, 0.72, 0.04]} />
+        <meshStandardMaterial color="#3A3A3A" roughness={0.45} metalness={0.55} />
+      </mesh>
+      <mesh position={[0.65, 0.36, DESK_DZ + 0.50]} castShadow>
+        <boxGeometry args={[0.06, 0.72, 0.04]} />
+        <meshStandardMaterial color="#3A3A3A" roughness={0.45} metalness={0.55} />
+      </mesh>
+      <mesh position={[0.65, 0.04, DESK_DZ]} castShadow>
+        <boxGeometry args={[0.10, 0.04, 1.05]} />
+        <meshStandardMaterial color="#3A3A3A" roughness={0.45} metalness={0.55} />
+      </mesh>
       {/* Inactive CRT — boxy beige body. SKIPPED on the active station;
           the parent renders an active CRT (with shader + click) instead. */}
       {!active && (
         <>
-          <mesh position={[0.10, 1.04, -0.35]} castShadow>
+          <mesh position={[0.10, 1.04, DESK_DZ - 0.35]} castShadow>
             <boxGeometry args={[0.46, 0.40, 0.34]} />
             <meshStandardMaterial color={C.monitor} roughness={0.55} />
           </mesh>
-          <mesh position={[0.10, 1.05, -0.18]}>
+          <mesh position={[0.10, 1.05, DESK_DZ - 0.18]}>
             <planeGeometry args={[0.30, 0.22]} />
             <meshStandardMaterial color="#1A2820" roughness={0.4} emissive="#0F1812" emissiveIntensity={0.15} />
           </mesh>
-          <mesh position={[0.10, 0.79, -0.35]}>
+          <mesh position={[0.10, 0.79, DESK_DZ - 0.35]}>
             <boxGeometry args={[0.26, 0.04, 0.22]} />
             <meshStandardMaterial color="#BEB9B2" roughness={0.5} />
           </mesh>
         </>
       )}
       {/* Office chair — rotated 180° so the seated USER faces the desk
-          and monitor (toward local -Z). Without this rotation the chair
-          faces +Z (outward) and the user sits with back to the desk. */}
-      <group position={[0.05, 0, 1.20]} rotation-y={Math.PI}>
+          and monitor (toward local -Z). Tucked closer to the desk now. */}
+      <group position={[0.05, 0, CHAIR_Z]} rotation-y={Math.PI}>
         <OfficeChair pos={[0, 0, 0]} />
       </group>
       {/* Chair mat under chair */}
-      <mesh rotation-x={-Math.PI / 2} position={[0.05, 0.011, 1.20]}>
+      <mesh rotation-x={-Math.PI / 2} position={[0.05, 0.011, CHAIR_Z]}>
         <circleGeometry args={[0.62, 32]} />
         <meshStandardMaterial color="#1E2823" roughness={0.85} />
       </mesh>
