@@ -12,7 +12,8 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { PerspectiveCamera, ContactShadows, MeshReflectorMaterial } from '@react-three/drei';
+import { PerspectiveCamera, ContactShadows, MeshReflectorMaterial, Environment, RoundedBox } from '@react-three/drei';
+import { EffectComposer, N8AO, Bloom } from '@react-three/postprocessing';
 import * as THREE from 'three';
 import InnerDesktop from './InnerDesktop';
 
@@ -607,11 +608,10 @@ function CrtMonitor({ phase, onClick }: { phase: Phase; onClick?: () => void }) 
   });
   return (
     <group position={MONITOR_WORLD.toArray()}>
-      {/* body */}
-      <mesh castShadow>
-        <boxGeometry args={[0.54, 0.46, 0.40]} />
+      {/* body — bevelled */}
+      <RoundedBox args={[0.54, 0.46, 0.40]} radius={0.020} smoothness={4} castShadow>
         <meshStandardMaterial color={C.monitor} roughness={0.55} />
-      </mesh>
+      </RoundedBox>
       {/* SIDE VENTS — thin horizontal slits on both sides (CRT cooling) */}
       {([-1, 1] as const).map((side) =>
         [0.10, 0.06, 0.02, -0.02, -0.06, -0.10].map((y, i) => (
@@ -714,12 +714,11 @@ function OfficeChair({ pos }: { pos: [number, number, number] }) {
         <meshStandardMaterial color="#3A3A3A" roughness={0.35} metalness={0.55} />
       </mesh>
 
-      {/* === SEAT (black office chair, matches new reference) === */}
+      {/* === SEAT (black office chair) — bevelled === */}
       {/* seat pan */}
-      <mesh position={[0, 0.49, 0]} castShadow receiveShadow>
-        <boxGeometry args={[0.52, 0.08, 0.50]} />
+      <RoundedBox args={[0.52, 0.08, 0.50]} radius={0.02} smoothness={3} position={[0, 0.49, 0]} castShadow receiveShadow>
         <meshStandardMaterial color="#1A1A1A" roughness={0.75} />
-      </mesh>
+      </RoundedBox>
       {/* seat highlight (rim) */}
       <mesh position={[0, 0.535, 0]}>
         <boxGeometry args={[0.48, 0.005, 0.46]} />
@@ -732,11 +731,10 @@ function OfficeChair({ pos }: { pos: [number, number, number] }) {
         <boxGeometry args={[0.05, 0.20, 0.05]} />
         <meshStandardMaterial color="#2A2A2A" roughness={0.4} metalness={0.45} />
       </mesh>
-      {/* the padded backrest (taller than the seat) — black */}
-      <mesh position={[0, 0.90, -0.24]} castShadow>
-        <boxGeometry args={[0.50, 0.55, 0.09]} />
+      {/* padded backrest — bevelled, taller than the seat */}
+      <RoundedBox args={[0.50, 0.55, 0.09]} radius={0.025} smoothness={3} position={[0, 0.90, -0.24]} castShadow>
         <meshStandardMaterial color="#1A1A1A" roughness={0.75} />
-      </mesh>
+      </RoundedBox>
 
       {/* === ARMRESTS === */}
       {([-1, 1] as const).map((side) => (
@@ -868,22 +866,20 @@ function StationLite({ active = false }: { active?: boolean } = {}) {
                             // (was 1.20 → too much gap before; now tucked in)
   return (
     <>
-      {/* Desk surface */}
-      <mesh position={[0, 0.74, DESK_DZ]} castShadow receiveShadow>
-        <boxGeometry args={[1.55, 0.06, 1.30]} />
+      {/* Desk surface — bevelled */}
+      <RoundedBox args={[1.55, 0.06, 1.30]} radius={0.015} smoothness={3} position={[0, 0.74, DESK_DZ]} castShadow receiveShadow>
         <meshStandardMaterial color={C.desk} roughness={0.42} metalness={0.02} />
-      </mesh>
+      </RoundedBox>
       {/* Desk modesty panel — vertical front skirt, hides what's under the
           desk and visually anchors the desk as one solid unit */}
       <mesh position={[0, 0.55, DESK_DZ + 0.62]}>
         <boxGeometry args={[1.45, 0.34, 0.03]} />
         <meshStandardMaterial color={C.deskLeg} roughness={0.55} />
       </mesh>
-      {/* LEFT pedestal */}
-      <mesh position={[-0.50, 0.36, DESK_DZ]} castShadow receiveShadow>
-        <boxGeometry args={[0.66, 0.72, 1.20]} />
+      {/* LEFT pedestal — bevelled */}
+      <RoundedBox args={[0.66, 0.72, 1.20]} radius={0.015} smoothness={3} position={[-0.50, 0.36, DESK_DZ]} castShadow receiveShadow>
         <meshStandardMaterial color={C.deskLeg} roughness={0.5} />
-      </mesh>
+      </RoundedBox>
       {/* LEFT drawer lines */}
       {[0.18, 0.42, 0.62].map((y, i) => (
         <mesh key={`lp-${i}`} position={[-0.50, y, DESK_DZ + 0.60]}>
@@ -898,12 +894,10 @@ function StationLite({ active = false }: { active?: boolean } = {}) {
           <meshStandardMaterial color="#C8C6C2" roughness={0.3} metalness={0.4} />
         </mesh>
       ))}
-      {/* RIGHT pedestal — mirror of left (matches the reference's
-          twin-pedestal modular desk) */}
-      <mesh position={[0.50, 0.36, DESK_DZ]} castShadow receiveShadow>
-        <boxGeometry args={[0.66, 0.72, 1.20]} />
+      {/* RIGHT pedestal — bevelled, mirror of left */}
+      <RoundedBox args={[0.66, 0.72, 1.20]} radius={0.015} smoothness={3} position={[0.50, 0.36, DESK_DZ]} castShadow receiveShadow>
         <meshStandardMaterial color={C.deskLeg} roughness={0.5} />
-      </mesh>
+      </RoundedBox>
       {/* RIGHT drawer lines */}
       {[0.18, 0.42, 0.62].map((y, i) => (
         <mesh key={`rp-${i}`} position={[0.50, y, DESK_DZ + 0.60]}>
@@ -1074,8 +1068,33 @@ function OfficeScene({ phase, onMonitorClick }: {
   return (
     <>
       {/* ── LIGHTING ─────────────────────────────────────────────────── */}
+      {/* Image-based ambient lighting + reflections — soft "lobby" preset
+          gives the scene proper environmental cues so metallic + glossy
+          surfaces feel grounded. background={false} keeps our 3D walls. */}
+      <Environment preset="lobby" background={false} environmentIntensity={0.35} />
+
+      {/* Single dominant SHADOW caster — angled "sun"-style directional.
+          All nine ceiling pointLights provide flat fluorescent flood
+          without shadow cost; this one casts contact shadows under
+          furniture so the scene reads grounded. */}
+      <directionalLight
+        position={[8, 9, 4]}
+        intensity={0.55}
+        color="#FFFFFF"
+        castShadow
+        shadow-mapSize={[2048, 2048]}
+        shadow-camera-left={-15}
+        shadow-camera-right={15}
+        shadow-camera-top={15}
+        shadow-camera-bottom={-15}
+        shadow-camera-near={0.5}
+        shadow-camera-far={30}
+        shadow-bias={-0.0004}
+        shadow-normalBias={0.02}
+      />
+
       {/* Cool ambient — fluorescent rooms have almost no shadow gradient. */}
-      <ambientLight intensity={2.15} color="#F0F2F0" />
+      <ambientLight intensity={1.85} color="#F0F2F0" />
 
       {/* Dedicated desk fill — compensates for partitions blocking ceiling lights */}
       <pointLight position={[0.3, ROOM_H - 0.5, DESK_Z + 0.5]} intensity={7.5} distance={9} decay={2} color="#F6F9FF" />
@@ -1151,9 +1170,11 @@ function OfficeScene({ phase, onMonitorClick }: {
         <boxGeometry args={[4.0, 1.10, 0.07]} />
         <meshStandardMaterial color={C.partition} roughness={0.92} />
       </mesh>
-      {/* NS arm */}
-      <mesh position={[0, 1.32, DESK_Z - 0.74]} castShadow receiveShadow>
-        <boxGeometry args={[0.07, 1.10, 4.0]} />
+      {/* NS arm — only extends NORTH of cross centre so it doesn't cut
+          through the active CRT in the south booth (was 4.0 long, full
+          ±2.0 from centre; now 2.0 long, only north). */}
+      <mesh position={[0, 1.32, DESK_Z - 0.74 - 1.0]} castShadow receiveShadow>
+        <boxGeometry args={[0.07, 1.10, 2.0]} />
         <meshStandardMaterial color={C.partition} roughness={0.92} />
       </mesh>
 
@@ -1822,10 +1843,25 @@ export default function Office() {
         position: 'absolute', inset: 0,
         filter: 'contrast(1.03) saturate(0.98) hue-rotate(-2deg)',
       }}>
-        <Canvas shadows dpr={[1, 1.75]} gl={{ antialias: true }}>
+        <Canvas
+          shadows="soft"
+          dpr={[1, 1.75]}
+          gl={{
+            antialias: true,
+            toneMapping: THREE.ACESFilmicToneMapping,
+            toneMappingExposure: 1.05,
+          }}
+        >
           <PerspectiveCamera makeDefault position={[CAM_ENTRY_POS.x, CAM_ENTRY_POS.y, CAM_ENTRY_POS.z]} fov={54} />
           <CameraRig phase={phase} onArrived={handleArrived} onEntryDone={handleEntryDone} />
           <OfficeScene phase={phase} onMonitorClick={handleClick} />
+          {/* Post-processing: N8AO for ambient occlusion (grime in corners
+              where geometry meets), Bloom for soft halo around the CRT
+              + bright ceiling panels. */}
+          <EffectComposer multisampling={0} disableNormalPass={false}>
+            <N8AO aoRadius={0.5} intensity={1.4} aoSamples={16} denoiseSamples={4} color="black" />
+            <Bloom intensity={0.32} luminanceThreshold={0.85} luminanceSmoothing={0.4} mipmapBlur />
+          </EffectComposer>
         </Canvas>
       </div>
       {phase !== 'splash' && <VignetteOverlay />}
