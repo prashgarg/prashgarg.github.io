@@ -828,14 +828,14 @@ function OfficeChair({ pos }: { pos: [number, number, number] }) {
         <meshStandardMaterial color="#3A3A3A" roughness={0.35} metalness={0.55} />
       </mesh>
 
-      {/* === SEAT (black office chair) — bevelled + fabric normal === */}
-      <RoundedBox args={[0.52, 0.08, 0.50]} radius={0.02} smoothness={3} position={[0, 0.49, 0]} castShadow receiveShadow>
-        <meshStandardMaterial {...(fabric as any)} color="#1A1A1A" roughness={0.78} normalScale={[0.40, 0.40] as any} />
+      {/* === SEAT — bigger pan for visibility from idle distance === */}
+      <RoundedBox args={[0.58, 0.10, 0.56]} radius={0.025} smoothness={3} position={[0, 0.49, 0]} castShadow receiveShadow>
+        <meshStandardMaterial {...(fabric as any)} color="#141414" roughness={0.78} normalScale={[0.40, 0.40] as any} />
       </RoundedBox>
-      {/* seat highlight (rim) */}
-      <mesh position={[0, 0.535, 0]}>
-        <boxGeometry args={[0.48, 0.005, 0.46]} />
-        <meshStandardMaterial color="#2A2A2A" roughness={0.75} />
+      {/* slim chrome rim around the seat — gives it a defined edge */}
+      <mesh position={[0, 0.55, 0]}>
+        <boxGeometry args={[0.56, 0.006, 0.54]} />
+        <meshStandardMaterial color="#7E7E7E" roughness={0.45} metalness={0.55} />
       </mesh>
 
       {/* === BACKREST === */}
@@ -1485,6 +1485,24 @@ function MdrDividerCluster({ cx, cz, fabric }: { cx: number; cz: number; fabric:
         <boxGeometry args={[0.06, 0.04, 0.005]} />
         <meshStandardMaterial color="#181818" roughness={0.5} />
       </mesh>
+      {/* small chrome LUMON branding plate at chest height — gives the
+          central column a clear corporate identity marker. Shown on
+          all 4 sides so it reads from any angle around the pod. */}
+      {([0, Math.PI/2, Math.PI, -Math.PI/2] as const).map((rot, i) => (
+        <group key={i} rotation-y={rot}>
+          <mesh position={[0, COL_H * 0.42, COL_W / 2 + 0.002]}>
+            <boxGeometry args={[0.14, 0.05, 0.005]} />
+            <meshStandardMaterial color="#9C9C9C" roughness={0.4} metalness={0.7} />
+          </mesh>
+          {/* engraved 5 dark "letter" marks suggesting LUMON */}
+          {[-0.045, -0.022, 0, 0.022, 0.045].map((dx, j) => (
+            <mesh key={j} position={[dx, COL_H * 0.42, COL_W / 2 + 0.005]}>
+              <boxGeometry args={[0.013, 0.020, 0.002]} />
+              <meshStandardMaterial color="#1F1F1F" roughness={0.55} />
+            </mesh>
+          ))}
+        </group>
+      ))}
 
       {/* EW arm — WEST half (between SW and NW) — runs along x. */}
       <group position={[-PANEL_OFFSET, PANEL_BASE_Y, 0]}>
@@ -1854,6 +1872,16 @@ function OfficeScene({ phase, onMonitorClick }: {
           <meshStandardMaterial color="#A88A3F" roughness={0.4} metalness={0.65} />
         </mesh>
       </group>
+
+      {/* ── WALL PANEL SEAMS — slim vertical lines every 3 m on the
+          back wall hint at modular wall panels (the MDR sets have these
+          subtle joins). Very low contrast so they only read up close. */}
+      {[-15, -12, -9, -6, -3, 0, 3, 6, 9, 12, 15].map(x => (
+        <mesh key={`seam-back-${x}`} position={[x, ROOM_H / 2, -ROOM_D / 2 + 0.07]}>
+          <boxGeometry args={[0.012, ROOM_H, 0.005]} />
+          <meshStandardMaterial color="#D8D6D0" roughness={0.7} />
+        </mesh>
+      ))}
 
       {/* ── HVAC GRILLES — larger and DARKER (#1F2123), row of vents
           across the back wall (visible from idle) plus side walls. */}
