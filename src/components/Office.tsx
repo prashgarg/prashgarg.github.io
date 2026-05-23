@@ -1342,28 +1342,11 @@ function OfficeScene({ phase, onMonitorClick }: {
         size={[ROOM_D, ROOM_H]}
       />
 
-      {/* ── PARTITION CROSS — + shape at the centre of all 4 booths ── */}
-      {/* EW arm — fabric weave normal under the directional light */}
-      <mesh position={[0, 1.32, DESK_Z - 0.74]} castShadow receiveShadow>
-        <boxGeometry args={[4.0, 1.10, 0.07]} />
-        <meshStandardMaterial {...(partitionFabric as any)} color={C.partition} roughness={0.92} normalScale={[0.55, 0.55] as any} />
-      </mesh>
-      {/* NS arm — full-height NORTH portion separates east/west booths
-          above desks. South of the cross we drop a LOW stub (below
-          monitor height) so the cross reads as a + from oblique angles
-          instead of a T, but the active CRT is never occluded. */}
-      <mesh position={[0, 1.32, DESK_Z - 0.74 - 1.0]} castShadow receiveShadow>
-        <boxGeometry args={[0.07, 1.10, 2.0]} />
-        <meshStandardMaterial {...(partitionFabric as any)} color={C.partition} roughness={0.92} normalScale={[0.55, 0.55] as any} />
-      </mesh>
-      {/* South stub — short panel below desk height (top at y=0.70,
-          below desk surface at y=0.74 and well below monitor base at
-          y≈0.82). Sits between the active CRT booth and where the
-          NS line would continue toward the camera. */}
-      <mesh position={[0, 0.35, DESK_Z - 0.74 + 0.55]} castShadow receiveShadow>
-        <boxGeometry args={[0.07, 0.70, 1.10]} />
-        <meshStandardMaterial {...(partitionFabric as any)} color={C.partition} roughness={0.92} normalScale={[0.55, 0.55] as any} />
-      </mesh>
+      {/* ── NO PARTITIONS ────────────────────────────────────────────
+          Severance MDR style: the 4 stations cluster around an open
+          centre with the 4 monitors meeting back-to-back. No cubicle
+          walls between workers. The room itself does the dividing —
+          vast institutional white volume. */}
 
       {/* ── 4 SYMMETRIC BOOTHS ───────────────────────────────────────
           All 4 booths share identical StationLite geometry. Only the
@@ -1376,12 +1359,14 @@ function OfficeScene({ phase, onMonitorClick }: {
       <group position={[0, 0, DESK_Z - 1.42]} rotation-y={Math.PI}>
         <StationLite />
       </group>
-      {/* EAST — user faces west */}
-      <group position={[3.0, 0, DESK_Z - 0.74]} rotation-y={Math.PI / 2}>
+      {/* EAST — user faces west. Pulled in to x=1.5 (was 3.0) so the
+          four-station pod clusters tightly around the centre — the
+          Severance MDR layout where monitors meet back-to-back. */}
+      <group position={[1.5, 0, DESK_Z - 0.74]} rotation-y={Math.PI / 2}>
         <StationLite />
       </group>
-      {/* WEST — user faces east */}
-      <group position={[-3.0, 0, DESK_Z - 0.74]} rotation-y={-Math.PI / 2}>
+      {/* WEST — user faces east. Mirror of east, also pulled in to ±1.5. */}
+      <group position={[-1.5, 0, DESK_Z - 0.74]} rotation-y={-Math.PI / 2}>
         <StationLite />
       </group>
 
