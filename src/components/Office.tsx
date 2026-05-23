@@ -204,13 +204,17 @@ const CRT_FRAG = `
     float rollY = mod(uv.y - uTime * 0.16, 1.0);
     float rollBand = exp(-pow((rollY - 0.5) * 6.0, 2.0)) * 0.18;
     // ── MDR macrodata refinement screen ─────────────────────────────
-    // 22-col × 14-row grid of "digits" floating with slow drift +
-    // per-cell wiggle. Some cells cluster brighter (the "scary"
-    // numbers being refined).
+    // 22-col × 14-row grid of "digits" with: slow VERTICAL SCROLL,
+    // per-cell wiggle, occasional cluster pulses, and a highlight BOX
+    // that fades in/out around a chosen cluster (the iconic MDR
+    // "refine these scary numbers" moment).
     const float NX = 22.0, NY = 14.0;
-    vec2 gridUv  = vec2(uv.x * NX, uv.y * NY);
-    vec2 gridCel = floor(gridUv);
-    vec2 cellUv  = fract(gridUv);
+    // Slow scroll: rows continuously drift up; the cell seed uses the
+    // ABSOLUTE row index so digits stay self-consistent as they scroll.
+    float scrollPx = uTime * 0.45;
+    vec2 gridUv    = vec2(uv.x * NX, uv.y * NY + scrollPx);
+    vec2 gridCel   = floor(gridUv);
+    vec2 cellUv    = fract(gridUv);
     // per-cell wiggle — small UV jitter driven by hash + time
     float wx = (hash2(gridCel + 13.0) - 0.5) * 0.30;
     float wy = (hash2(gridCel + 71.0) - 0.5) * 0.30;
@@ -227,6 +231,34 @@ const CRT_FRAG = `
     float clusterId  = floor(gridCel.x / 3.0) + floor(gridCel.y / 3.0) * 7.0;
     float clusterAct = step(0.78, hash1(clusterId + floor(uTime * 0.6)));
     float cellBright = mix(0.55, 1.35, hash2(gridCel) ) * (1.0 + clusterAct * 0.7);
+
+    // ── HIGHLIGHT BOX — every ~6 s, pick a 3×3 cluster and draw a
+    // thin teal rectangle outline that fades in then out (the
+    // "refine these numbers" moment when the user finds a cluster).
+    float boxPhase = mod(uTime, 6.0);            // 0..6 s cycle
+    // box visible during seconds 1..5, fades in/out at the edges
+    float boxAlpha = smoothstep(1.0, 1.6, boxPhase) *
+                     (1.0 - smoothstep(4.4, 5.0, boxPhase));
+    // pick which cluster (changes every cycle)
+    float boxCycle = floor(uTime / 6.0);
+    float bx = floor(hash1(boxCycle * 1.13) * (NX - 4.0)) + 1.0;
+    float by = floor(hash1(boxCycle * 2.71) * (NY - 4.0)) + 1.0;
+    // box in screen-relative coords (uv space)
+    vec2 boxMin = vec2(bx / NX, by / NY);
+    vec2 boxMax = vec2((bx + 3.0) / NX, (by + 3.0) / NY);
+    // outline thickness in uv (≈ 1 px on a 0.34 m × 0.26 m screen)
+    float ot = 0.0035;
+    float inBoxX = step(boxMin.x, uv.x) * step(uv.x, boxMax.x);
+    float inBoxY = step(boxMin.y, uv.y) * step(uv.y, boxMax.y);
+    float outX = (step(boxMin.x, uv.x) * step(uv.x, boxMin.x + ot)) +
+                 (step(boxMax.x - ot, uv.x) * step(uv.x, boxMax.x));
+    float outY = (step(boxMin.y, uv.y) * step(uv.y, boxMin.y + ot)) +
+                 (step(boxMax.y - ot, uv.y) * step(uv.y, boxMax.y));
+    float outline = clamp((outX * inBoxY) + (outY * inBoxX), 0.0, 1.0);
+    float highlight = outline * boxAlpha;
+    // also brighten digits INSIDE the highlighted box while it's up
+    float insideBox = inBoxX * inBoxY * boxAlpha;
+    cellBright *= (1.0 + insideBox * 0.6);
     // small overall slow flicker + breath
     float flicker = 0.94 + 0.06 * sin(uTime * 6.5 + hash1(floor(uTime * 30.0)) * 5.0);
     float breath  = 0.95 + 0.05 * sin(uTime * 1.0);
@@ -236,6 +268,8 @@ const CRT_FRAG = `
     vec3 digits = uColor * glyph * cellBright * 1.6;   // brighter digits
     vec3 col = (bg + digits) * scan * flicker * breath;
     col += uColor * rollBand;
+    // add the highlight box outline on top (bright teal)
+    col += uColor * highlight * 1.8;
     gl_FragColor = vec4(col * uIntensity, 1.0);
   }
 `;
@@ -706,11 +740,15 @@ function CrtMonitor({ phase, onClick }: { phase: Phase; onClick?: () => void }) 
     vertexShader: WALL_VERT,
     fragmentShader: CRT_FRAG,
   }), []);
-  useFrame((state) => {
-    crtMat.uniforms.uTime.value      = state.clock.elapsedTime;
-    // Bright phosphor pop visible from idle distance + dramatic hover.
-    // The CRT acts as the visual anchor / focal point of the scene.
-    crtMat.uniforms.uIntensity.value = clickable ? (hovered ? 2.6 : 1.85) : 0.12;
+  // Smoothly lerp the CRT brightness on hover instead of snapping.
+  // Snapping reads as a bug; a smooth lerp reads as the phosphor
+  // physically responding to "you're looking at me". 4 Hz time-constant.
+  const crtTargetRef = useRef(1.85);
+  useFrame((state, dt) => {
+    crtMat.uniforms.uTime.value = state.clock.elapsedTime;
+    const target = clickable ? (hovered ? 2.85 : 1.85) : 0.12;
+    crtTargetRef.current += (target - crtTargetRef.current) * Math.min(1, dt * 6);
+    crtMat.uniforms.uIntensity.value = crtTargetRef.current;
   });
   return (
     <group position={MONITOR_WORLD.toArray()}>
@@ -1102,6 +1140,28 @@ function OfficeChair({ pos }: { pos: [number, number, number] }) {
   );
 }
 
+/* ---------- subtle "living prop" wrapper ----------------------------
+ * Adds a tiny sinusoidal y-bob and z-rotation drift to any group of
+ * meshes. Used for the coffee mug + pens so the south desk feels
+ * occupied (someone bumped this, the building hums) rather than
+ * frozen. Amplitudes are deliberately small — readable only on a
+ * close lean-in, never janky from idle. */
+function LivingProp({
+  children, speed = 0.3, ampY = 0.002, ampRot = 0.04, phase = 0,
+}: {
+  children: React.ReactNode;
+  speed?: number; ampY?: number; ampRot?: number; phase?: number;
+}) {
+  const ref = useRef<THREE.Group>(null);
+  useFrame((state) => {
+    if (!ref.current) return;
+    const t = state.clock.elapsedTime * speed + phase;
+    ref.current.position.y = Math.sin(t) * ampY;
+    ref.current.rotation.z = Math.sin(t * 0.7 + 1.3) * ampRot;
+  });
+  return <group ref={ref}>{children}</group>;
+}
+
 /* ---------- coffee steam (rising wisps from mug) -------------------- */
 function CoffeeSteam({ origin }: { origin: [number, number, number] }) {
   const ref = useRef<THREE.Points>(null);
@@ -1204,12 +1264,22 @@ function DustParticles() {
  *     the chair faces away to)
  *   • monitor sits at local -Z (against the partition arm)
  */
-function StationLite({ active = false }: { active?: boolean } = {}) {
+function StationLite({ active = false, variant = 0 }: { active?: boolean; variant?: number } = {}) {
   const DESK_DZ = -0.06;
   const CHAIR_Z = 1.00;
   // Shared normal+roughness props (subtle micro-detail, no colour shift)
   const deskNormals  = useDeskNormalProps(2, 1.5);
   const chairFabric  = useChairFabricProps();
+  // Per-station prop pack — 4 inactive booths get distinct mug colour,
+  // paper-stack position, pen colour + tilt, and chair-mat offset so
+  // the pod feels occupied by 4 different people. variant=0 is the
+  // active south station (still gets distinct accessories below).
+  const PROPS = [
+    { mug: '#D33A3A', mugX:  0.55, paperX: -0.45, paperRot:  0.10, penColor: '#3E8FB0', matDx: 0.04, matDz: 0.02 },
+    { mug: '#5BA8B0', mugX:  0.42, paperX: -0.32, paperRot: -0.18, penColor: '#D33A3A', matDx: -0.05, matDz: -0.03 },
+    { mug: '#E5B23A', mugX:  0.58, paperX: -0.50, paperRot:  0.22, penColor: '#1A1A1A', matDx: 0.03, matDz: -0.04 },
+    { mug: '#F4F2EE', mugX:  0.48, paperX: -0.40, paperRot: -0.08, penColor: '#E5B23A', matDx: -0.04, matDz: 0.05 },
+  ][variant % 4];
   return (
     <>
       {/* Desk surface — bevelled, subtle wood-grain normal */}
@@ -1285,6 +1355,38 @@ function StationLite({ active = false }: { active?: boolean } = {}) {
             <boxGeometry args={[0.26, 0.04, 0.22]} />
             <meshStandardMaterial color="#BEB9B2" roughness={0.5} />
           </mesh>
+          {/* ── PER-STATION INACTIVE PROPS ───────────────────────────
+              Distinct mug colour, paper-stack position, and pen tilt
+              per `variant` so the 4 booths feel occupied by different
+              people instead of being clones. */}
+          {/* mug */}
+          <mesh position={[PROPS.mugX, 0.79, DESK_DZ + 0.20]} castShadow>
+            <cylinderGeometry args={[0.050, 0.044, 0.090, 14]} />
+            <meshStandardMaterial color={PROPS.mug} roughness={0.5} />
+          </mesh>
+          {/* mug handle */}
+          <mesh position={[PROPS.mugX + 0.06, 0.79, DESK_DZ + 0.20]} rotation-z={Math.PI / 2}>
+            <torusGeometry args={[0.026, 0.007, 6, 10, Math.PI]} />
+            <meshStandardMaterial color={PROPS.mug} roughness={0.5} />
+          </mesh>
+          {/* paper stack — small flat pile */}
+          <mesh position={[PROPS.paperX, 0.773, DESK_DZ + 0.30]} rotation-y={PROPS.paperRot}>
+            <boxGeometry args={[0.15, 0.012, 0.11]} />
+            <meshStandardMaterial color="#F4F1E6" roughness={0.9} />
+          </mesh>
+          <mesh position={[PROPS.paperX + 0.01, 0.781, DESK_DZ + 0.30]} rotation-y={PROPS.paperRot - 0.07}>
+            <boxGeometry args={[0.14, 0.005, 0.10]} />
+            <meshStandardMaterial color="#EDE8D6" roughness={0.9} />
+          </mesh>
+          {/* pen rolling on top of the papers */}
+          <mesh
+            position={[PROPS.paperX + 0.02, 0.787, DESK_DZ + 0.28]}
+            rotation-z={Math.PI / 2}
+            rotation-x={PROPS.paperRot}
+          >
+            <cylinderGeometry args={[0.005, 0.005, 0.13, 8]} />
+            <meshStandardMaterial color={PROPS.penColor} roughness={0.5} />
+          </mesh>
         </>
       )}
       {/* Office chair — rotated 180° so the seated USER faces the desk
@@ -1293,14 +1395,15 @@ function StationLite({ active = false }: { active?: boolean } = {}) {
         <OfficeChair pos={[0, 0, 0]} />
       </group>
       {/* Chair mat under chair — CLEAR PLASTIC office chair mat with a
-          dark rim. Subtle dark wash over the carpet underneath, with a
-          slim darker chamfered edge — matches the reference. */}
-      <mesh rotation-x={-Math.PI / 2} position={[0.05, 0.011, CHAIR_Z]} renderOrder={2}>
+          dark rim. Offset slightly per `variant` so each booth's mat
+          sits in a slightly different spot (real workers shuffle the
+          mat around). */}
+      <mesh rotation-x={-Math.PI / 2} position={[0.05 + PROPS.matDx, 0.011, CHAIR_Z + PROPS.matDz]} renderOrder={2}>
         <circleGeometry args={[0.65, 48]} />
         <meshStandardMaterial color="#3A4A40" roughness={0.55} metalness={0.15} transparent opacity={0.50} />
       </mesh>
       {/* darker rim of the mat */}
-      <mesh rotation-x={-Math.PI / 2} position={[0.05, 0.013, CHAIR_Z]} renderOrder={3}>
+      <mesh rotation-x={-Math.PI / 2} position={[0.05 + PROPS.matDx, 0.013, CHAIR_Z + PROPS.matDz]} renderOrder={3}>
         <ringGeometry args={[0.62, 0.66, 48]} />
         <meshStandardMaterial color="#1A2218" roughness={0.65} transparent opacity={0.85} />
       </mesh>
@@ -1917,22 +2020,22 @@ function OfficeScene({ phase, onMonitorClick }: {
           ONE quadrant of the central + partition. Shift `p` along each
           station's local +x moves it sideways into its quadrant. CCW
           pinwheel viewed from above. SOUTH is the active station. */}
-      {/* SOUTH (active) — SW quadrant. Shifted by SOUTH_DX so the
-          pinwheel scale matches the central divider cluster. */}
+      {/* SOUTH (active) — SW quadrant. variant=0 (own accessories live
+          outside StationLite in the SOUTH_DX accessories group). */}
       <group position={[SOUTH_DX, 0, DESK_Z]}>
-        <StationLite active />
+        <StationLite active variant={0} />
       </group>
-      {/* NORTH — NE quadrant. Symmetric pinwheel shift after 180°. */}
+      {/* NORTH — NE quadrant. */}
       <group position={[-SOUTH_DX, 0, DESK_Z - 1.42]} rotation-y={Math.PI}>
-        <StationLite />
+        <StationLite variant={1} />
       </group>
-      {/* EAST — SE quadrant. Same pinwheel offset along its local +x. */}
+      {/* EAST — SE quadrant. */}
       <group position={[1.3, 0, DESK_Z + Math.abs(SOUTH_DX) + 0.05]} rotation-y={Math.PI / 2}>
-        <StationLite />
+        <StationLite variant={2} />
       </group>
       {/* WEST — NW quadrant. */}
       <group position={[-1.3, 0, DESK_Z - 1.42 - Math.abs(SOUTH_DX) - 0.05]} rotation-y={-Math.PI / 2}>
-        <StationLite />
+        <StationLite variant={3} />
       </group>
 
       {/* ── ACTIVE STATION ITEMS — CRT + every desk accessory ─────────
@@ -1969,15 +2072,19 @@ function OfficeScene({ phase, onMonitorClick }: {
         <meshStandardMaterial color="#F0EDE4" roughness={0.9} />
       </mesh>
 
-      {/* coffee mug — right-front corner */}
-      <mesh position={[0.65, 0.785, DESK_Z + 0.15]}>
-        <cylinderGeometry args={[0.052, 0.046, 0.10, 14]} />
-        <meshStandardMaterial color="#DCDAD6" roughness={0.55} />
-      </mesh>
-      <mesh position={[0.71, 0.785, DESK_Z + 0.15]} rotation-z={Math.PI / 2}>
-        <torusGeometry args={[0.028, 0.008, 6, 10, Math.PI]} />
-        <meshStandardMaterial color="#D8D6D2" roughness={0.55} />
-      </mesh>
+      {/* coffee mug — gently breathes (subtle rotation drift + tiny y-bob)
+          via LivingProp wrapper. Adds "this room is alive" feel without
+          looking janky. */}
+      <LivingProp speed={0.18} ampY={0.0015} ampRot={0.025}>
+        <mesh position={[0.65, 0.785, DESK_Z + 0.15]}>
+          <cylinderGeometry args={[0.052, 0.046, 0.10, 14]} />
+          <meshStandardMaterial color="#DCDAD6" roughness={0.55} />
+        </mesh>
+        <mesh position={[0.71, 0.785, DESK_Z + 0.15]} rotation-z={Math.PI / 2}>
+          <torusGeometry args={[0.028, 0.008, 6, 10, Math.PI]} />
+          <meshStandardMaterial color="#D8D6D2" roughness={0.55} />
+        </mesh>
+      </LivingProp>
       {/* rising coffee steam — subtle white wisps above the mug */}
       <CoffeeSteam origin={[0.65, 0.84, DESK_Z + 0.15]} />
 
@@ -2002,20 +2109,23 @@ function OfficeScene({ phase, onMonitorClick }: {
         <meshStandardMaterial color="#C8C6C2" roughness={0.9} />
       </mesh>
 
-      {/* pen holder — small cylinder cup beside monitor */}
+      {/* pen holder — small cylinder cup beside monitor (static) */}
       <mesh position={[-0.35, 0.81, DESK_Z - 0.15]}>
         <cylinderGeometry args={[0.045, 0.04, 0.10, 14]} />
         <meshStandardMaterial color="#3A3C3E" roughness={0.6} />
       </mesh>
-      {/* pens poking out of holder */}
-      <mesh position={[-0.35, 0.91, DESK_Z - 0.15]} rotation-z={0.08}>
-        <cylinderGeometry args={[0.005, 0.005, 0.10, 6]} />
-        <meshStandardMaterial color="#5BA8B0" />
-      </mesh>
-      <mesh position={[-0.36, 0.90, DESK_Z - 0.14]} rotation-z={-0.12} rotation-x={0.08}>
-        <cylinderGeometry args={[0.005, 0.005, 0.10, 6]} />
-        <meshStandardMaterial color="#D33A3A" />
-      </mesh>
+      {/* pens poking out of holder — wrapped in LivingProp so they
+          wobble slightly (someone bumped the cup). */}
+      <LivingProp speed={0.42} ampY={0.0008} ampRot={0.08}>
+        <mesh position={[-0.35, 0.91, DESK_Z - 0.15]} rotation-z={0.08}>
+          <cylinderGeometry args={[0.005, 0.005, 0.10, 6]} />
+          <meshStandardMaterial color="#5BA8B0" />
+        </mesh>
+        <mesh position={[-0.36, 0.90, DESK_Z - 0.14]} rotation-z={-0.12} rotation-x={0.08}>
+          <cylinderGeometry args={[0.005, 0.005, 0.10, 6]} />
+          <meshStandardMaterial color="#D33A3A" />
+        </mesh>
+      </LivingProp>
 
       {/* in-tray with a small stack of papers — back-centre of desk */}
       <mesh position={[-0.10, 0.78, DESK_Z - 0.45]}>
@@ -2233,6 +2343,34 @@ function OfficeScene({ phase, onMonitorClick }: {
           pod silhouette in the idle frame. Made wider (1.05→1.35 m)
           and taller (2.40→2.60 m) so it reads as the dark rectangular
           doorway in the reference. */}
+      {/* MDR DEPARTMENT SIGN — institutional white-on-dark plaque
+          mounted above the doorway. Three white blocks suggest the
+          three letters "M D R" without needing actual font data. */}
+      <group position={[-9.0, 2.78, -ROOM_D / 2 + 0.12]}>
+        {/* dark backing plate */}
+        <mesh>
+          <boxGeometry args={[1.20, 0.28, 0.03]} />
+          <meshStandardMaterial color="#0E0E10" roughness={0.55} metalness={0.15} />
+        </mesh>
+        {/* slim chrome frame around the plate */}
+        <mesh position={[0, 0.155, 0.001]}>
+          <boxGeometry args={[1.22, 0.018, 0.034]} />
+          <meshStandardMaterial color="#9E9E9E" roughness={0.4} metalness={0.75} />
+        </mesh>
+        <mesh position={[0, -0.155, 0.001]}>
+          <boxGeometry args={[1.22, 0.018, 0.034]} />
+          <meshStandardMaterial color="#9E9E9E" roughness={0.4} metalness={0.75} />
+        </mesh>
+        {/* the three letters M / D / R — each is a small white emissive
+            block (faux-text). Spacing chosen to suggest legible glyphs. */}
+        {[-0.34, 0, 0.34].map((dx, i) => (
+          <mesh key={i} position={[dx, 0, 0.018]}>
+            <boxGeometry args={[0.18, 0.16, 0.005]} />
+            <meshStandardMaterial color="#F2F0EC" emissive="#F2F0EC" emissiveIntensity={0.35} roughness={0.5} />
+          </mesh>
+        ))}
+      </group>
+
       {/* dark doorway void */}
       <mesh position={[-9.0, 1.30, -ROOM_D / 2 + 0.10]}>
         <boxGeometry args={[1.35, 2.60, 0.06]} />
@@ -2538,6 +2676,28 @@ function StudyAudio({ active, muted }: { active: boolean; muted: boolean }) {
       const ac = new AudioContext(); ctxRef.current = ac;
       const master = ac.createGain(); gainRef.current = master;
       master.gain.setValueAtTime(0, ac.currentTime); master.connect(ac.destination);
+
+      // ── HVAC AMBIENT HUM — always plays alongside whatever else,
+      // mp3 or synth fallback. A 42 Hz sub-rumble + a 5th harmonic
+      // (210 Hz, very low gain) gives the room that institutional
+      // building-system drone Severance sets are full of. Modulated
+      // by a slow LFO so it breathes rather than droning flat. */
+      const hvacGain = ac.createGain();
+      hvacGain.gain.value = 0.06;       // very quiet, blends under everything
+      hvacGain.connect(master);
+      const hvacFund = ac.createOscillator();
+      hvacFund.type = 'sine'; hvacFund.frequency.value = 42;
+      hvacFund.connect(hvacGain); hvacFund.start();
+      const hvacHarm = ac.createOscillator();
+      hvacHarm.type = 'triangle'; hvacHarm.frequency.value = 210;
+      const harmG = ac.createGain(); harmG.gain.value = 0.018;
+      hvacHarm.connect(harmG); harmG.connect(master); hvacHarm.start();
+      // slow breathing LFO on the hum gain
+      const hvacLfo = ac.createOscillator();
+      hvacLfo.type = 'sine'; hvacLfo.frequency.value = 0.07;
+      const lfoG = ac.createGain(); lfoG.gain.value = 0.025;
+      hvacLfo.connect(lfoG); lfoG.connect(hvacGain.gain); hvacLfo.start();
+
       let fileLoaded = false;
       try {
         const res = await fetch('/audio/ambient.mp3');
