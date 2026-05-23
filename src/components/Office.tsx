@@ -107,10 +107,12 @@ const MONITOR_WORLD  = new THREE.Vector3(0.10, 1.05, DESK_Z - 0.35);   // (0.10,
 // surrounded by empty floor. Elevated, slightly off-centre.
 // Idle: cinematic 3/4 wide. Workstation small in frame, empty room
 // dominates. Camera pulled back + slightly elevated for atmosphere.
-const CAM_ENTRY_POS  = new THREE.Vector3(-1.4, 2.4, 7.0);
-const CAM_ENTRY_TGT  = new THREE.Vector3(0.2, 1.0, -5.0);
-const CAM_IDLE_POS   = new THREE.Vector3(-1.0, 2.0, 4.5);
-const CAM_IDLE_TGT   = new THREE.Vector3(0.2, 0.95, -5.0);
+// Closer + lower + horizontal-ish view → workstation larger in frame,
+// less floor visible, walls + ceiling more balanced (matches reference)
+const CAM_ENTRY_POS  = new THREE.Vector3(-1.0, 2.0, 6.0);
+const CAM_ENTRY_TGT  = new THREE.Vector3(0.2, 1.10, -5.0);
+const CAM_IDLE_POS   = new THREE.Vector3(-0.8, 1.7, 3.8);
+const CAM_IDLE_TGT   = new THREE.Vector3(0.2, 1.10, -5.0);
 // Camera ends VERY close to the monitor face — ~0.3 m from the screen.
 // At FOV 58° this makes the monitor screen fill roughly 66%×78% of the
 // viewport, so the bezel reads as a frame around the inner site (Heffer
@@ -1268,17 +1270,18 @@ function OfficeScene({ phase, onMonitorClick }: {
         </mesh>
       </group>
 
-      {/* ── HVAC GRILLES — small dark vents near the top of the walls ── */}
+      {/* ── HVAC GRILLES — larger dark vents, more visible from idle ── */}
       {([
-        // back wall: 2 vents
-        [[-7, 3.5, -ROOM_D / 2 + 0.10] as const, [0.45, 0.18, 0.03] as const, [0, 0, 0] as const],
-        [[ 7, 3.5, -ROOM_D / 2 + 0.10] as const, [0.45, 0.18, 0.03] as const, [0, 0, 0] as const],
-        // left wall: 2 vents (rotated)
-        [[-ROOM_W / 2 + 0.10, 3.5, -8] as const, [0.03, 0.18, 0.45] as const, [0, 0, 0] as const],
-        [[-ROOM_W / 2 + 0.10, 3.5,  6] as const, [0.03, 0.18, 0.45] as const, [0, 0, 0] as const],
+        // back wall: 3 vents at top
+        [[-9, 3.7, -ROOM_D / 2 + 0.10] as const, [0.95, 0.32, 0.05] as const],
+        [[ 0, 3.7, -ROOM_D / 2 + 0.10] as const, [0.95, 0.32, 0.05] as const],
+        [[ 9, 3.7, -ROOM_D / 2 + 0.10] as const, [0.95, 0.32, 0.05] as const],
+        // left wall: 2 vents
+        [[-ROOM_W / 2 + 0.10, 3.7, -10] as const, [0.05, 0.32, 0.95] as const],
+        [[-ROOM_W / 2 + 0.10, 3.7,   4] as const, [0.05, 0.32, 0.95] as const],
         // right wall: 2 vents
-        [[ROOM_W / 2 - 0.10, 3.5, -8] as const, [0.03, 0.18, 0.45] as const, [0, 0, 0] as const],
-        [[ROOM_W / 2 - 0.10, 3.5,  6] as const, [0.03, 0.18, 0.45] as const, [0, 0, 0] as const],
+        [[ROOM_W / 2 - 0.10, 3.7, -10] as const, [0.05, 0.32, 0.95] as const],
+        [[ROOM_W / 2 - 0.10, 3.7,   4] as const, [0.05, 0.32, 0.95] as const],
       ] as const).map(([p, s], i) => (
         <mesh key={`vent-${i}`} position={p}>
           <boxGeometry args={s} />
