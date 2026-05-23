@@ -6,15 +6,33 @@ import { library } from '../data/site';
   <section class="border-b-2 border-ink dark:border-cream">
     <div class="max-w-6xl mx-auto px-4 pt-14 pb-8">
       <h1 class="font-display text-3xl md:text-4xl font-bold">Library</h1>
+      <p class="mt-2 text-sm text-ink/55 dark:text-cream/55">{library.length} items · code, notes, and the occasional essay.</p>
+
+      <!-- Search bar -->
+      <div class="mt-5 relative max-w-xl">
+        <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink/40 dark:text-cream/40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
+        <input
+          id="library-search"
+          type="text"
+          placeholder="Search by title, tag, or text..."
+          class="w-full pl-10 pr-10 py-2.5 text-sm border-2 border-ink dark:border-cream rounded-md bg-white dark:bg-ink-2 focus:outline-none focus:bg-brand-yellow/10 placeholder:text-ink/40 dark:placeholder:text-cream/40"
+        />
+        <button
+          id="library-search-clear"
+          class="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 hidden items-center justify-center rounded hover:bg-ink/10 dark:hover:bg-cream/10"
+          aria-label="Clear search"
+        ><svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 6l12 12M6 18L18 6"/></svg></button>
+      </div>
+      <div id="library-search-status" class="mt-2 text-xs text-ink/50 dark:text-cream/50 hidden"></div>
     </div>
   </section>
 
   <section class="max-w-6xl mx-auto px-4 py-12 grid md:grid-cols-[220px_minmax(0,1fr)] gap-10">
     <aside class="md:sticky md:top-24 md:self-start">
       <div class="text-xs font-bold uppercase tracking-wider text-ink/50 dark:text-cream/50 mb-3">Contents</div>
-      <ul class="space-y-1 text-sm">
+      <ul class="space-y-1 text-sm" id="library-toc">
         {library.map(it => (
-          <li>
+          <li data-toc-slug={it.slug}>
             <a href={`#${it.slug}`} class="block px-3 py-1.5 rounded-md hover:bg-brand-yellow/40">{it.title}</a>
           </li>
         ))}
@@ -23,7 +41,12 @@ import { library } from '../data/site';
 
     <div class="space-y-10">
       {library.map(it => (
-        <article id={it.slug} class="card">
+        <article
+          id={it.slug}
+          data-library-item
+          data-search={`${it.title} ${it.tag} ${it.blurb.join(' ')}`.toLowerCase()}
+          class="card"
+        >
           <div class="flex items-center gap-2 flex-wrap">
             <span class="badge badge-cream">{it.tag}</span>
           </div>
@@ -44,4 +67,44 @@ import { library } from '../data/site';
       ))}
     </div>
   </section>
+
+  <script is:inline>
+    (function () {
+      const input  = document.getElementById('library-search');
+      const clear  = document.getElementById('library-search-clear');
+      const status = document.getElementById('library-search-status');
+      const items  = document.querySelectorAll('[data-library-item]');
+      const tocItems = document.querySelectorAll('[data-toc-slug]');
+      function apply(q) {
+        let shown = 0;
+        items.forEach(it => {
+          const hay = it.getAttribute('data-search') || '';
+          const ok = q === '' || hay.indexOf(q) !== -1;
+          it.style.display = ok ? '' : 'none';
+          if (ok) shown++;
+          // also hide the matching TOC entry
+          const slug = it.id;
+          const tocLi = document.querySelector('[data-toc-slug="' + slug + '"]');
+          if (tocLi) tocLi.style.display = ok ? '' : 'none';
+        });
+        if (q !== '') {
+          status.textContent = shown + ' item' + (shown === 1 ? '' : 's') + ' matching "' + q + '"';
+          status.classList.remove('hidden');
+        } else {
+          status.classList.add('hidden');
+        }
+      }
+      input.addEventListener('input', e => {
+        const q = e.target.value.trim().toLowerCase();
+        clear.style.display = q ? 'flex' : 'none';
+        apply(q);
+      });
+      clear.addEventListener('click', () => {
+        input.value = '';
+        clear.style.display = 'none';
+        apply('');
+        input.focus();
+      });
+    })();
+  </script>
 </Layout>
