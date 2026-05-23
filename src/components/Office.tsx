@@ -1054,7 +1054,10 @@ function StationLite({ active = false }: { active?: boolean } = {}) {
           </mesh>
           <mesh position={[0.10, 1.05, DESK_DZ - 0.18]}>
             <planeGeometry args={[0.30, 0.22]} />
-            <meshStandardMaterial color="#1A2820" roughness={0.4} emissive="#0F1812" emissiveIntensity={0.15} />
+            {/* inactive monitor screens also glow faint teal so the
+                whole MDR pod has 4 illuminated terminals, matching the
+                reference. Brighter than before (#0F1812 0.15 → #1A445A 0.55). */}
+            <meshStandardMaterial color="#0E2230" roughness={0.4} emissive="#1A445A" emissiveIntensity={0.55} />
           </mesh>
           <mesh position={[0.10, 0.79, DESK_DZ - 0.35]}>
             <boxGeometry args={[0.26, 0.04, 0.22]} />
@@ -1793,6 +1796,31 @@ function OfficeScene({ phase, onMonitorClick }: {
           by +π/2 to face +z (toward camera). */}
       <group position={[7.5, 3.0, -ROOM_D / 2 + 0.06]} rotation-y={Math.PI / 2}>
         <WallClock pos={[0, 0, 0]} />
+      </group>
+
+      {/* ── LUMON MOTTO BANNER — wide cream sign with dark "text"
+          stripes, mounted high on the back wall left of the pod.
+          Reads as a corporate slogan poster from the idle camera. */}
+      <group position={[-3.5, 2.55, -ROOM_D / 2 + 0.06]}>
+        <mesh>
+          <boxGeometry args={[1.85, 0.55, 0.025]} />
+          <meshStandardMaterial color="#1F1B17" roughness={0.55} />
+        </mesh>
+        <mesh position={[0, 0, 0.018]}>
+          <planeGeometry args={[1.78, 0.48]} />
+          <meshStandardMaterial color="#EFEAD8" roughness={0.85} />
+        </mesh>
+        {/* simulated dark "text" — 3 horizontal stripe rows of varying widths */}
+        {[
+          { y:  0.13, w: 1.55 },
+          { y: -0.00, w: 1.30 },
+          { y: -0.13, w: 1.62 },
+        ].map((r, i) => (
+          <mesh key={i} position={[0, r.y, 0.021]}>
+            <planeGeometry args={[r.w, 0.07]} />
+            <meshStandardMaterial color="#3B342E" roughness={0.75} />
+          </mesh>
+        ))}
       </group>
 
       {/* ── FRAMED KIER EAGAN PORTRAIT — on the back wall, like the
