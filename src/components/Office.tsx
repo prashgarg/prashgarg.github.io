@@ -1247,10 +1247,10 @@ function BiosScreen({ onDone }: { onDone: () => void }) {
     { text: 'prashantgarg.org  v1.0',                                          type: 'header' },
     { text: 'Economist · Cambridge · Imperial · LSE',                         type: 'sub'    },
     { text: '',                                                                 type: 'blank'  },
+    { text: '> initializing workstation',                                      type: 'check'  },
     { text: '> mounting research archives',                                    type: 'check'  },
-    { text: '> calibrating global automation',                                 type: 'check'  },
-    { text: '> warming the study lamp',                                        type: 'check'  },
-    { text: '> loading vinyl collection',                                      type: 'check'  },
+    { text: '> calibrating fluorescent ceiling',                               type: 'check'  },
+    { text: '> establishing network link',                                     type: 'check'  },
     { text: '',                                                                 type: 'blank'  },
     { text: `Press any key to skip memory test · ${new Date().getFullYear()}`, type: 'footer' },
   ] as const;
@@ -1358,7 +1358,7 @@ function BootOverlay({ onDone }: { onDone: () => void }) {
   useEffect(() => {
     const script = [
       { line: 'prashantgarg.org',                                typeMs: 14, pauseMs: 120 },
-      { line: '> waking the study  [ ok ]',                     typeMs: 8,  pauseMs: 140 },
+      { line: '> booting workstation  [ ok ]',                  typeMs: 8,  pauseMs: 140 },
       { line: '> mounting research, talks, library  [ ok ]',    typeMs: 8,  pauseMs: 220 },
       { line: '',                                                typeMs: 0,  pauseMs: 80  },
       { line: 'welcome.',                                        typeMs: 40, pauseMs: 360 },
