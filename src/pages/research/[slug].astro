@@ -27,13 +27,65 @@ const myTalks: Talk[] = talks
   .filter(t => topicForTalk(t.title).paperSlug === paper.slug)
   .sort((a, b) => sortValue(b) - sortValue(a));
 
+// JSON-LD ScholarlyArticle for academic indexing (Google Scholar, etc.)
+const scholarlyJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'ScholarlyArticle',
+  headline: paper.title,
+  abstract: paper.blurb.slice(0, 600),
+  author: [
+    { '@type': 'Person', name: 'Prashant Garg', url: 'https://prashantgarg.org' },
+    ...paper.coauthors.map(c => ({ '@type': 'Person', name: c })),
+  ],
+  ...(paper.year ? { datePublished: String(paper.year) } : {}),
+  ...(paper.venue ? { publisher: { '@type': 'Organization', name: paper.venue } } : {}),
+  url: `https://prashantgarg.org/research/${paper.slug}`,
+};
+
+// BibTeX entry (server-rendered into a data attribute for the copy button)
+const bibKey = `garg${paper.year || ''}${paper.slug.split('-')[0]}`;
+const bibEntryType = paper.venue && /journal|review|economics|nature|science|letters/i.test(paper.venue) ? 'article' : 'misc';
+const bibAuthor = paper.coauthors.length ? `Garg, Prashant and ${paper.coauthors.join(' and ')}` : 'Garg, Prashant';
+const bibTeX = [
+  `@${bibEntryType}{${bibKey},`,
+  `  author = {${bibAuthor}},`,
+  `  title  = {${paper.title}},`,
+  ...(paper.venue ? [`  journal = {${paper.venue}},`] : []),
+  ...(paper.year ? [`  year   = {${paper.year}},`] : []),
+  `  url    = {https://prashantgarg.org/research/${paper.slug}}`,
+  '}',
+].join('\n');
 ---
 <Layout title={`${paper.title} — Prashant Garg`} description={paper.blurb} current="research">
+  <!-- JSON-LD structured data for academic indexing -->
+  <script type="application/ld+json" is:inline set:html={JSON.stringify(scholarlyJsonLd)} />
+
   <article class="max-w-4xl mx-auto px-4 pt-10 pb-20">
-    <a href="/research" class="inline-flex items-center gap-1.5 text-sm font-semibold hover:bg-brand-yellow/40 px-1 mb-6">
-      <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M11 5l-7 7 7 7"/></svg>
-      All research
-    </a>
+    <div class="flex items-center justify-between gap-4 mb-6 flex-wrap">
+      <a href="/research" class="inline-flex items-center gap-1.5 text-sm font-semibold hover:bg-brand-yellow/40 px-1">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M11 5l-7 7 7 7"/></svg>
+        All research
+      </a>
+      <div class="flex items-center gap-2">
+        <button
+          type="button"
+          id="cite-btn"
+          data-bibtex={bibTeX}
+          class="inline-flex items-center gap-2 text-sm font-semibold px-3 py-1.5 border-2 border-ink dark:border-cream rounded-md bg-white dark:bg-ink-2 hover:bg-brand-yellow"
+        >
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          Cite (BibTeX)
+        </button>
+        <button
+          type="button"
+          id="copy-link-btn"
+          class="inline-flex items-center gap-2 text-sm font-semibold px-3 py-1.5 border-2 border-ink dark:border-cream rounded-md bg-white dark:bg-ink-2 hover:bg-brand-yellow"
+        >
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+          Copy link
+        </button>
+      </div>
+    </div>
 
     <div class="flex items-center gap-2 flex-wrap mb-3">
       <span class={`badge ${statusMeta[paper.status].badge}`}>{statusMeta[paper.status].label}</span>
@@ -134,4 +186,29 @@ const myTalks: Talk[] = talks
       ) : <span></span>}
     </nav>
   </article>
+
+  <script is:inline>
+    (function () {
+      const citeBtn = document.getElementById('cite-btn');
+      const linkBtn = document.getElementById('copy-link-btn');
+      function flash(btn, label) {
+        const orig = btn.innerHTML;
+        btn.innerHTML = '<svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 13l4 4L19 7"/></svg> ' + label;
+        setTimeout(() => { btn.innerHTML = orig; }, 1800);
+      }
+      if (citeBtn) {
+        citeBtn.addEventListener('click', async () => {
+          const bib = citeBtn.getAttribute('data-bibtex') || '';
+          try { await navigator.clipboard.writeText(bib); flash(citeBtn, 'Copied!'); }
+          catch { window.prompt('Copy BibTeX:', bib); }
+        });
+      }
+      if (linkBtn) {
+        linkBtn.addEventListener('click', async () => {
+          try { await navigator.clipboard.writeText(window.location.href); flash(linkBtn, 'Copied!'); }
+          catch { window.prompt('Copy link:', window.location.href); }
+        });
+      }
+    })();
+  </script>
 </Layout>
