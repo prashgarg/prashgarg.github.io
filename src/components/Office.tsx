@@ -233,7 +233,7 @@ const CRT_FRAG = `
     // background gradient — deeper teal at top, brighter near bottom
     float bgGrad = mix(0.18, 0.32, uv.y);
     vec3 bg = uColor * bgGrad * vig;
-    vec3 digits = uColor * glyph * cellBright;
+    vec3 digits = uColor * glyph * cellBright * 1.6;   // brighter digits
     vec3 col = (bg + digits) * scan * flicker * breath;
     col += uColor * rollBand;
     gl_FragColor = vec4(col * uIntensity, 1.0);
@@ -1510,6 +1510,18 @@ function MdrDividerCluster({ cx, cz, fabric }: { cx: number; cz: number; fabric:
       <mesh position={[0, COL_H / 2, 0]} castShadow receiveShadow>
         <boxGeometry args={[COL_W, COL_H, COL_W]} />
         <meshStandardMaterial color={C.desk} roughness={0.50} metalness={0.02} />
+      </mesh>
+      {/* small dark sensor / safety box ON TOP of the column. Severance
+          MDR has these little electronic units crowning the dividers
+          — surveillance / fire alarm / intercom suggestion. */}
+      <mesh position={[0, COL_H + 0.07, 0]} castShadow>
+        <boxGeometry args={[0.18, 0.14, 0.18]} />
+        <meshStandardMaterial color="#2A2A2A" roughness={0.55} metalness={0.3} />
+      </mesh>
+      {/* tiny red LED on the sensor box */}
+      <mesh position={[0, COL_H + 0.04, 0.092]}>
+        <sphereGeometry args={[0.008, 8, 6]} />
+        <meshStandardMaterial color="#FF3030" emissive="#FF1010" emissiveIntensity={2.0} />
       </mesh>
       {/* small black sensor / cable port detail near the top */}
       <mesh position={[0, COL_H * 0.72, COL_W / 2 + 0.001]}>
