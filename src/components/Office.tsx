@@ -689,10 +689,27 @@ function CrtMonitor({ phase, onClick }: { phase: Phase; onClick?: () => void }) 
           <meshStandardMaterial color="#7E7A72" roughness={0.6} />
         </mesh>
       ))}
-      {/* front bezel indent */}
+      {/* front bezel indent — sloped/recessed face holding the screen.
+          A thin angled face panel above + below the screen gives the
+          monitor the distinctive Lumon-terminal sloped front. */}
       <mesh position={[0, 0.01, 0.20]}>
         <boxGeometry args={[0.44, 0.36, 0.01]} />
-        <meshStandardMaterial color="#B8B4AC" roughness={0.5} />
+        <meshStandardMaterial color="#D4D0C8" roughness={0.5} />
+      </mesh>
+      {/* slight chamfer above the screen — angled face strip */}
+      <mesh position={[0, 0.155, 0.193]} rotation-x={-0.22}>
+        <boxGeometry args={[0.46, 0.06, 0.012]} />
+        <meshStandardMaterial color={C.monitor} roughness={0.5} />
+      </mesh>
+      {/* and below — angled lower face strip */}
+      <mesh position={[0, -0.135, 0.193]} rotation-x={0.22}>
+        <boxGeometry args={[0.46, 0.06, 0.012]} />
+        <meshStandardMaterial color={C.monitor} roughness={0.5} />
+      </mesh>
+      {/* small Lumon-style branding plate below screen, off-centre right */}
+      <mesh position={[0.13, -0.165, 0.213]}>
+        <boxGeometry args={[0.10, 0.018, 0.005]} />
+        <meshStandardMaterial color="#8E8C86" roughness={0.5} metalness={0.4} />
       </mesh>
       {/* power LED — tiny green dot below screen, pulses softly */}
       <PowerLed position={[0.16, -0.18, 0.21]} />
@@ -1179,10 +1196,10 @@ function CarpetVacuumTracks({ width, depth, cx, cz }: {
         // wedge streaks — vacuum sweeps in radial arcs
         float ang  = atan(d.y, d.x);
         float wedge = 0.5 + 0.5 * sin(ang * 14.0 + r * 1.2);
-        wedge = smoothstep(0.55, 0.95, wedge);
+        wedge = smoothstep(0.45, 0.95, wedge);
         // fade off with distance so tracks live near the pod
-        float falloff = smoothstep(8.0, 1.2, r);
-        float a = (band * 0.18 + wedge * 0.10) * falloff;
+        float falloff = smoothstep(10.0, 1.0, r);
+        float a = (band * 0.32 + wedge * 0.20) * falloff;
         gl_FragColor = vec4(uTint, a);
       }
     `,
@@ -1190,6 +1207,48 @@ function CarpetVacuumTracks({ width, depth, cx, cz }: {
   return (
     <mesh rotation-x={-Math.PI / 2} position={[0, 0.005, 0]}>
       <planeGeometry args={[width, depth]} />
+      <primitive object={mat} attach="material" />
+    </mesh>
+  );
+}
+
+/**
+ * Soft radial floor sheen — additive cream wash under the pod with a
+ * smooth alpha falloff so it never shows a hard circle edge. Mimics
+ * the carpet picking up bright fluorescent fill near the desks.
+ */
+function FloorSheen({ cx, cz, radius }: { cx: number; cz: number; radius: number }) {
+  const mat = useMemo(() => new THREE.ShaderMaterial({
+    uniforms: {
+      uTint: { value: new THREE.Color('#D8E0D4') },
+    },
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    polygonOffset: true,
+    polygonOffsetFactor: -2,
+    polygonOffsetUnits: -2,
+    vertexShader: `
+      varying vec2 vUv;
+      void main() {
+        vUv = uv;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: `
+      uniform vec3 uTint;
+      varying vec2 vUv;
+      void main() {
+        vec2 d = vUv - 0.5;
+        float r = length(d) * 2.0;          // 0 at centre, 1 at edge
+        float a = pow(1.0 - smoothstep(0.0, 1.0, r), 2.2) * 0.55;
+        gl_FragColor = vec4(uTint, a);
+      }
+    `,
+  }), []);
+  return (
+    <mesh rotation-x={-Math.PI / 2} position={[cx, 0.007, cz]}>
+      <planeGeometry args={[radius * 2, radius * 2]} />
       <primitive object={mat} attach="material" />
     </mesh>
   );
@@ -1517,28 +1576,10 @@ function OfficeScene({ phase, onMonitorClick }: {
       {/* ── FLOOR — real CC0 carpet PBR texture ────────────────────── */}
       <TexturedCarpet width={ROOM_W} depth={ROOM_D} />
       <CarpetVacuumTracks width={ROOM_W} depth={ROOM_D} cx={0} cz={DESK_Z - 0.74} />
-      {/* Subtle floor sheen patch directly under the pod — picks up
-          the bright fluorescents from the ceiling and gives the carpet
-          a faint specular pool near the desks (matches the reference). */}
-      <mesh rotation-x={-Math.PI / 2} position={[0, 0.008, DESK_Z - 0.74]} renderOrder={1}>
-        <circleGeometry args={[3.6, 48]} />
-        <MeshReflectorMaterial
-          color="#9DB39A"
-          roughness={0.88}
-          metalness={0.05}
-          mirror={0.06}
-          mixBlur={4.0}
-          mixStrength={0.55}
-          resolution={512}
-          blur={[200, 200]}
-          minDepthThreshold={0.4}
-          maxDepthThreshold={1.4}
-          depthScale={0.5}
-          depthToBlurRatioBias={0.25}
-          transparent
-          opacity={0.45}
-        />
-      </mesh>
+      {/* Subtle floor sheen pool directly under the pod — soft radial
+          brightening that fades to zero at the edge, no harsh circle
+          boundary. Cheap shader, just adds a luminous wash. */}
+      <FloorSheen cx={0} cz={DESK_Z - 0.74} radius={4.5} />
 
       {/* ── DUST PARTICLES — atmospheric haze ─────────────────────── */}
       <DustParticles />
