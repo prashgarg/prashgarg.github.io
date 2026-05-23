@@ -490,6 +490,45 @@ const paletteIndex = [
       })();
     </script>
 
+    <!-- ===== Cmd+K palette hint (discoverability) ===== -->
+    <style>
+      .cmdk-hint-btn {
+        position: fixed;
+        bottom: 38px;
+        right: 14px;
+        z-index: 90;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px 9px 5px 11px;
+        font-family: 'Inter', system-ui, sans-serif;
+        font-size: 11px;
+        color: #1a1a1a;
+        background: rgba(255, 255, 255, 0.94);
+        border: 1px solid rgba(0,0,0,0.30);
+        border-radius: 4px;
+        cursor: pointer;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.10);
+        transition: background 0.14s ease, border-color 0.14s ease;
+        opacity: 0;
+        animation: cmdk-hint-in 0.6s ease 1.2s forwards;
+      }
+      .cmdk-hint-btn:hover { background: #fff; border-color: rgba(0,0,0,0.55); }
+      .cmdk-hint-btn kbd {
+        font-family: inherit;
+        font-size: 10px;
+        padding: 1px 5px;
+        border: 1px solid rgba(0,0,0,0.25);
+        background: rgba(0,0,0,0.04);
+        border-radius: 3px;
+      }
+      @keyframes cmdk-hint-in { to { opacity: 1; } }
+      @media (max-width: 640px) { .cmdk-hint-btn { display: none; } }
+    </style>
+    <button class="cmdk-hint-btn" id="cmdk-hint-btn" aria-label="Open command palette">
+      <kbd>⌘K</kbd> <span>search</span>
+    </button>
+
     <!-- ===== Cmd+K command palette ===== -->
     <style>
       .cmdk-backdrop {
@@ -635,6 +674,9 @@ const paletteIndex = [
         });
         backdrop.addEventListener('click', close);
         input.addEventListener('input', e => render(e.target.value));
+        // wire up the discoverability hint button
+        const hintBtn = document.getElementById('cmdk-hint-btn');
+        if (hintBtn) hintBtn.addEventListener('click', open);
       })();
     </script>
   </body>
