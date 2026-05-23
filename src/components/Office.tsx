@@ -821,89 +821,280 @@ function CrtMonitor({ phase, onClick }: { phase: Phase; onClick?: () => void }) 
   );
 }
 
-/* ---------- office chair (5-spoke base + wheels, padded seat/back) --- */
+/* ---------- executive office chair ----------------------------------
+ *  Replaces the previous box+spheres placeholder with a proper
+ *  silhouette: curved molded backrest with lumbar bump + headrest
+ *  hint, contoured bowl seat with rolled front edge, real two-piece
+ *  armrests (vertical metal stem + horizontal padded top), 5-spoke
+ *  base with curved arms and proper twin-wheel casters, sleek
+ *  tapered chrome gas column with collar + tilt-mechanism housing.
+ *
+ *  Material palette:
+ *    - PLASTIC_DARK  #1B1B1B    seat/back upholstery (with fabric normal)
+ *    - PLASTIC_BLK   #0E0E0E    armrest pads
+ *    - CHROME        #B4B4B4    gas column, spoke caps, rim
+ *    - METAL_DARK    #2A2A2A    base hub, armrest stems, tilt box
+ *    - WHEEL         #0A0A0A    caster bodies
+ *    - WHEEL_RUBBER  #181818    caster rubber outer
+ */
 function OfficeChair({ pos }: { pos: [number, number, number] }) {
   const SPOKES = 5;
-  const SPOKE_LEN = 0.34;
+  const SPOKE_LEN = 0.36;
   const fabric = useChairFabricProps();
+
+  // Pre-built materials (avoid re-allocation per spoke/wheel)
+  const matMetalDark = useMemo(() => new THREE.MeshStandardMaterial({
+    color: '#2A2A2A', roughness: 0.40, metalness: 0.55,
+  }), []);
+  const matChrome = useMemo(() => new THREE.MeshStandardMaterial({
+    color: '#B4B4B4', roughness: 0.30, metalness: 0.85,
+  }), []);
+  const matWheel = useMemo(() => new THREE.MeshStandardMaterial({
+    color: '#0A0A0A', roughness: 0.55, metalness: 0.10,
+  }), []);
+  const matRubber = useMemo(() => new THREE.MeshStandardMaterial({
+    color: '#161616', roughness: 0.78, metalness: 0.0,
+  }), []);
+
   return (
     <group position={pos}>
-      {/* === BASE ASSEMBLY === */}
-      {/* central hub */}
-      <mesh position={[0, 0.06, 0]} castShadow>
-        <cylinderGeometry args={[0.06, 0.07, 0.06, 16]} />
-        <meshStandardMaterial color="#2A2A2A" roughness={0.35} metalness={0.55} />
+      {/* ════════════════════ BASE ASSEMBLY ════════════════════════ */}
+      {/* central hub — tapered cylinder */}
+      <mesh position={[0, 0.07, 0]} castShadow>
+        <cylinderGeometry args={[0.058, 0.080, 0.085, 18]} />
+        <primitive object={matMetalDark} attach="material" />
       </mesh>
-      {/* 5 spokes */}
+      {/* small disc cap on top of hub (where the column slots in) */}
+      <mesh position={[0, 0.118, 0]}>
+        <cylinderGeometry args={[0.052, 0.058, 0.010, 18]} />
+        <primitive object={matChrome} attach="material" />
+      </mesh>
+
+      {/* 5 curved-out spokes with twin-wheel casters at the tips */}
       {Array.from({ length: SPOKES }).map((_, i) => {
         const a = (i / SPOKES) * Math.PI * 2;
         return (
-          <group key={i} position={[0, 0.045, 0]} rotation={[0, a, 0]}>
-            <mesh position={[SPOKE_LEN / 2, 0, 0]} castShadow>
-              {/* slim spoke, narrows toward the tip */}
-              <boxGeometry args={[SPOKE_LEN, 0.03, 0.06]} />
-              <meshStandardMaterial color="#2D2D2D" roughness={0.4} metalness={0.5} />
+          <group key={i} position={[0, 0.075, 0]} rotation={[0, a, 0]}>
+            {/* spoke proper — slight downward angle so the tip kisses the floor */}
+            <group rotation={[0, 0, -0.05]}>
+              <mesh position={[SPOKE_LEN / 2, 0, 0]} castShadow>
+                <boxGeometry args={[SPOKE_LEN, 0.038, 0.072]} />
+                <primitive object={matMetalDark} attach="material" />
+              </mesh>
+              {/* slim chrome top-cap strip — running along the spoke */}
+              <mesh position={[SPOKE_LEN / 2, 0.022, 0]}>
+                <boxGeometry args={[SPOKE_LEN * 0.92, 0.004, 0.020]} />
+                <primitive object={matChrome} attach="material" />
+              </mesh>
+            </group>
+            {/* CASTER housing at spoke tip (small dark fork) */}
+            <mesh position={[SPOKE_LEN + 0.005, -0.02, 0]} castShadow>
+              <boxGeometry args={[0.038, 0.045, 0.072]} />
+              <primitive object={matMetalDark} attach="material" />
             </mesh>
-            {/* wheel/caster at spoke tip — small dark disc */}
-            <mesh position={[SPOKE_LEN + 0.01, 0.005, 0]} rotation-x={Math.PI / 2} castShadow>
-              <cylinderGeometry args={[0.038, 0.038, 0.045, 14]} />
-              <meshStandardMaterial color="#0E0E0E" roughness={0.55} />
-            </mesh>
+            {/* TWIN wheels (one on each side of the fork) */}
+            {[-1, 1].map(wSide => (
+              <mesh
+                key={wSide}
+                position={[SPOKE_LEN + 0.005, -0.035, wSide * 0.028]}
+                rotation-x={Math.PI / 2}
+                castShadow
+              >
+                <cylinderGeometry args={[0.030, 0.030, 0.016, 16]} />
+                <primitive object={matWheel} attach="material" />
+              </mesh>
+            ))}
+            {/* RUBBER outer ring on each wheel */}
+            {[-1, 1].map(wSide => (
+              <mesh
+                key={`r${wSide}`}
+                position={[SPOKE_LEN + 0.005, -0.035, wSide * 0.028]}
+                rotation-x={Math.PI / 2}
+              >
+                <torusGeometry args={[0.028, 0.004, 8, 16]} />
+                <primitive object={matRubber} attach="material" />
+              </mesh>
+            ))}
           </group>
         );
       })}
 
-      {/* === COLUMN === */}
-      <mesh position={[0, 0.30, 0]} castShadow>
-        <cylinderGeometry args={[0.034, 0.04, 0.42, 12]} />
-        <meshStandardMaterial color="#3A3A3A" roughness={0.35} metalness={0.55} />
+      {/* ════════════════════ GAS COLUMN ════════════════════════════ */}
+      {/* lower bell — slight flare just above the hub */}
+      <mesh position={[0, 0.155, 0]}>
+        <cylinderGeometry args={[0.048, 0.052, 0.022, 16]} />
+        <primitive object={matMetalDark} attach="material" />
+      </mesh>
+      {/* main tapered chrome column */}
+      <mesh position={[0, 0.32, 0]} castShadow>
+        <cylinderGeometry args={[0.030, 0.040, 0.34, 16]} />
+        <primitive object={matChrome} attach="material" />
+      </mesh>
+      {/* upper collar where column meets tilt mechanism */}
+      <mesh position={[0, 0.500, 0]}>
+        <cylinderGeometry args={[0.044, 0.034, 0.026, 16]} />
+        <primitive object={matMetalDark} attach="material" />
       </mesh>
 
-      {/* === SEAT — bigger pan for visibility from idle distance === */}
-      <RoundedBox args={[0.58, 0.10, 0.56]} radius={0.025} smoothness={3} position={[0, 0.49, 0]} castShadow receiveShadow>
-        <meshStandardMaterial {...(fabric as any)} color="#141414" roughness={0.78} normalScale={[0.40, 0.40] as any} />
-      </RoundedBox>
-      {/* slim chrome rim around the seat — gives it a defined edge */}
-      <mesh position={[0, 0.55, 0]}>
-        <boxGeometry args={[0.56, 0.006, 0.54]} />
-        <meshStandardMaterial color="#7E7E7E" roughness={0.45} metalness={0.55} />
+      {/* ════════════════════ TILT MECHANISM ═══════════════════════ */}
+      {/* visible box under the seat that houses the recline mechanism */}
+      <mesh position={[0, 0.535, -0.02]} castShadow>
+        <boxGeometry args={[0.20, 0.045, 0.22]} />
+        <primitive object={matMetalDark} attach="material" />
+      </mesh>
+      {/* tension-adjustment knob (small chrome cylinder under front edge) */}
+      <mesh position={[0, 0.520, 0.115]} rotation-x={Math.PI / 2}>
+        <cylinderGeometry args={[0.018, 0.018, 0.060, 12]} />
+        <primitive object={matChrome} attach="material" />
       </mesh>
 
-      {/* === BACKREST === */}
-      {/* short arm connecting seat to back (dark metal) */}
-      <mesh position={[0, 0.62, -0.22]} castShadow>
-        <boxGeometry args={[0.05, 0.20, 0.05]} />
-        <meshStandardMaterial color="#2A2A2A" roughness={0.4} metalness={0.45} />
-      </mesh>
-      {/* padded backrest — sculpted 2-piece low-back. Lower lumbar pad
-          + upper shoulder pad with a thin gap between, matching the
-          mid-century executive chair silhouette in the reference. */}
-      {/* lumbar pad */}
-      <RoundedBox args={[0.46, 0.16, 0.10]} radius={0.025} smoothness={3} position={[0, 0.66, -0.24]} castShadow>
-        <meshStandardMaterial {...(fabric as any)} color="#0F0F0F" roughness={0.78} normalScale={[0.40, 0.40] as any} />
+      {/* ════════════════════ SEAT (contoured bowl) ════════════════ */}
+      {/* main seat pan — bevelled black upholstery */}
+      <RoundedBox
+        args={[0.58, 0.075, 0.56]}
+        radius={0.035}
+        smoothness={4}
+        position={[0, 0.59, 0]}
+        castShadow
+        receiveShadow
+      >
+        <meshStandardMaterial
+          {...(fabric as any)}
+          color="#1B1B1B"
+          roughness={0.78}
+          normalScale={[0.40, 0.40] as any}
+        />
       </RoundedBox>
-      {/* shoulder pad — slightly narrower, set back a touch */}
-      <RoundedBox args={[0.50, 0.18, 0.10]} radius={0.028} smoothness={3} position={[0, 0.86, -0.245]} castShadow>
-        <meshStandardMaterial {...(fabric as any)} color="#0F0F0F" roughness={0.78} normalScale={[0.40, 0.40] as any} />
+      {/* sculpted "bowl" — slightly inset upper surface adding a sit-in depression */}
+      <RoundedBox
+        args={[0.48, 0.022, 0.44]}
+        radius={0.030}
+        smoothness={3}
+        position={[0, 0.628, 0]}
+      >
+        <meshStandardMaterial
+          {...(fabric as any)}
+          color="#171717"
+          roughness={0.80}
+          normalScale={[0.30, 0.30] as any}
+        />
       </RoundedBox>
-      {/* slim chrome strip framing where the two pads meet (Aeron-ish) */}
-      <mesh position={[0, 0.755, -0.20]}>
-        <boxGeometry args={[0.46, 0.005, 0.012]} />
-        <meshStandardMaterial color="#9A9A9A" roughness={0.4} metalness={0.7} />
+      {/* rolled front edge — wider lip that proper exec seats have */}
+      <RoundedBox
+        args={[0.54, 0.045, 0.080]}
+        radius={0.020}
+        smoothness={3}
+        position={[0, 0.605, 0.27]}
+        castShadow
+      >
+        <meshStandardMaterial
+          {...(fabric as any)}
+          color="#1B1B1B"
+          roughness={0.78}
+          normalScale={[0.40, 0.40] as any}
+        />
+      </RoundedBox>
+
+      {/* ════════════════════ SEAT-TO-BACK SUPPORT ════════════════ */}
+      {/* short metal arm rising from the rear of the seat to the
+          backrest base — visible behind the seat (was longer before
+          the backrest was lowered). */}
+      <mesh position={[0, 0.665, -0.265]} rotation-x={0.18} castShadow>
+        <boxGeometry args={[0.20, 0.140, 0.030]} />
+        <primitive object={matMetalDark} attach="material" />
       </mesh>
 
-      {/* === ARMRESTS === */}
-      {([-1, 1] as const).map((side) => (
-        <group key={side}>
-          {/* vertical post (dark metal) */}
-          <mesh position={[side * 0.28, 0.60, -0.05]} castShadow>
-            <boxGeometry args={[0.03, 0.22, 0.03]} />
-            <meshStandardMaterial color="#2A2A2A" roughness={0.4} metalness={0.45} />
+      {/* ════════════════════ BACKREST (low-back molded panel) ═══
+          Kept INTENTIONALLY LOW so the top sits below the active CRT
+          screen bottom from the idle camera. No headrest hint — this
+          is a deliberately short executive low-back, not a tall
+          high-back office chair. Top at y ≈ 0.96, screen bottom ≈ 0.94. */}
+      <group position={[0, 0.82, -0.27]} rotation-x={0.08}>
+        {/* main back panel */}
+        <RoundedBox
+          args={[0.54, 0.30, 0.060]}
+          radius={0.055}
+          smoothness={4}
+          castShadow
+        >
+          <meshStandardMaterial
+            {...(fabric as any)}
+            color="#141414"
+            roughness={0.78}
+            normalScale={[0.45, 0.45] as any}
+          />
+        </RoundedBox>
+        {/* recessed centre panel — slightly darker, gives a stitched-frame look */}
+        <RoundedBox
+          args={[0.42, 0.22, 0.020]}
+          radius={0.040}
+          smoothness={3}
+          position={[0, 0, 0.033]}
+        >
+          <meshStandardMaterial
+            {...(fabric as any)}
+            color="#0E0E0E"
+            roughness={0.82}
+            normalScale={[0.30, 0.30] as any}
+          />
+        </RoundedBox>
+        {/* LUMBAR bulge — forward-protruding pad in the lower middle */}
+        <RoundedBox
+          args={[0.32, 0.10, 0.045]}
+          radius={0.022}
+          smoothness={3}
+          position={[0, -0.07, 0.055]}
+          castShadow
+        >
+          <meshStandardMaterial
+            {...(fabric as any)}
+            color="#1B1B1B"
+            roughness={0.78}
+            normalScale={[0.40, 0.40] as any}
+          />
+        </RoundedBox>
+        {/* slim chrome trim along the top edge + the two sides */}
+        <mesh position={[0, 0.152, 0.034]}>
+          <boxGeometry args={[0.54, 0.008, 0.012]} />
+          <primitive object={matChrome} attach="material" />
+        </mesh>
+        {([-1, 1] as const).map(side => (
+          <mesh key={side} position={[side * 0.267, 0, 0.034]}>
+            <boxGeometry args={[0.008, 0.30, 0.012]} />
+            <primitive object={matChrome} attach="material" />
           </mesh>
-          {/* horizontal arm pad — black */}
-          <mesh position={[side * 0.28, 0.71, 0.02]} castShadow>
-            <boxGeometry args={[0.06, 0.035, 0.30]} />
-            <meshStandardMaterial color="#1C1C1C" roughness={0.75} />
+        ))}
+      </group>
+
+      {/* ════════════════════ ARMRESTS ════════════════════════════
+          Vertical metal stem rising from the seat side, with a curved
+          chrome elbow leading into a horizontal padded top. */}
+      {([-1, 1] as const).map(side => (
+        <group key={side}>
+          {/* vertical stem — slim dark metal */}
+          <mesh position={[side * 0.295, 0.71, -0.04]} castShadow>
+            <boxGeometry args={[0.028, 0.20, 0.028]} />
+            <primitive object={matMetalDark} attach="material" />
+          </mesh>
+          {/* small chrome elbow connector at the top of the stem */}
+          <mesh position={[side * 0.295, 0.815, -0.04]} castShadow>
+            <boxGeometry args={[0.040, 0.018, 0.040]} />
+            <primitive object={matChrome} attach="material" />
+          </mesh>
+          {/* horizontal padded armrest top — extends slightly forward */}
+          <RoundedBox
+            args={[0.060, 0.022, 0.260]}
+            radius={0.011}
+            smoothness={3}
+            position={[side * 0.295, 0.835, 0.020]}
+            castShadow
+          >
+            <meshStandardMaterial color="#0E0E0E" roughness={0.85} metalness={0.05} />
+          </RoundedBox>
+          {/* slim chrome bracket where the stem meets the seat */}
+          <mesh position={[side * 0.295, 0.615, -0.04]}>
+            <boxGeometry args={[0.040, 0.018, 0.040]} />
+            <primitive object={matChrome} attach="material" />
           </mesh>
         </group>
       ))}
