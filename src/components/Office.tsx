@@ -146,51 +146,65 @@ const CRT_FRAG = `
   varying vec2 vUv;
   float hash1(float x){ return fract(sin(x * 12.9898) * 43758.5453); }
   float hash2(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+  // Cheap stylised "digit" — bright square cell with a hash-driven
+  // pixel pattern that suggests a 3×5 glyph without actual font data.
+  float digitGlyph(vec2 local, float seed) {
+    // local in [0,1]; bring to a 3×5 cell grid
+    vec2 g = floor(local * vec2(3.0, 5.0));
+    float h = hash2(g + vec2(seed * 13.0, seed * 7.0));
+    // top + bottom rows always lit (digits have horizontal bars), sides
+    // partially lit — gives a vague 7-segment / pixel-digit silhouette
+    float top    = step(4.5, g.y);
+    float bottom = step(g.y, 0.5);
+    float side   = step(g.x, 0.5) + step(2.5, g.x);
+    float pix    = step(0.40, h);
+    return clamp(top + bottom + side * pix * 0.85, 0.0, 1.0);
+  }
   void main() {
     vec2 uv = vUv;
-    // CRT vignette + slight pincushion-like darkening
+    // CRT vignette + pincushion-style darkening at edges
     vec2 cv = uv - 0.5;
-    float vig = 1.0 - smoothstep(0.06, 0.66, length(cv));
-    vig = mix(0.35, 1.0, vig);
-    // strong horizontal scanlines (visible at any distance)
-    float scan = 0.5 + 0.5 * sin(uv.y * 160.0);
-    scan = mix(0.45, 1.10, scan);
-    // ROLLING SCANLINE — classic CRT artifact, a brighter band that
-    // drifts slowly down the screen. Periodic in y.
-    float rollY = mod(uv.y - uTime * 0.18, 1.0);
-    float rollBand = exp(-pow((rollY - 0.5) * 6.0, 2.0)) * 0.20;
-    // terminal rows — 14 rows of "text"
-    float NROWS = 14.0;
-    float row = floor(uv.y * NROWS);
-    float rowSeed = hash1(row);
-    // some rows are blank (empty lines between paragraphs)
-    float rowActive = step(0.18, rowSeed);
-    // row content width — varies per row
-    float rowWidth = 0.10 + rowSeed * 0.76;
-    float inLeftMargin = step(0.06, uv.x);
-    float inRow = step(uv.x, rowWidth) * inLeftMargin * rowActive;
-    // ASCII-character cells — divide each row into ~52 character cells
-    float charX = floor(uv.x * 52.0);
-    float charSeed = hash2(vec2(charX, row));
-    // most cells are filled (~75%), some empty (spaces)
-    float charBright = step(0.25, charSeed);
-    // dim some characters to fake variation in glyph density
-    float charLevel = mix(0.45, 1.0, hash2(vec2(charX + 0.3, row)));
-    float content = inRow * charBright * charLevel;
-    // blinking cursor on bottom-active row
-    float cursorRow = NROWS - 2.0;
-    float onCursorRow = step(cursorRow - 0.5, row) * step(row, cursorRow + 0.5);
-    float cursorX = step(0.06, uv.x) * step(uv.x, 0.085);
-    float cursorBlink = step(0.5, fract(uTime * 0.8));
-    float cursor = onCursorRow * cursorX * cursorBlink;
-    // slow flicker
-    float flicker = 0.93 + 0.07 * sin(uTime * 6.0 + hash1(floor(uTime * 30.0)) * 5.0);
-    // SLOW BREATHING — subtle 6-second sine to make the CRT feel alive
-    float breath = 0.94 + 0.06 * sin(uTime * 1.05);
-    // combine
-    vec3 col = uColor * scan * vig * (0.30 + content * 0.95) * flicker * breath;
-    col += uColor * cursor * 0.85;
-    col += uColor * rollBand;          // the rolling scanline band
+    float vig = 1.0 - smoothstep(0.10, 0.72, length(cv));
+    vig = mix(0.25, 1.0, vig);
+    // strong horizontal scanlines
+    float scan = 0.5 + 0.5 * sin(uv.y * 180.0);
+    scan = mix(0.55, 1.10, scan);
+    // rolling scanline — bright band drifts slowly down
+    float rollY = mod(uv.y - uTime * 0.16, 1.0);
+    float rollBand = exp(-pow((rollY - 0.5) * 6.0, 2.0)) * 0.18;
+    // ── MDR macrodata refinement screen ─────────────────────────────
+    // 22-col × 14-row grid of "digits" floating with slow drift +
+    // per-cell wiggle. Some cells cluster brighter (the "scary"
+    // numbers being refined).
+    const float NX = 22.0, NY = 14.0;
+    vec2 gridUv  = vec2(uv.x * NX, uv.y * NY);
+    vec2 gridCel = floor(gridUv);
+    vec2 cellUv  = fract(gridUv);
+    // per-cell wiggle — small UV jitter driven by hash + time
+    float wx = (hash2(gridCel + 13.0) - 0.5) * 0.30;
+    float wy = (hash2(gridCel + 71.0) - 0.5) * 0.30;
+    float ph = hash2(gridCel) * 6.283;
+    cellUv += vec2(sin(uTime * 1.2 + ph) * wx, cos(uTime * 0.9 + ph) * wy);
+    // skip cells outside (0..1) after jitter — gaps in the grid
+    float inCell = step(0.10, cellUv.x) * step(cellUv.x, 0.90) *
+                   step(0.10, cellUv.y) * step(cellUv.y, 0.90);
+    // digit glyph inside the cell
+    float seed  = hash2(gridCel * vec2(1.13, 2.71));
+    vec2 dl = (cellUv - 0.10) / 0.80;
+    float glyph = digitGlyph(dl, seed) * inCell;
+    // "cluster" — every few cells, a brighter pulsing group
+    float clusterId  = floor(gridCel.x / 3.0) + floor(gridCel.y / 3.0) * 7.0;
+    float clusterAct = step(0.78, hash1(clusterId + floor(uTime * 0.6)));
+    float cellBright = mix(0.55, 1.35, hash2(gridCel) ) * (1.0 + clusterAct * 0.7);
+    // small overall slow flicker + breath
+    float flicker = 0.94 + 0.06 * sin(uTime * 6.5 + hash1(floor(uTime * 30.0)) * 5.0);
+    float breath  = 0.95 + 0.05 * sin(uTime * 1.0);
+    // background gradient — deeper teal at top, brighter near bottom
+    float bgGrad = mix(0.18, 0.32, uv.y);
+    vec3 bg = uColor * bgGrad * vig;
+    vec3 digits = uColor * glyph * cellBright;
+    vec3 col = (bg + digits) * scan * flicker * breath;
+    col += uColor * rollBand;
     gl_FragColor = vec4(col * uIntensity, 1.0);
   }
 `;
@@ -1781,17 +1795,35 @@ function OfficeScene({ phase, onMonitorClick }: {
         <WallClock pos={[0, 0, 0]} />
       </group>
 
-      {/* ── FRAMED PICTURE — on the back wall between the two desks ── */}
-      <group position={[0, 1.85, -ROOM_D / 2 + 0.06]}>
-        {/* outer frame */}
+      {/* ── FRAMED KIER EAGAN PORTRAIT — on the back wall, like the
+          founder portraits ubiquitous in Severance offices. Cream
+          background, dark monochrome silhouette suggestion, slim dark
+          frame, larger than before so it reads from the idle camera. */}
+      <group position={[3.0, 2.10, -ROOM_D / 2 + 0.06]}>
+        {/* outer frame — dark wood */}
         <mesh>
-          <boxGeometry args={[0.40, 0.30, 0.025]} />
-          <meshStandardMaterial color="#2A2826" roughness={0.55} />
+          <boxGeometry args={[0.78, 1.05, 0.03]} />
+          <meshStandardMaterial color="#1F1B17" roughness={0.55} />
         </mesh>
-        {/* image inside frame (placeholder soft photo tones) */}
-        <mesh position={[0, 0, 0.014]}>
-          <planeGeometry args={[0.34, 0.24]} />
-          <meshStandardMaterial color="#8A9AB8" roughness={0.8} />
+        {/* cream mat inside frame */}
+        <mesh position={[0, 0, 0.018]}>
+          <planeGeometry args={[0.70, 0.97]} />
+          <meshStandardMaterial color="#EFEAD8" roughness={0.85} />
+        </mesh>
+        {/* dark portrait silhouette — head + shoulders oval */}
+        <mesh position={[0, 0.10, 0.020]}>
+          <circleGeometry args={[0.16, 32]} />
+          <meshStandardMaterial color="#3B342E" roughness={0.7} />
+        </mesh>
+        {/* shoulders block */}
+        <mesh position={[0, -0.20, 0.020]}>
+          <planeGeometry args={[0.42, 0.30]} />
+          <meshStandardMaterial color="#3B342E" roughness={0.7} />
+        </mesh>
+        {/* thin gold name plate at bottom */}
+        <mesh position={[0, -0.46, 0.022]}>
+          <boxGeometry args={[0.32, 0.04, 0.005]} />
+          <meshStandardMaterial color="#A88A3F" roughness={0.4} metalness={0.65} />
         </mesh>
       </group>
 
