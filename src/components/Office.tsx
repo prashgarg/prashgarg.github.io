@@ -953,6 +953,20 @@ function OfficeScene({ phase, onMonitorClick }: {
       {/* Dedicated desk fill — compensates for partitions blocking ceiling lights */}
       <pointLight position={[0.3, ROOM_H - 0.5, DESK_Z + 0.5]} intensity={7.5} distance={9} decay={2} color="#F6F9FF" />
 
+      {/* Active-station SPOTLIGHT — narrow downward beam over the south
+          booth so the active workstation reads as the focal point of
+          the scene (subtle but draws the eye). */}
+      <spotLight
+        position={[0.10, ROOM_H - 0.05, DESK_Z + 0.2]}
+        target-position={[0.10, 0.8, DESK_Z]}
+        angle={0.55}
+        penumbra={0.85}
+        intensity={5.0}
+        distance={6}
+        decay={2}
+        color="#FFFAF0"
+      />
+
       {/* Ceiling panel lights — even brighter for true fluorescent flood */}
       {lightGrid.map(([x, z], i) => (
         <pointLight
@@ -1520,7 +1534,26 @@ function HudOverlay({ muted, onMuteToggle }: { muted: boolean; onMuteToggle: () 
       {nameText && <div style={chipName}>{nameText}</div>}
       {showSub  && <div style={chip}>{subText}</div>}
       {showTime && <div style={chip}>{timeText}</div>}
-      <button onMouseEnter={() => setMuteHovering(true)} onMouseLeave={() => { setMuteHovering(false); setMuteActive(false); }} onMouseDown={e => { e.stopPropagation(); setMuteActive(true); onMuteToggle(); }} onMouseUp={() => setMuteActive(false)} onTouchStart={e => { e.stopPropagation(); onMuteToggle(); }} aria-label={muted ? 'Unmute' : 'Mute'} style={{ width: 40, height: 40, background: '#000', border: 'none', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxSizing: 'border-box' }}>
+      <button
+        onMouseEnter={() => setMuteHovering(true)}
+        onMouseLeave={() => { setMuteHovering(false); setMuteActive(false); }}
+        onMouseDown={e => { e.stopPropagation(); setMuteActive(true); onMuteToggle(); }}
+        onMouseUp={() => setMuteActive(false)}
+        onTouchStart={e => { e.stopPropagation(); onMuteToggle(); }}
+        aria-label={muted ? 'Unmute' : 'Mute'}
+        style={{
+          width: 40, height: 40,
+          background: '#000',
+          border: muteHovering ? '1px solid rgba(255,255,255,0.35)' : '1px solid rgba(255,255,255,0.10)',
+          padding: 0,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          cursor: 'pointer',
+          boxSizing: 'border-box',
+          transition: 'border-color 0.18s ease, background 0.18s ease',
+          animation: 'hud-chip-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) both',
+          animationDelay: '0.6s',
+        }}
+      >
         <span style={{ opacity: muteOpacity, transform: `scale(${muteScale})`, transition: 'opacity 0.2s ease-out, transform 0.2s ease-out', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 0 }}>
           {muted ? <VolumeOffIcon /> : <VolumeOnIcon />}
         </span>
