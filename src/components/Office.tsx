@@ -121,7 +121,7 @@ const MONITOR_WORLD  = new THREE.Vector3(SOUTH_DX + 0.10, 1.05, DESK_Z - 0.35); 
 // occupies ~30%, floor ~25%.
 const CAM_ENTRY_POS  = new THREE.Vector3(0.10, 1.95, 5.5);
 const CAM_ENTRY_TGT  = new THREE.Vector3(SOUTH_DX + 0.10, 1.05, -5.0);
-const CAM_IDLE_POS   = new THREE.Vector3(1.20, 1.55, 5.2);
+const CAM_IDLE_POS   = new THREE.Vector3(1.30, 1.50, 4.4);
 const CAM_IDLE_TGT   = new THREE.Vector3(SOUTH_DX + 0.10, 1.10, -5.0);
 // Camera ends VERY close to the monitor face — ~0.3 m from the screen.
 // At FOV 58° this makes the monitor screen fill roughly 66%×78% of the
@@ -1002,14 +1002,14 @@ function StationLite({ active = false }: { active?: boolean } = {}) {
       {[0.18, 0.42, 0.62].map((y, i) => (
         <mesh key={`lp-${i}`} position={[-0.50, y, DESK_DZ + 0.60]}>
           <boxGeometry args={[0.56, 0.005, 0.004]} />
-          <meshStandardMaterial color="#A8A8A4" />
+          <meshStandardMaterial color="#6E6E6A" />
         </mesh>
       ))}
       {/* LEFT drawer pulls */}
       {[0.27, 0.50, 0.65].map((y, i) => (
         <mesh key={`lph-${i}`} position={[-0.50, y, DESK_DZ + 0.604]}>
           <boxGeometry args={[0.12, 0.018, 0.008]} />
-          <meshStandardMaterial color="#C8C6C2" roughness={0.3} metalness={0.4} />
+          <meshStandardMaterial color="#3F3F3F" roughness={0.45} metalness={0.4} />
         </mesh>
       ))}
       {/* RIGHT pedestal — bevelled, mirror of left */}
@@ -1020,14 +1020,14 @@ function StationLite({ active = false }: { active?: boolean } = {}) {
       {[0.18, 0.42, 0.62].map((y, i) => (
         <mesh key={`rp-${i}`} position={[0.50, y, DESK_DZ + 0.60]}>
           <boxGeometry args={[0.56, 0.005, 0.004]} />
-          <meshStandardMaterial color="#A8A8A4" />
+          <meshStandardMaterial color="#6E6E6A" />
         </mesh>
       ))}
       {/* RIGHT drawer pulls */}
       {[0.27, 0.50, 0.65].map((y, i) => (
         <mesh key={`rph-${i}`} position={[0.50, y, DESK_DZ + 0.604]}>
           <boxGeometry args={[0.12, 0.018, 0.008]} />
-          <meshStandardMaterial color="#C8C6C2" roughness={0.3} metalness={0.4} />
+          <meshStandardMaterial color="#3F3F3F" roughness={0.45} metalness={0.4} />
         </mesh>
       ))}
       {/* Inactive CRT — boxy beige body. SKIPPED on the active station;
