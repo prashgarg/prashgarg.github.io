@@ -79,7 +79,7 @@ const C = {
   ceiling:   '#D2D4D6',
   desk:      '#E4E2DC',
   deskLeg:   '#DDDBD6',
-  partition: '#3D5C44',
+  partition: '#2F4D3A',   // darker, more saturated sage — matches the Severance MDR fabric
   chair:     '#1C1C1C',
   chairMetal:'#3A3A3A',
   monitor:   '#E2DED6',   // Lumon terminal off-white (cleaner, brighter than beige)
@@ -1845,6 +1845,27 @@ function OfficeScene({ phase, onMonitorClick }: {
         <cylinderGeometry args={[0.005, 0.005, 0.14, 8]} />
         <meshStandardMaterial color="#1A1A1A" roughness={0.55} />
       </mesh>
+      {/* DESK NAMEPLATE — small dark plaque sitting on the desk edge
+          facing the chair, like the engraved name tags MDR refiners
+          have at their stations. */}
+      <group position={[0.08, 0.77, DESK_Z + 0.55]}>
+        <mesh castShadow>
+          <boxGeometry args={[0.22, 0.05, 0.04]} />
+          <meshStandardMaterial color="#2A241F" roughness={0.45} metalness={0.3} />
+        </mesh>
+        {/* small chrome face on the plaque */}
+        <mesh position={[0, 0.001, 0.021]}>
+          <planeGeometry args={[0.20, 0.035]} />
+          <meshStandardMaterial color="#C8C6C0" roughness={0.4} metalness={0.7} />
+        </mesh>
+        {/* faux engraved name — three thin dark lines */}
+        {[-0.05, 0, 0.05].map((dx, i) => (
+          <mesh key={i} position={[dx, 0.002, 0.023]}>
+            <planeGeometry args={[0.025, 0.012]} />
+            <meshStandardMaterial color="#1F1F1F" roughness={0.6} />
+          </mesh>
+        ))}
+      </group>
       </group>{/* end SOUTH_DX accessories group */}
 
       {/* ── WALL CLOCKS — one on each side wall + one on back wall
