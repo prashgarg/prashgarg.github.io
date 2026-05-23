@@ -12,7 +12,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { PerspectiveCamera, ContactShadows, MeshReflectorMaterial, Environment, RoundedBox } from '@react-three/drei';
+import { PerspectiveCamera, ContactShadows, MeshReflectorMaterial, Environment, RoundedBox, useTexture } from '@react-three/drei';
 import { EffectComposer, N8AO, Bloom } from '@react-three/postprocessing';
 import * as THREE from 'three';
 import InnerDesktop from './InnerDesktop';
@@ -1032,6 +1032,93 @@ function DeskLamp({ pos }: { pos: [number, number, number] }) {
   );
 }
 
+/* ---------- PBR textured surfaces (CC0 from ambientCG) -------------- */
+// Each surface loads its full PBR set (Color + NormalGL + Roughness + AO)
+// and tiles it via texture.repeat. The base color is tinted via .color so
+// we keep the sage/cream palette while gaining real surface micro-detail.
+
+function TexturedCarpet({ width, depth }: { width: number; depth: number }) {
+  // Skip the colour map (it's brown — would override our sage-green tint).
+  // Use only normal + roughness + AO so the texture adds surface micro-
+  // detail (weave bumps + grime) while the meshStandardMaterial.color
+  // keeps the green palette.
+  const props = useTexture({
+    normalMap:    '/textures/Carpet013/Carpet013_1K-JPG_NormalGL.jpg',
+    roughnessMap: '/textures/Carpet013/Carpet013_1K-JPG_Roughness.jpg',
+    aoMap:        '/textures/Carpet013/Carpet013_1K-JPG_AmbientOcclusion.jpg',
+  });
+  useMemo(() => {
+    Object.values(props).forEach((t: any) => {
+      t.wrapS = t.wrapT = THREE.RepeatWrapping;
+      t.repeat.set(width / 2.0, depth / 2.0);
+      t.anisotropy = 8;
+    });
+  }, [props, width, depth]);
+  return (
+    <mesh rotation-x={-Math.PI / 2} position={[0, 0, 0]} receiveShadow>
+      <planeGeometry args={[width, depth]} />
+      <meshStandardMaterial
+        {...(props as any)}
+        color={C.carpet}
+        roughness={0.92}
+        normalScale={[0.7, 0.7] as any}
+        aoMapIntensity={1.0}
+      />
+    </mesh>
+  );
+}
+
+function TexturedWallPlane({
+  pos, rot, size,
+}: {
+  pos: [number, number, number];
+  rot: [number, number, number];
+  size: [number, number];
+}) {
+  // Drop the colour map — only the surface detail matters; the colour
+  // stays as our cream-white from C.wall.
+  const props = useTexture({
+    normalMap:    '/textures/PaintedPlaster017/PaintedPlaster017_1K-JPG_NormalGL.jpg',
+    roughnessMap: '/textures/PaintedPlaster017/PaintedPlaster017_1K-JPG_Roughness.jpg',
+  });
+  useMemo(() => {
+    Object.values(props).forEach((t: any) => {
+      t.wrapS = t.wrapT = THREE.RepeatWrapping;
+      t.repeat.set(size[0] / 3, size[1] / 3);
+      t.anisotropy = 8;
+    });
+  }, [props, size]);
+  return (
+    <mesh position={pos} rotation={rot} receiveShadow>
+      <planeGeometry args={size} />
+      <meshStandardMaterial
+        {...(props as any)}
+        color={C.wall}
+        roughness={0.78}
+        normalScale={[0.30, 0.30] as any}
+      />
+    </mesh>
+  );
+}
+
+// Desk material — shared across all desk surfaces in the scene
+function useDeskMaterialProps() {
+  const props = useTexture({
+    map:          '/textures/Wood062/Wood062_1K-JPG_Color.jpg',
+    normalMap:    '/textures/Wood062/Wood062_1K-JPG_NormalGL.jpg',
+    roughnessMap: '/textures/Wood062/Wood062_1K-JPG_Roughness.jpg',
+  });
+  useMemo(() => {
+    Object.values(props).forEach((t: any) => {
+      t.wrapS = t.wrapT = THREE.RepeatWrapping;
+      t.repeat.set(1.5, 1.0);
+      t.anisotropy = 8;
+    });
+    (props.map as any).colorSpace = THREE.SRGBColorSpace;
+  }, [props]);
+  return props;
+}
+
 /* ---------- main 3-D scene ------------------------------------------- */
 function OfficeScene({ phase, onMonitorClick }: {
   phase: Phase; onMonitorClick: () => void;
@@ -1113,11 +1200,8 @@ function OfficeScene({ phase, onMonitorClick }: {
         />
       ))}
 
-      {/* ── FLOOR — sage-green carpet w/ shader noise ────────────────── */}
-      <mesh rotation-x={-Math.PI / 2} position={[0, 0, 0]} receiveShadow>
-        <planeGeometry args={[ROOM_W, ROOM_D]} />
-        <primitive object={carpetMat} attach="material" />
-      </mesh>
+      {/* ── FLOOR — real CC0 carpet PBR texture ────────────────────── */}
+      <TexturedCarpet width={ROOM_W} depth={ROOM_D} />
 
       {/* ── DUST PARTICLES — atmospheric haze ─────────────────────── */}
       <DustParticles />
@@ -1147,22 +1231,22 @@ function OfficeScene({ phase, onMonitorClick }: {
         <SmokeDetector key={`fix-${i}`} x={x as number} z={z as number} phaseOffset={ph as number} />
       ))}
 
-      {/* ── WALLS — panel-seam shader ───────────────────────────────── */}
-      {/* back wall (uses a flat plane so the shader UV maps cleanly) */}
-      <mesh position={[0, ROOM_H / 2, -ROOM_D / 2 + 0.05]}>
-        <planeGeometry args={[ROOM_W, ROOM_H]} />
-        <primitive object={wallMat} attach="material" />
-      </mesh>
-      {/* left wall */}
-      <mesh position={[-ROOM_W / 2 + 0.05, ROOM_H / 2, 0]} rotation-y={Math.PI / 2}>
-        <planeGeometry args={[ROOM_D, ROOM_H]} />
-        <primitive object={wallMat} attach="material" />
-      </mesh>
-      {/* right wall */}
-      <mesh position={[ROOM_W / 2 - 0.05, ROOM_H / 2, 0]} rotation-y={-Math.PI / 2}>
-        <planeGeometry args={[ROOM_D, ROOM_H]} />
-        <primitive object={wallMat} attach="material" />
-      </mesh>
+      {/* ── WALLS — real CC0 painted-plaster PBR texture ──────────── */}
+      <TexturedWallPlane
+        pos={[0, ROOM_H / 2, -ROOM_D / 2 + 0.05]}
+        rot={[0, 0, 0]}
+        size={[ROOM_W, ROOM_H]}
+      />
+      <TexturedWallPlane
+        pos={[-ROOM_W / 2 + 0.05, ROOM_H / 2, 0]}
+        rot={[0, Math.PI / 2, 0]}
+        size={[ROOM_D, ROOM_H]}
+      />
+      <TexturedWallPlane
+        pos={[ROOM_W / 2 - 0.05, ROOM_H / 2, 0]}
+        rot={[0, -Math.PI / 2, 0]}
+        size={[ROOM_D, ROOM_H]}
+      />
 
       {/* ── PARTITION CROSS — + shape at the centre of all 4 booths ── */}
       {/* EW arm */}
