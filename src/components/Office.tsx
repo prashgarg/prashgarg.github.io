@@ -678,9 +678,9 @@ function CrtMonitor({ phase, onClick }: { phase: Phase; onClick?: () => void }) 
 
 /* ---------- office chair (5-spoke base + wheels, padded seat/back) --- */
 function OfficeChair({ pos }: { pos: [number, number, number] }) {
-  // 5 spokes radiating from a central hub; small wheels at each tip.
   const SPOKES = 5;
   const SPOKE_LEN = 0.34;
+  const fabric = useChairFabricProps();
   return (
     <group position={pos}>
       {/* === BASE ASSEMBLY === */}
@@ -714,10 +714,9 @@ function OfficeChair({ pos }: { pos: [number, number, number] }) {
         <meshStandardMaterial color="#3A3A3A" roughness={0.35} metalness={0.55} />
       </mesh>
 
-      {/* === SEAT (black office chair) — bevelled === */}
-      {/* seat pan */}
+      {/* === SEAT (black office chair) — bevelled + fabric normal === */}
       <RoundedBox args={[0.52, 0.08, 0.50]} radius={0.02} smoothness={3} position={[0, 0.49, 0]} castShadow receiveShadow>
-        <meshStandardMaterial color="#1A1A1A" roughness={0.75} />
+        <meshStandardMaterial {...(fabric as any)} color="#1A1A1A" roughness={0.78} normalScale={[0.40, 0.40] as any} />
       </RoundedBox>
       {/* seat highlight (rim) */}
       <mesh position={[0, 0.535, 0]}>
@@ -731,9 +730,9 @@ function OfficeChair({ pos }: { pos: [number, number, number] }) {
         <boxGeometry args={[0.05, 0.20, 0.05]} />
         <meshStandardMaterial color="#2A2A2A" roughness={0.4} metalness={0.45} />
       </mesh>
-      {/* padded backrest — bevelled, taller than the seat */}
+      {/* padded backrest — bevelled + fabric normal */}
       <RoundedBox args={[0.50, 0.55, 0.09]} radius={0.025} smoothness={3} position={[0, 0.90, -0.24]} castShadow>
-        <meshStandardMaterial color="#1A1A1A" roughness={0.75} />
+        <meshStandardMaterial {...(fabric as any)} color="#1A1A1A" roughness={0.78} normalScale={[0.40, 0.40] as any} />
       </RoundedBox>
 
       {/* === ARMRESTS === */}
@@ -858,17 +857,22 @@ function DustParticles() {
  *   • monitor sits at local -Z (against the partition arm)
  */
 function StationLite({ active = false }: { active?: boolean } = {}) {
-  // Desk shifted back -0.06 so its back edge touches the cross partition
-  // (EW/NS arm at z=DESK_Z-0.74). Chair pulled in closer so the booth
-  // reads as ONE workstation instead of three floating pieces.
-  const DESK_DZ = -0.06;   // shift desk back by this much in local Z
-  const CHAIR_Z = 1.00;    // chair seat distance in front of desk centre
-                            // (was 1.20 → too much gap before; now tucked in)
+  const DESK_DZ = -0.06;
+  const CHAIR_Z = 1.00;
+  // Shared normal+roughness props (subtle micro-detail, no colour shift)
+  const deskNormals  = useDeskNormalProps(2, 1.5);
+  const chairFabric  = useChairFabricProps();
   return (
     <>
-      {/* Desk surface — bevelled */}
+      {/* Desk surface — bevelled, subtle wood-grain normal */}
       <RoundedBox args={[1.55, 0.06, 1.30]} radius={0.015} smoothness={3} position={[0, 0.74, DESK_DZ]} castShadow receiveShadow>
-        <meshStandardMaterial color={C.desk} roughness={0.42} metalness={0.02} />
+        <meshStandardMaterial
+          {...(deskNormals as any)}
+          color={C.desk}
+          roughness={0.42}
+          metalness={0.02}
+          normalScale={[0.18, 0.18] as any}
+        />
       </RoundedBox>
       {/* Desk modesty panel — vertical front skirt, hides what's under the
           desk and visually anchors the desk as one solid unit */}
@@ -876,9 +880,9 @@ function StationLite({ active = false }: { active?: boolean } = {}) {
         <boxGeometry args={[1.45, 0.34, 0.03]} />
         <meshStandardMaterial color={C.deskLeg} roughness={0.55} />
       </mesh>
-      {/* LEFT pedestal — bevelled */}
+      {/* LEFT pedestal — bevelled, subtle normal */}
       <RoundedBox args={[0.66, 0.72, 1.20]} radius={0.015} smoothness={3} position={[-0.50, 0.36, DESK_DZ]} castShadow receiveShadow>
-        <meshStandardMaterial color={C.deskLeg} roughness={0.5} />
+        <meshStandardMaterial {...(deskNormals as any)} color={C.deskLeg} roughness={0.5} normalScale={[0.20, 0.20] as any} />
       </RoundedBox>
       {/* LEFT drawer lines */}
       {[0.18, 0.42, 0.62].map((y, i) => (
@@ -896,7 +900,7 @@ function StationLite({ active = false }: { active?: boolean } = {}) {
       ))}
       {/* RIGHT pedestal — bevelled, mirror of left */}
       <RoundedBox args={[0.66, 0.72, 1.20]} radius={0.015} smoothness={3} position={[0.50, 0.36, DESK_DZ]} castShadow receiveShadow>
-        <meshStandardMaterial color={C.deskLeg} roughness={0.5} />
+        <meshStandardMaterial {...(deskNormals as any)} color={C.deskLeg} roughness={0.5} normalScale={[0.20, 0.20] as any} />
       </RoundedBox>
       {/* RIGHT drawer lines */}
       {[0.18, 0.42, 0.62].map((y, i) => (
@@ -1101,20 +1105,37 @@ function TexturedWallPlane({
   );
 }
 
-// Desk material — shared across all desk surfaces in the scene
-function useDeskMaterialProps() {
+// Desk + pedestal material props — applied to white surfaces to add
+// fine micro-detail without staining the colour. Uses Wood062's
+// normal + roughness only (no colour map → white stays white).
+function useDeskNormalProps(repeatX = 1.5, repeatY = 1.0) {
   const props = useTexture({
-    map:          '/textures/Wood062/Wood062_1K-JPG_Color.jpg',
     normalMap:    '/textures/Wood062/Wood062_1K-JPG_NormalGL.jpg',
     roughnessMap: '/textures/Wood062/Wood062_1K-JPG_Roughness.jpg',
   });
   useMemo(() => {
     Object.values(props).forEach((t: any) => {
       t.wrapS = t.wrapT = THREE.RepeatWrapping;
-      t.repeat.set(1.5, 1.0);
+      t.repeat.set(repeatX, repeatY);
       t.anisotropy = 8;
     });
-    (props.map as any).colorSpace = THREE.SRGBColorSpace;
+  }, [props, repeatX, repeatY]);
+  return props;
+}
+
+// Chair leather / fabric props — uses Carpet013's normal as a fabric
+// stand-in (subtle weave on the upholstery). Aggressively low scale.
+function useChairFabricProps() {
+  const props = useTexture({
+    normalMap:    '/textures/Carpet013/Carpet013_1K-JPG_NormalGL.jpg',
+    roughnessMap: '/textures/Carpet013/Carpet013_1K-JPG_Roughness.jpg',
+  });
+  useMemo(() => {
+    Object.values(props).forEach((t: any) => {
+      t.wrapS = t.wrapT = THREE.RepeatWrapping;
+      t.repeat.set(3, 3);
+      t.anisotropy = 4;
+    });
   }, [props]);
   return props;
 }
