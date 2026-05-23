@@ -590,6 +590,10 @@ function PowerLed({ position }: { position: [number, number, number] }) {
 function CrtMonitor({ phase, onClick }: { phase: Phase; onClick?: () => void }) {
   const [hovered, setHovered] = useState(false);
   const clickable = phase === 'idle';
+  // Subtle plastic micro-detail on the beige CRT shell — breaks up the
+  // perfectly flat box read from idle distance. Reuses the same desk
+  // normal map; very low scale so the texture stays barely perceptible.
+  const plastic = useDeskNormalProps(3, 2);
   // CRT shader material — teal-blue terminal (matches the reference)
   const crtMat = useMemo(() => new THREE.ShaderMaterial({
     uniforms: {
@@ -608,9 +612,9 @@ function CrtMonitor({ phase, onClick }: { phase: Phase; onClick?: () => void }) 
   });
   return (
     <group position={MONITOR_WORLD.toArray()}>
-      {/* body — bevelled */}
+      {/* body — bevelled, subtle plastic micro-detail */}
       <RoundedBox args={[0.54, 0.46, 0.40]} radius={0.020} smoothness={4} castShadow>
-        <meshStandardMaterial color={C.monitor} roughness={0.55} />
+        <meshStandardMaterial {...(plastic as any)} color={C.monitor} roughness={0.55} normalScale={[0.12, 0.12] as any} />
       </RoundedBox>
       {/* SIDE VENTS — thin horizontal slits on both sides (CRT cooling) */}
       {([-1, 1] as const).map((side) =>
@@ -874,11 +878,13 @@ function StationLite({ active = false }: { active?: boolean } = {}) {
           normalScale={[0.18, 0.18] as any}
         />
       </RoundedBox>
-      {/* Desk modesty panel — vertical front skirt, hides what's under the
-          desk and visually anchors the desk as one solid unit */}
-      <mesh position={[0, 0.55, DESK_DZ + 0.62]}>
-        <boxGeometry args={[1.45, 0.34, 0.03]} />
-        <meshStandardMaterial color={C.deskLeg} roughness={0.55} />
+      {/* Desk modesty panel — only spans the gap BETWEEN the two pedestals
+          (pedestals are at x=±0.50, width 0.66 → inner edges at ±0.17).
+          Recessed inward so the two pedestals visually pop out as separate
+          boxy volumes from the wider idle camera. */}
+      <mesh position={[0, 0.50, DESK_DZ + 0.50]}>
+        <boxGeometry args={[0.34, 0.40, 0.03]} />
+        <meshStandardMaterial {...(deskNormals as any)} color={C.deskLeg} roughness={0.55} normalScale={[0.15, 0.15] as any} />
       </mesh>
       {/* LEFT pedestal — bevelled, subtle normal */}
       <RoundedBox args={[0.66, 0.72, 1.20]} radius={0.015} smoothness={3} position={[-0.50, 0.36, DESK_DZ]} castShadow receiveShadow>
@@ -1140,6 +1146,24 @@ function useChairFabricProps() {
   return props;
 }
 
+// Partition fabric props — same Carpet013 PBR set as the chair, but
+// tiled much wider (panels are ~4 m long). Gives the dark green
+// dividers a perceptible textile weave under the directional light.
+function usePartitionFabricProps(repeatX = 8, repeatY = 2) {
+  const props = useTexture({
+    normalMap:    '/textures/Carpet013/Carpet013_1K-JPG_NormalGL.jpg',
+    roughnessMap: '/textures/Carpet013/Carpet013_1K-JPG_Roughness.jpg',
+  });
+  useMemo(() => {
+    Object.values(props).forEach((t: any) => {
+      t.wrapS = t.wrapT = THREE.RepeatWrapping;
+      t.repeat.set(repeatX, repeatY);
+      t.anisotropy = 8;
+    });
+  }, [props, repeatX, repeatY]);
+  return props;
+}
+
 /* ---------- main 3-D scene ------------------------------------------- */
 function OfficeScene({ phase, onMonitorClick }: {
   phase: Phase; onMonitorClick: () => void;
@@ -1154,6 +1178,9 @@ function OfficeScene({ phase, onMonitorClick }: {
     vertexShader: WALL_VERT,
     fragmentShader: WALL_FRAG,
   }), []);
+
+  // Partition fabric props (shared across all partition arms)
+  const partitionFabric = usePartitionFabricProps(8, 2);
 
   // Carpet shader (subtle texture)
   const carpetMat = useMemo(() => new THREE.ShaderMaterial({
@@ -1270,17 +1297,17 @@ function OfficeScene({ phase, onMonitorClick }: {
       />
 
       {/* ── PARTITION CROSS — + shape at the centre of all 4 booths ── */}
-      {/* EW arm */}
+      {/* EW arm — fabric weave normal under the directional light */}
       <mesh position={[0, 1.32, DESK_Z - 0.74]} castShadow receiveShadow>
         <boxGeometry args={[4.0, 1.10, 0.07]} />
-        <meshStandardMaterial color={C.partition} roughness={0.92} />
+        <meshStandardMaterial {...(partitionFabric as any)} color={C.partition} roughness={0.92} normalScale={[0.55, 0.55] as any} />
       </mesh>
       {/* NS arm — only extends NORTH of cross centre so it doesn't cut
           through the active CRT in the south booth (was 4.0 long, full
           ±2.0 from centre; now 2.0 long, only north). */}
       <mesh position={[0, 1.32, DESK_Z - 0.74 - 1.0]} castShadow receiveShadow>
         <boxGeometry args={[0.07, 1.10, 2.0]} />
-        <meshStandardMaterial color={C.partition} roughness={0.92} />
+        <meshStandardMaterial {...(partitionFabric as any)} color={C.partition} roughness={0.92} normalScale={[0.55, 0.55] as any} />
       </mesh>
 
       {/* ── 4 SYMMETRIC BOOTHS ───────────────────────────────────────
