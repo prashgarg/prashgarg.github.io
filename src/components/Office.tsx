@@ -780,8 +780,11 @@ function OfficeChair({ pos }: { pos: [number, number, number] }) {
         <boxGeometry args={[0.05, 0.20, 0.05]} />
         <meshStandardMaterial color="#2A2A2A" roughness={0.4} metalness={0.45} />
       </mesh>
-      {/* padded backrest — bevelled + fabric normal */}
-      <RoundedBox args={[0.50, 0.55, 0.09]} radius={0.025} smoothness={3} position={[0, 0.90, -0.24]} castShadow>
+      {/* padded backrest — shorter low-back design (was 0.55 tall, center
+          y=0.90 → top y≈1.18 which sat right in front of the CRT screen
+          from the idle camera). Now height 0.34, center y=0.74 → top
+          y=0.91, comfortably below the CRT screen bottom (y≈0.94). */}
+      <RoundedBox args={[0.50, 0.34, 0.09]} radius={0.025} smoothness={3} position={[0, 0.74, -0.24]} castShadow>
         <meshStandardMaterial {...(fabric as any)} color="#1A1A1A" roughness={0.78} normalScale={[0.40, 0.40] as any} />
       </RoundedBox>
 
