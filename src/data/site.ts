@@ -443,6 +443,34 @@ export const topics: Topic[] = [
   { slug: 'climate-views',                    label: 'Shocking Views on Climate Action' },
 ];
 
+// ──────────────────────────────────────────────────────────────────
+// Topic tags (broad themes inferred from paper title + blurb keywords)
+// Used by the /research page topic-filter chips and the cmdk palette.
+// ──────────────────────────────────────────────────────────────────
+export const TOPIC_TAGS = [
+  { slug: 'ai',         label: 'AI & automation' },
+  { slug: 'academia',   label: 'Academia & science' },
+  { slug: 'networks',   label: 'Networks' },
+  { slug: 'media',      label: 'Media & platforms' },
+  { slug: 'health',     label: 'Health' },
+  { slug: 'politics',   label: 'Political economy' },
+  { slug: 'methods',    label: 'Methods' },
+] as const;
+export type TopicTag = (typeof TOPIC_TAGS)[number]['slug'];
+
+export function topicsForPaper(p: Paper): TopicTag[] {
+  const text = `${p.title} ${p.blurb}`.toLowerCase();
+  const tags: TopicTag[] = [];
+  if (/\b(ai|llm|automation|automating|machine learning|chatgpt|language model)\b/.test(text)) tags.push('ai');
+  if (/\b(academic|academia|scholar|scientist|economics paper|economics scales|publication)\b/.test(text)) tags.push('academia');
+  if (/\b(network|graph|production network|citation|claim graph|literature graph)\b/.test(text)) tags.push('networks');
+  if (/\b(twitter|bluesky|social media|platform|media coverage)\b/.test(text)) tags.push('media');
+  if (/\b(health|medical|covid|disease)\b/.test(text)) tags.push('health');
+  if (/\b(populism|populist|political|vote|election|ukip|partisan)\b/.test(text)) tags.push('politics');
+  if (/\b(causal|causal inference|instrument|difference-in-differences|regression|empirical|natural experiment)\b/.test(text)) tags.push('methods');
+  return tags;
+}
+
 export function topicForTalk(title: string): Topic {
   const t = title.toLowerCase();
   if (t.includes('what should economics ask next')) return topics.find(x => x.slug === 'what-should-economics-ask-next')!;

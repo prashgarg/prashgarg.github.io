@@ -490,6 +490,76 @@ const paletteIndex = [
       })();
     </script>
 
+    <!-- ===== Dark mode toggle (top-right of body content) ===== -->
+    <style>
+      .theme-toggle {
+        position: fixed;
+        bottom: 38px;
+        right: 130px;
+        z-index: 90;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px 9px;
+        font-family: 'Inter', system-ui, sans-serif;
+        font-size: 11px;
+        color: #1a1a1a;
+        background: rgba(255,255,255,0.94);
+        border: 1px solid rgba(0,0,0,0.30);
+        border-radius: 4px;
+        cursor: pointer;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.10);
+        transition: background 0.14s, border-color 0.14s;
+        opacity: 0;
+        animation: cmdk-hint-in 0.6s ease 1.2s forwards;
+      }
+      .theme-toggle:hover { background: #fff; border-color: rgba(0,0,0,0.55); }
+      html.dark .w95-body { background-color: #1f1d1a !important; color: #e8e3d3 !important; }
+      html.dark .theme-toggle { background: rgba(40,40,40,0.96); color: #e8e3d3; border-color: rgba(255,255,255,0.30); }
+      html.dark .theme-toggle:hover { background: rgba(50,50,50,1); }
+      html.dark .cmdk-hint-btn { background: rgba(40,40,40,0.96); color: #e8e3d3; border-color: rgba(255,255,255,0.30); }
+      html.dark .cmdk-hint-btn:hover { background: rgba(50,50,50,1); }
+      html.dark .cmdk-panel { background: #2a2724; color: #e8e3d3; }
+      html.dark .cmdk-input { color: #e8e3d3; }
+      html.dark .cmdk-input::placeholder { color: rgba(255,255,255,0.40); }
+      html.dark .cmdk-input-wrap, html.dark .cmdk-footer { border-color: rgba(255,255,255,0.18); }
+      html.dark .cmdk-hint, html.dark .cmdk-footer { color: rgba(255,255,255,0.55); }
+      html.dark .cmdk-result-type, html.dark .cmdk-result-sub { color: rgba(255,255,255,0.55); }
+      html.dark .cmdk-result-label { color: #e8e3d3; }
+      html.dark .cmdk-result.active { background: rgba(255,255,255,0.06); }
+      html.dark .cmdk-footer kbd { color: #e8e3d3; border-color: rgba(255,255,255,0.30); background: rgba(255,255,255,0.06); }
+      @media (max-width: 640px) { .theme-toggle { display: none; } }
+    </style>
+    <button id="theme-toggle" class="theme-toggle" aria-label="Toggle dark mode">
+      <span id="theme-toggle-icon">☾</span>
+      <span id="theme-toggle-label">dark</span>
+    </button>
+    <script is:inline>
+      (function themeBoot() {
+        // Apply saved theme before paint to avoid FOUC
+        try {
+          var saved = localStorage.getItem('pg_theme');
+          if (saved === 'dark') document.documentElement.classList.add('dark');
+        } catch (e) {}
+      })();
+      (function themeToggle() {
+        var btn   = document.getElementById('theme-toggle');
+        var icon  = document.getElementById('theme-toggle-icon');
+        var label = document.getElementById('theme-toggle-label');
+        function update() {
+          var isDark = document.documentElement.classList.contains('dark');
+          if (icon)  icon.textContent  = isDark ? '☀' : '☾';
+          if (label) label.textContent = isDark ? 'light' : 'dark';
+        }
+        update();
+        if (btn) btn.addEventListener('click', () => {
+          document.documentElement.classList.toggle('dark');
+          try { localStorage.setItem('pg_theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light'); } catch(e) {}
+          update();
+        });
+      })();
+    </script>
+
     <!-- ===== Cmd+K palette hint (discoverability) ===== -->
     <style>
       .cmdk-hint-btn {

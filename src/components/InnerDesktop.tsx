@@ -15,7 +15,7 @@
  *   - minimize to taskbar button (click _ or the taskbar chip)
  */
 import { useEffect, useRef, useState } from 'react';
-import { papers, talks, affiliations } from '../data/site';
+import { papers, talks, affiliations, site } from '../data/site';
 
 // Compute the most recent paper for the homepage "Latest" card.
 // Sort by year desc, then by published > accepted > rr > working > other.
@@ -310,6 +310,106 @@ const WIN95_STYLE = `
   margin-top: auto;
   padding-top: 8px;
 }
+/* AFFILIATIONS strip — full-width below the 2-card grid */
+.win95-affil {
+  background: #FFFFFF;
+  padding: 10px 14px;
+  box-shadow: inset -1px -1px #fff, inset 1px 1px #86898d,
+              inset -2px -2px #c3c6ca, inset 2px 2px #2b2b2b;
+  margin-bottom: 12px;
+}
+.win95-affil-label {
+  font-family: MSSerif, Arial, sans-serif;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.10em;
+  color: #6a6a6a;
+  margin-bottom: 6px;
+}
+.win95-affil-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.win95-affil-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-family: Millennium, serif;
+  font-size: 13px;
+  line-height: 1.35;
+}
+.win95-affil-role { color: #6a6a6a; min-width: 0; flex-shrink: 0; }
+.win95-affil-org {
+  color: #1a1a1a; text-decoration: none;
+  border-bottom: 1px dotted rgba(0,0,0,0.30);
+}
+.win95-affil-org:hover { color: #0000a3; }
+.win95-affil-tag {
+  font-family: MSSerif, Arial, sans-serif;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 1px 5px;
+  background: #c3c6ca;
+  color: #2b2b2b;
+  margin-left: auto;
+}
+.win95-affil-tag.current  { background: #d8e8c8; color: #2a4a18; }
+.win95-affil-tag.incoming { background: #ffe4b8; color: #6a3500; }
+
+/* CONTACT strip — email + icon buttons */
+.win95-contact {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  background: #c3c6ca;
+  box-shadow: inset -1px -1px #fff, inset 1px 1px #86898d;
+}
+.win95-contact-email {
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  color: #1a1a1a;
+  user-select: all;
+}
+.win95-copy-btn {
+  font-family: MSSerif, Arial, sans-serif;
+  font-size: 10px;
+  padding: 2px 6px;
+  background: #c3c6ca;
+  border: none;
+  cursor: pointer;
+  box-shadow: inset -1px -1px #2b2b2b, inset 1px 1px #fff;
+  color: #1a1a1a;
+}
+.win95-copy-btn:active {
+  box-shadow: inset -1px -1px #fff, inset 1px 1px #2b2b2b;
+}
+.win95-copy-btn.copied { background: #d8e8c8; }
+.win95-contact-spacer { flex: 1; }
+.win95-contact-link {
+  font-family: MSSerif, Arial, sans-serif;
+  font-size: 11px;
+  padding: 3px 10px;
+  background: #c3c6ca;
+  border: none;
+  cursor: pointer;
+  box-shadow: inset -1px -1px #2b2b2b, inset 1px 1px #fff,
+              inset -2px -2px #86898d, inset 2px 2px #c3c6ca;
+  text-decoration: none;
+  color: #1a1a1a;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.win95-contact-link:hover { background: #d4d8dc; }
+.win95-contact-link:active {
+  box-shadow: inset -1px -1px #fff, inset 1px 1px #2b2b2b,
+              inset -2px -2px #c3c6ca, inset 2px 2px #86898d;
+}
 .win95-btn {
   font-family: Millennium, serif;
   font-size: 15px;
@@ -572,6 +672,38 @@ function NavLink({ label, href }: { label: string; href: string }) {
       <span className="win95-nav-link-dot" />
       <h4>{label}</h4>
     </a>
+  );
+}
+
+/* ---------- contact strip (email + CV / scholar / github / X / bsky) --- */
+function ContactStrip() {
+  const [copied, setCopied] = useState(false);
+  const copyEmail = async () => {
+    try {
+      await navigator.clipboard.writeText(site.email);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1600);
+    } catch {
+      window.prompt('Copy email:', site.email);
+    }
+  };
+  return (
+    <div className="win95-contact">
+      <span className="win95-contact-email">{site.email}</span>
+      <button
+        className={`win95-copy-btn${copied ? ' copied' : ''}`}
+        onClick={copyEmail}
+        onMouseDown={() => playUiClick('down')}
+        onMouseUp={() => playUiClick('up')}
+        title="Copy email"
+      >{copied ? '✓ copied' : '📋 copy'}</button>
+      <span className="win95-contact-spacer" />
+      <a className="win95-contact-link" href={site.cv}      target="_blank" rel="noopener">CV ↗</a>
+      <a className="win95-contact-link" href={site.scholar} target="_blank" rel="noopener">Scholar ↗</a>
+      <a className="win95-contact-link" href={site.github}  target="_blank" rel="noopener">GitHub ↗</a>
+      <a className="win95-contact-link" href={site.twitter} target="_blank" rel="noopener">X ↗</a>
+      <a className="win95-contact-link" href={site.bluesky} target="_blank" rel="noopener">Bluesky ↗</a>
+    </div>
   );
 }
 
@@ -880,6 +1012,31 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
                     >Read more →</a>
                   </div>
                 </div>
+
+                {/* AFFILIATIONS strip — all roles from data */}
+                <div className="win95-affil">
+                  <div className="win95-affil-label">Affiliations</div>
+                  <div className="win95-affil-list">
+                    {affiliations.map((a: any, i: number) => (
+                      <div className="win95-affil-row" key={i}>
+                        <span className="win95-affil-role">{a.role} ·</span>
+                        <a
+                          href={a.url}
+                          target="_blank"
+                          rel="noopener"
+                          className="win95-affil-org"
+                          onMouseDown={() => playUiClick('down')}
+                          onMouseUp={() => playUiClick('up')}
+                        >{a.org}</a>
+                        {a.current  && <span className="win95-affil-tag current">current</span>}
+                        {a.incoming && <span className="win95-affil-tag incoming">incoming</span>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* CONTACT strip — email (selectable, copyable) + buttons */}
+                <ContactStrip />
 
                 <div className="win95-home-buttons">
                   {NAV_LINKS.map(l => (
