@@ -93,6 +93,12 @@ const ENTRY_MS = 2400;
 const DOLLY_MS = 2200;
 function easeOutExpo(t: number) { return t >= 1 ? 1 : 1 - Math.pow(2, -10 * t); }
 function easeOutCubic(t: number) { return 1 - Math.pow(1 - t, 3); }
+// easeInOutCubic — smooth acceleration AND smooth deceleration, used
+// for the dolly because pure easeOutCubic kicks too hard at the start
+// and crawls at the end. This reads as a deliberate camera move.
+function easeInOutCubic(t: number) {
+  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
 
 // Desk and monitor sit at centre of the room (z=0 in room-depth terms,
 // which in world coords is z = -4.5 when the camera enters from z ≈ +13)
@@ -563,8 +569,11 @@ function CameraRig({ phase, onArrived, onEntryDone }: {
       return;
     }
     // ── dolly ──────────────────────────────────────────────────────────────
+    // easeInOutCubic gives the camera a gentle launch AND a gentle
+    // arrival — feels like a deliberate "lean forward to read" move
+    // instead of the easeOutCubic snap-then-crawl we had before.
     if (phase === 'dollying') {
-      const k = easeOutCubic(Math.min(1, (performance.now() - (startedAt.current ?? 0)) / DOLLY_MS));
+      const k = easeInOutCubic(Math.min(1, (performance.now() - (startedAt.current ?? 0)) / DOLLY_MS));
       camera.position.lerpVectors(fromPos.current, CAM_MONITOR_POS, k);
       tgt.current.lerpVectors(fromTgt.current, CAM_MONITOR_TGT, k);
       camera.lookAt(tgt.current);
