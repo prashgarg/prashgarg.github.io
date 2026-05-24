@@ -1097,6 +1097,23 @@ function OfficeChair({ pos }: { pos: [number, number, number] }) {
           normalScale={[0.40, 0.40] as any}
         />
       </RoundedBox>
+      {/* ── SEAT TOP-STITCHING ─────────────────────────────────────
+          Inset rectangular outline on the top face of the seat pan,
+          0.05 m from the edges. Four slim box strips form the stitch
+          line. Dark grey (#262626) so it reads as stitched thread
+          against the near-black upholstery. */}
+      {[
+        // front, back, left, right (x, z half-extents at y=0.633)
+        { p: [0,     0.633,  0.225] as [number, number, number], s: [0.40, 0.003, 0.005] as [number, number, number] },
+        { p: [0,     0.633, -0.225] as [number, number, number], s: [0.40, 0.003, 0.005] as [number, number, number] },
+        { p: [-0.225,0.633,  0]     as [number, number, number], s: [0.005, 0.003, 0.45] as [number, number, number] },
+        { p: [ 0.225,0.633,  0]     as [number, number, number], s: [0.005, 0.003, 0.45] as [number, number, number] },
+      ].map((r, i) => (
+        <mesh key={`s-${i}`} position={r.p}>
+          <boxGeometry args={r.s} />
+          <meshStandardMaterial color="#262626" roughness={0.65} />
+        </mesh>
+      ))}
 
       {/* ════════════════════ SEAT-TO-BACK SUPPORT ════════════════ */}
       {/* short metal arm rising from the rear of the seat to the
@@ -1156,6 +1173,20 @@ function OfficeChair({ pos }: { pos: [number, number, number] }) {
             normalScale={[0.40, 0.40] as any}
           />
         </RoundedBox>
+        {/* BACKREST TOP-STITCHING — inset perimeter outline on the
+            front face of the back panel, 0.04 m inside the edges.
+            Reads as stitched thread around the upholstery pad. */}
+        {[
+          { p: [0,      0.130, 0.034] as [number, number, number], s: [0.46, 0.003, 0.004] as [number, number, number] },
+          { p: [0,     -0.130, 0.034] as [number, number, number], s: [0.46, 0.003, 0.004] as [number, number, number] },
+          { p: [-0.230, 0,     0.034] as [number, number, number], s: [0.003, 0.26, 0.004] as [number, number, number] },
+          { p: [ 0.230, 0,     0.034] as [number, number, number], s: [0.003, 0.26, 0.004] as [number, number, number] },
+        ].map((r, i) => (
+          <mesh key={`bs-${i}`} position={r.p}>
+            <boxGeometry args={r.s} />
+            <meshStandardMaterial color="#262626" roughness={0.65} />
+          </mesh>
+        ))}
         {/* slim chrome trim along the top edge + the two sides */}
         <mesh position={[0, 0.152, 0.034]}>
           <boxGeometry args={[0.54, 0.008, 0.012]} />
@@ -2375,12 +2406,14 @@ function OfficeScene({ phase, onMonitorClick }: {
       </group>
 
       {/* ── WALL PANEL SEAMS — slim vertical lines every 3 m on the
-          back wall hint at modular wall panels (the MDR sets have these
-          subtle joins). Very low contrast so they only read up close. */}
+          back wall hint at modular wall panels (the MDR sets have
+          these subtle joins). Darker than before (#D8D6D0 → #BFBDB6)
+          and slightly thicker (0.012 → 0.014) so they actually read
+          at distance instead of disappearing. */}
       {[-15, -12, -9, -6, -3, 0, 3, 6, 9, 12, 15].map(x => (
         <mesh key={`seam-back-${x}`} position={[x, ROOM_H / 2, -ROOM_D / 2 + 0.07]}>
-          <boxGeometry args={[0.012, ROOM_H, 0.005]} />
-          <meshStandardMaterial color="#D8D6D0" roughness={0.7} />
+          <boxGeometry args={[0.014, ROOM_H, 0.005]} />
+          <meshStandardMaterial color="#BFBDB6" roughness={0.7} />
         </mesh>
       ))}
 
@@ -2911,18 +2944,25 @@ function HudOverlay({ muted, onMuteToggle }: { muted: boolean; onMuteToggle: () 
   }, []); // eslint-disable-line
   useEffect(() => { if (!showTime) return; const id = setInterval(() => setTimeText(getTime()), 5000); return () => clearInterval(id); }, [showTime]);
   // Henry-style HUD chips — bigger, more letter-spacing, monospaced.
-  // Animated fade+slide in via the chip-in keyframe.
+  // HUD chips themed to match the MDR study: dark sage-green ground
+  // (close to C.partition) with cream sage-tinted text (echoes the
+  // ceiling-bounce light). Smaller font than before — overlay should
+  // feel like a quiet badge, not compete with the scene. Border ring
+  // adds the Lumon-plaque feel.
   const chip: React.CSSProperties = {
-    background: '#000', color: '#fff',
+    background: 'rgba(31, 47, 39, 0.78)',   // dark sage with subtle alpha
+    color: '#E8EEDF',                        // cream sage-tinted text
     fontFamily: "ui-monospace,'SF Mono',Menlo,Consolas,monospace",
-    fontSize: 15, lineHeight: '22px',
-    padding: '4px 12px',
+    fontSize: 12, lineHeight: '18px',
+    padding: '3px 10px',
     display: 'inline-block',
-    letterSpacing: '0.06em',
+    letterSpacing: '0.08em',
     whiteSpace: 'nowrap',
+    border: '1px solid rgba(199, 213, 195, 0.18)',
+    backdropFilter: 'blur(4px)' as any,
     animation: 'hud-chip-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) both',
   };
-  const chipName: React.CSSProperties = { ...chip, fontSize: 17, lineHeight: '24px' };
+  const chipName: React.CSSProperties = { ...chip, fontSize: 13, lineHeight: '20px' };
   const muteOpacity = muteActive ? 0.2 : muteHovering ? 0.8 : 1.0;
   const muteScale   = muteActive ? 0.8 : 1.0;
   return (
@@ -2944,13 +2984,15 @@ function HudOverlay({ muted, onMuteToggle }: { muted: boolean; onMuteToggle: () 
         onTouchStart={e => { e.stopPropagation(); onMuteToggle(); }}
         aria-label={muted ? 'Unmute' : 'Mute'}
         style={{
-          width: 40, height: 40,
-          background: '#000',
-          border: muteHovering ? '1px solid rgba(255,255,255,0.35)' : '1px solid rgba(255,255,255,0.10)',
+          width: 32, height: 32,                              // smaller, matches the toned-down HUD
+          background: 'rgba(31, 47, 39, 0.78)',                // same dark-sage as the chips
+          color: '#E8EEDF',
+          border: muteHovering ? '1px solid rgba(199, 213, 195, 0.40)' : '1px solid rgba(199, 213, 195, 0.18)',
           padding: 0,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           cursor: 'pointer',
           boxSizing: 'border-box',
+          backdropFilter: 'blur(4px)' as any,
           transition: 'border-color 0.18s ease, background 0.18s ease',
           animation: 'hud-chip-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) both',
           animationDelay: '0.6s',
