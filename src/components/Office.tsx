@@ -2429,22 +2429,20 @@ function OfficeScene({ phase, onMonitorClick }: {
         </mesh>
       ))}
 
-      {/* ── HALLWAY DEPTH inside the doorway — a slim recessed floor +
-          back-wall slice suggesting the corridor continues into a lit
-          hallway, breaking the flat dark void into something that
-          reads as space beyond the threshold. */}
-      <group position={[-9.0, 0, -ROOM_D / 2 - 0.05]}>
-        {/* recessed hallway floor (lit) */}
+      {/* ── HALLWAY DEPTH inside the LEFT-WALL doorway — the corridor
+          extends OUT of the room through the left wall. Floor strip +
+          back-wall slice + far-end fluorescent suggest depth beyond
+          the threshold. Rotated 90° around Y so the corridor extends
+          in the -x direction (out through the left wall). */}
+      <group position={[-ROOM_W / 2 - 0.05, 0, -5.5]} rotation-y={Math.PI / 2}>
         <mesh rotation-x={-Math.PI / 2} position={[0, 0.01, -0.8]}>
           <planeGeometry args={[1.20, 1.6]} />
           <meshStandardMaterial color="#7E8C82" roughness={0.85} />
         </mesh>
-        {/* hallway back wall (dimmer than the MDR room) */}
         <mesh position={[0, 1.30, -1.6]}>
           <planeGeometry args={[1.20, 2.60]} />
           <meshStandardMaterial color="#5A645E" roughness={0.85} emissive="#A0B0A6" emissiveIntensity={0.06} />
         </mesh>
-        {/* small far-end fluorescent strip suggesting the corridor extends */}
         <mesh position={[0, 2.40, -1.59]}>
           <boxGeometry args={[1.00, 0.06, 0.02]} />
           <meshStandardMaterial color="#FFFFFF" emissive="#FFFFFF" emissiveIntensity={1.5} />
@@ -2474,21 +2472,21 @@ function OfficeScene({ phase, onMonitorClick }: {
         <pointLight position={[0, 1.94, 0]} intensity={2.5} distance={5.0} decay={2} color="#FFE9B0" />
       </group>
 
-      {/* ── DOOR (BACK wall, further LEFT and BIGGER) ────────────────
-          Moved from x=-6 → x=-9 so it sits clearly outside the
-          pod silhouette in the idle frame. Made wider (1.05→1.35 m)
-          and taller (2.40→2.60 m) so it reads as the dark rectangular
-          doorway in the reference. */}
-      {/* MDR DEPARTMENT SIGN — institutional white-on-dark plaque
-          mounted above the doorway. Three white blocks suggest the
-          three letters "M D R" without needing actual font data. */}
-      <group position={[-9.0, 2.78, -ROOM_D / 2 + 0.12]}>
+      {/* ── DOOR (LEFT WALL, per the Severance MDR reference photo)
+          The doorway is now on the side wall, just visible at the
+          frame edge from the corner-quarter idle camera. Same opening
+          dimensions (1.35 × 2.60 m) but oriented so its width runs
+          along Z and its thickness runs along X. */}
+      {/* MDR DEPARTMENT SIGN — mounted above the doorway on the left
+          wall. Backing plate / chrome trim / 3 letter blocks. Rotated
+          so the visible face points into the room (+x). */}
+      <group position={[-ROOM_W / 2 + 0.12, 2.78, -5.5]} rotation-y={Math.PI / 2}>
         {/* dark backing plate */}
         <mesh>
           <boxGeometry args={[1.20, 0.28, 0.03]} />
           <meshStandardMaterial color="#0E0E10" roughness={0.55} metalness={0.15} />
         </mesh>
-        {/* slim chrome frame around the plate */}
+        {/* slim chrome frame top + bottom */}
         <mesh position={[0, 0.155, 0.001]}>
           <boxGeometry args={[1.22, 0.018, 0.034]} />
           <meshStandardMaterial color="#9E9E9E" roughness={0.4} metalness={0.75} />
@@ -2497,8 +2495,7 @@ function OfficeScene({ phase, onMonitorClick }: {
           <boxGeometry args={[1.22, 0.018, 0.034]} />
           <meshStandardMaterial color="#9E9E9E" roughness={0.4} metalness={0.75} />
         </mesh>
-        {/* the three letters M / D / R — each is a small white emissive
-            block (faux-text). Spacing chosen to suggest legible glyphs. */}
+        {/* three letter blocks M / D / R */}
         {[-0.34, 0, 0.34].map((dx, i) => (
           <mesh key={i} position={[dx, 0, 0.018]}>
             <boxGeometry args={[0.18, 0.16, 0.005]} />
@@ -2507,24 +2504,31 @@ function OfficeScene({ phase, onMonitorClick }: {
         ))}
       </group>
 
-      {/* dark doorway void */}
-      <mesh position={[-9.0, 1.30, -ROOM_D / 2 + 0.10]}>
-        <boxGeometry args={[1.35, 2.60, 0.06]} />
+      {/* dark doorway void on the left wall — width 1.35 m along Z,
+          height 2.60 m, thickness 0.06 m along X. */}
+      <mesh position={[-ROOM_W / 2 + 0.10, 1.30, -5.5]}>
+        <boxGeometry args={[0.06, 2.60, 1.35]} />
         <meshStandardMaterial color="#070708" roughness={0.85} />
       </mesh>
       {/* door frame (lighter trim around the opening) */}
-      <mesh position={[-9.0, 1.32, -ROOM_D / 2 + 0.14]}>
-        <boxGeometry args={[1.50, 2.78, 0.10]} />
+      <mesh position={[-ROOM_W / 2 + 0.14, 1.32, -5.5]}>
+        <boxGeometry args={[0.10, 2.78, 1.50]} />
         <meshStandardMaterial color="#C8C6C2" roughness={0.7} />
       </mesh>
-      {/* door leaf — open ~30° INTO the room */}
-      <group position={[-8.45, 1.30, -ROOM_D / 2 + 0.32]} rotation-y={-0.50}>
-        <mesh castShadow>
-          <boxGeometry args={[1.20, 2.55, 0.055]} />
+      {/* door leaf — hinged at the north edge of the opening (z=-4.825),
+          swinging INTO the room (+x). Open ~30°.
+          Local frame inside the hinge group:
+            - +z runs along the closed-door direction (south from hinge)
+            - +x is into the room
+          Rotation -0.50 around Y opens the leaf toward +x. */}
+      <group position={[-ROOM_W / 2 + 0.32, 1.30, -4.825]} rotation-y={0.50}>
+        <mesh castShadow position={[0, 0, -0.60]}>
+          <boxGeometry args={[0.055, 2.55, 1.20]} />
           <meshStandardMaterial color={C.door} roughness={0.7} />
         </mesh>
-        {/* door knob */}
-        <mesh position={[0.48, 0, 0.04]}>
+        {/* door knob — on the inner face (toward room when closed) of
+            the leaf, near its far end from the hinge. */}
+        <mesh position={[0.04, 0, -1.10]}>
           <sphereGeometry args={[0.034, 12, 8]} />
           <meshStandardMaterial color="#8A8880" roughness={0.25} metalness={0.65} />
         </mesh>
