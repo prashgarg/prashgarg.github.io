@@ -1561,11 +1561,13 @@ function DeskLamp({ pos }: { pos: [number, number, number] }) {
 // we keep the sage/cream palette while gaining real surface micro-detail.
 
 /**
- * Subtle vacuum-track overlay — sage-on-sage radial bands that fan
- * outward from the pod centre (the cleaning crew vacuums around the
- * desks). Rendered as a slightly-elevated plane on top of the carpet
- * with a custom ShaderMaterial. Tint is barely-there; only visible
- * under the bright fluorescent flood.
+ * Vacuum-track overlay — long parallel SWEEP LINES across the floor
+ * like the cleaning crew pushed the vacuum back-and-forth in even
+ * strokes. Lines run at a slight diagonal (10° off horizontal) with
+ * subtle per-line wobble + per-line brightness variation so they read
+ * as hand-vacuumed rather than printed. Tracks fade out around the
+ * pod (the pod blocks the vacuum) and toward the room corners (the
+ * vacuum doesn't reach those edges).
  */
 function CarpetVacuumTracks({ width, depth, cx, cz }: {
   width: number; depth: number; cx: number; cz: number;
@@ -1592,19 +1594,34 @@ function CarpetVacuumTracks({ width, depth, cx, cz }: {
       uniform vec2  uCenter;
       uniform vec3  uTint;
       varying vec2  vWorld;
+      float hash1(float x){ return fract(sin(x * 12.9898) * 43758.5453); }
       void main() {
         vec2  d  = vWorld - uCenter;
         float r  = length(d);
-        // radial track bands: thin lighter rings every ~0.55 m, faint
-        float ring = abs(fract(r * 1.80) - 0.5);
-        float band = smoothstep(0.45, 0.30, ring);
-        // wedge streaks — vacuum sweeps in radial arcs
-        float ang  = atan(d.y, d.x);
-        float wedge = 0.5 + 0.5 * sin(ang * 14.0 + r * 1.2);
-        wedge = smoothstep(0.45, 0.95, wedge);
-        // fade off with distance so tracks live near the pod
-        float falloff = smoothstep(10.0, 1.0, r);
-        float a = (band * 0.32 + wedge * 0.20) * falloff;
+        // sweep direction: 10° off horizontal (cos/sin).
+        const float COS_A = 0.985, SIN_A = 0.174;
+        const float SPACING = 0.45;            // line spacing, metres
+        // perp axis (across the lines)
+        float perp  = -SIN_A * vWorld.x + COS_A * vWorld.y;
+        // along axis (down each line)
+        float along =  COS_A * vWorld.x + SIN_A * vWorld.y;
+        // per-line index for stable per-line randomness
+        float lineIdx = floor(perp / SPACING);
+        // subtle wobble — the vacuum doesn't run perfectly straight
+        float wobble = sin(along * 0.55 + lineIdx * 2.3) * 0.040 +
+                       sin(along * 1.80 + lineIdx * 7.1) * 0.018;
+        // distance from fragment to its nearest sweep line, normalised to [0..0.5]
+        float linePos  = fract((perp + wobble) / SPACING);
+        float lineDist = abs(linePos - 0.5);
+        // narrow brighter strip at each line
+        float band = 1.0 - smoothstep(0.40, 0.48, lineDist);
+        // some lines brighter than others (uneven pressure)
+        float bright = mix(0.65, 1.30, hash1(lineIdx));
+        // POD AVOIDANCE — fade tracks away within ~2.6 m of pod centre
+        float avoid = smoothstep(1.5, 2.8, r);
+        // outer FALLOFF — fade toward room corners where vacuum doesn't reach
+        float falloff = 1.0 - smoothstep(11.0, 18.0, r);
+        float a = band * bright * 0.32 * avoid * falloff;
         gl_FragColor = vec4(uTint, a);
       }
     `,
