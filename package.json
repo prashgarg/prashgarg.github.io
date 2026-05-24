@@ -36,5 +36,8 @@
     "@gltf-transform/functions": "^4.3.0",
     "playwright": "^1.60.0",
     "sharp": "^0.34.5"
+  },
+  "overrides": {
+    "vite": "^7"
   }
 }

@@ -120,15 +120,17 @@ const MONITOR_WORLD  = new THREE.Vector3(SOUTH_DX + 0.10, 1.05, DESK_Z - 0.35); 
 // Closer + lower + horizontal-ish view → workstation larger in frame,
 // less floor visible, walls + ceiling more balanced (matches reference)
 // Centred camera so the workstation sits dead-centre horizontally
-// Camera positions stay roughly on centre (camera x=0.10) but TARGETS
-// shift with SOUTH_DX so the camera looks at the new pinwheel desk.
-// Idle framing tuned to match the Severance MDR reference photo:
-// camera low (eye-level seated ≈1.5 m), pod fills ~45% of frame, ceiling
-// occupies ~30%, floor ~25%.
-const CAM_ENTRY_POS  = new THREE.Vector3(0.10, 1.95, 5.5);
-const CAM_ENTRY_TGT  = new THREE.Vector3(SOUTH_DX + 0.10, 1.05, -5.0);
-const CAM_IDLE_POS   = new THREE.Vector3(1.30, 1.50, 4.4);
-const CAM_IDLE_TGT   = new THREE.Vector3(SOUTH_DX + 0.10, 1.10, -5.0);
+// Idle camera = CORNER-QUARTER perspective per the Severance MDR
+// reference photo. Stand SE of the pod, low (eye-level seated ≈1.5 m),
+// look toward the NW pod centre. The active SW station faces the
+// camera at a ~30° angle (asymmetric, dramatic) and the WEST station
+// reads to the back-left at 90° — its perpendicular silhouette is
+// what gives the reference its corner-quarter character. Entry and
+// the lean swing into the same axis so the whole flow holds the feel.
+const CAM_ENTRY_POS  = new THREE.Vector3(4.20, 1.95, 4.60);
+const CAM_ENTRY_TGT  = new THREE.Vector3(-0.40, 1.05, -5.10);
+const CAM_IDLE_POS   = new THREE.Vector3(3.40, 1.50, 3.20);
+const CAM_IDLE_TGT   = new THREE.Vector3(-0.40, 1.05, -5.10);
 // Camera ends VERY close to the monitor face — ~0.3 m from the screen.
 // At FOV 58° this makes the monitor screen fill roughly 66%×78% of the
 // viewport, so the bezel reads as a frame around the inner site (Heffer
