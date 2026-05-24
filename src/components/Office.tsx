@@ -741,6 +741,46 @@ function CrtMonitor({ phase, onClick }: { phase: Phase; onClick?: () => void }) 
   // perfectly flat box read from idle distance. Reuses the same desk
   // normal map; very low scale so the texture stays barely perceptible.
   const plastic = useDeskNormalProps(3, 2);
+
+  // ── WEDGE CRT BODY ──────────────────────────────────────────────
+  // Custom 8-vertex BufferGeometry. Front face is FULL-SIZE rectangle
+  // (where the screen sits), back face is SMALLER on all sides, and
+  // the top SLOPES from a peak at the front-top to a lower point at
+  // the back-top. Side walls slope inward too. Bottom stays flat.
+  // Gives the silhouette of the Lumon terminal / Compaq-portable CRT
+  // instead of a generic chamfered shoebox.
+  const wedgeBody = useMemo(() => {
+    const FW = 0.56, FH = 0.46;       // front face: w × h
+    const BW = 0.40, BH = 0.30;       // back face: w × h (narrower + shorter)
+    const D  = 0.42;                  // depth
+    const fy0 = -FH / 2, fy1 = +FH / 2;
+    const by0 = -FH / 2, by1 = by0 + BH;     // keep bottom flat
+    const fz = +D / 2,  bz = -D / 2;
+    const fx = FW / 2,  bx = BW / 2;
+    const v = new Float32Array([
+      -fx, fy0, fz,   // 0 front-bottom-left
+      +fx, fy0, fz,   // 1 front-bottom-right
+      +fx, fy1, fz,   // 2 front-top-right
+      -fx, fy1, fz,   // 3 front-top-left
+      -bx, by0, bz,   // 4 back-bottom-left
+      +bx, by0, bz,   // 5 back-bottom-right
+      +bx, by1, bz,   // 6 back-top-right
+      -bx, by1, bz,   // 7 back-top-left
+    ]);
+    const idx = [
+      0, 1, 2,  0, 2, 3,    // front
+      5, 4, 7,  5, 7, 6,    // back
+      3, 2, 6,  3, 6, 7,    // top  (sloped front→back)
+      1, 0, 4,  1, 4, 5,    // bottom (flat)
+      0, 3, 7,  0, 7, 4,    // left  (sloped inward back)
+      1, 5, 6,  1, 6, 2,    // right (sloped inward back)
+    ];
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(v, 3));
+    g.setIndex(idx);
+    g.computeVertexNormals();
+    return g;
+  }, []);
   // CRT shader material — teal-blue terminal (matches the reference)
   const crtMat = useMemo(() => new THREE.ShaderMaterial({
     uniforms: {
@@ -763,42 +803,47 @@ function CrtMonitor({ phase, onClick }: { phase: Phase; onClick?: () => void }) 
   });
   return (
     <group position={MONITOR_WORLD.toArray()}>
-      {/* body — bevelled, subtle plastic micro-detail */}
-      <RoundedBox args={[0.54, 0.46, 0.40]} radius={0.020} smoothness={4} castShadow>
+      {/* WEDGE body — wide flat face, narrows + slopes toward the back */}
+      <mesh geometry={wedgeBody} castShadow receiveShadow>
         <meshStandardMaterial {...(plastic as any)} color={C.monitor} roughness={0.55} normalScale={[0.12, 0.12] as any} />
-      </RoundedBox>
-      {/* SIDE VENTS — thin horizontal slits on both sides (CRT cooling) */}
+      </mesh>
+      {/* SIDE VENTS — thin horizontal slits running along the SLOPED sides.
+          Front face is ±0.28; back face is ±0.20. Place the slits flush
+          with the slope by angling them slightly along y. */}
       {([-1, 1] as const).map((side) =>
-        [0.10, 0.06, 0.02, -0.02, -0.06, -0.10].map((y, i) => (
-          <mesh key={`vent-${side}-${i}`} position={[side * 0.272, y, 0]}>
-            <boxGeometry args={[0.005, 0.012, 0.30]} />
-            <meshStandardMaterial color="#7E7A72" roughness={0.6} />
+        [0.08, 0.02, -0.04].map((y, i) => (
+          <mesh
+            key={`vent-${side}-${i}`}
+            position={[side * 0.245, y, 0]}
+            rotation-y={side * 0.18}        // slight angle to match the slope
+          >
+            <boxGeometry args={[0.006, 0.012, 0.34]} />
+            <meshStandardMaterial color="#6E6A62" roughness={0.6} />
           </mesh>
         ))
       )}
-      {/* top vent grille */}
-      {[0.10, 0.06, 0.02, -0.02, -0.06, -0.10].map((z, i) => (
-        <mesh key={`tvent-${i}`} position={[0, 0.234, z]}>
-          <boxGeometry args={[0.34, 0.005, 0.018]} />
-          <meshStandardMaterial color="#7E7A72" roughness={0.6} />
+      {/* top vent grille — sits on the SLOPED top, angled so it lies flat */}
+      {[0.10, 0.04, -0.02, -0.08].map((z, i) => (
+        <mesh
+          key={`tvent-${i}`}
+          // top y at given z = lerp(front-top 0.23 → back-top 0.07) by t=(0.21−z)/0.42
+          position={[0, 0.23 - ((0.21 - z) / 0.42) * 0.16 + 0.003, z]}
+          rotation-x={Math.atan2(0.16, 0.42)}   // slope angle
+        >
+          <boxGeometry args={[0.30, 0.004, 0.022]} />
+          <meshStandardMaterial color="#6E6A62" roughness={0.6} />
         </mesh>
       ))}
-      {/* front bezel indent — sloped/recessed face holding the screen.
-          A thin angled face panel above + below the screen gives the
-          monitor the distinctive Lumon-terminal sloped front. */}
-      <mesh position={[0, 0.01, 0.20]}>
-        <boxGeometry args={[0.44, 0.36, 0.01]} />
-        <meshStandardMaterial color="#D4D0C8" roughness={0.5} />
+      {/* front BEZEL — chunky inset frame around the screen on the
+          full-size front face, gives the Lumon-prop chunky-front read. */}
+      <mesh position={[0, 0.005, 0.211]}>
+        <boxGeometry args={[0.50, 0.40, 0.006]} />
+        <meshStandardMaterial color="#D4D0C8" roughness={0.55} />
       </mesh>
-      {/* slight chamfer above the screen — angled face strip */}
-      <mesh position={[0, 0.155, 0.193]} rotation-x={-0.22}>
-        <boxGeometry args={[0.46, 0.06, 0.012]} />
-        <meshStandardMaterial color={C.monitor} roughness={0.5} />
-      </mesh>
-      {/* and below — angled lower face strip */}
-      <mesh position={[0, -0.135, 0.193]} rotation-x={0.22}>
-        <boxGeometry args={[0.46, 0.06, 0.012]} />
-        <meshStandardMaterial color={C.monitor} roughness={0.5} />
+      {/* inner bezel — slightly darker recess just around the screen */}
+      <mesh position={[0, 0.020, 0.214]}>
+        <boxGeometry args={[0.40, 0.32, 0.004]} />
+        <meshStandardMaterial color="#A8A4A0" roughness={0.55} />
       </mesh>
       {/* small Lumon-style branding plate below screen, off-centre right */}
       <mesh position={[0.13, -0.165, 0.213]}>
