@@ -298,8 +298,8 @@ const CRT_FRAG = `
 function CofferedCeiling() {
   const SPACING      = 3.0;     // grid spacing of coffer centres
   const HOLE_HALF    = 1.05;    // opening diamond half-diagonal
-  const PANEL_HALF   = 0.55;    // recessed panel half-diagonal
-  const COFFER_DEPTH = 0.45;    // how far up the recess extends
+  const PANEL_HALF   = 0.50;    // recessed panel half-diagonal (narrower → steeper walls)
+  const COFFER_DEPTH = 0.85;    // how far up the recess extends (was 0.45 → 0.85 for 2001-style depth)
 
   // 1) coffer positions on a regular grid (inset half-spacing from walls)
   const positions = useMemo(() => {
@@ -380,28 +380,37 @@ function CofferedCeiling() {
 
   return (
     <group>
-      {/* Slab with diamond holes — pale GREEN-TINTED grey (reference has
-          strong sage cast pooling on the ceiling from the carpet bounce). */}
+      {/* Slab — pale green-grey, kept slightly darker than before so
+          the bright recessed panels read as the dominant light source
+          (2001: A Space Odyssey ceiling contrast). */}
       <mesh rotation-x={Math.PI / 2} position={[0, ROOM_H, 0]}>
         <primitive object={slabGeo} attach="geometry" />
-        <meshStandardMaterial color="#B8C8BC" roughness={0.85} side={THREE.DoubleSide} />
+        <meshStandardMaterial color="#A2B0A4" roughness={0.88} side={THREE.DoubleSide} />
       </mesh>
-      {/* Coffer walls + emissive panels — one per hole. Coffer walls
-          have a stronger green tint (deeper in the recess where bounce
-          light pools). Panel emissive bumped for brighter fluorescent. */}
+      {/* Coffer walls + emissive panels — one per hole.
+          - Walls darkened HARD (#CCDAC8 → #4C5E50) so each recess
+            casts a deep shadow gradient down toward its opening. The
+            diamond hole reads as a black/green void from below
+            surrounding the bright panel.
+          - Panel emissive intensity bumped (1.25 → 2.6) and color
+            pure white — so each panel pops as a bright fluorescent
+            against the deep-shadow recess walls.
+          Combined effect: dramatic ceiling that reads three-dimensional
+          instead of a flat tile pattern. */}
       {positions.map(([x, z], i) => (
         <group key={i} position={[x, ROOM_H, z]}>
           <mesh>
             <primitive object={cofferGeo} attach="geometry" />
-            <meshStandardMaterial color="#CCDAC8" roughness={0.8} side={THREE.DoubleSide} />
+            <meshStandardMaterial color="#4C5E50" roughness={0.92} side={THREE.DoubleSide} />
           </mesh>
           <mesh position={[0, COFFER_DEPTH - 0.005, 0]}>
             <primitive object={panelGeo} attach="geometry" />
             <meshStandardMaterial
-              color="#F0F8F2"
+              color="#FFFFFF"
               emissive="#FFFFFF"
-              emissiveIntensity={1.25}
+              emissiveIntensity={2.6}
               side={THREE.DoubleSide}
+              toneMapped={false}
             />
           </mesh>
         </group>
