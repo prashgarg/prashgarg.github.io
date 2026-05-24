@@ -1459,18 +1459,42 @@ function StationLite({ active = false, variant = 0 }: { active?: boolean; varian
       <group position={[0.05, 0, CHAIR_Z]} rotation-y={Math.PI}>
         <OfficeChair pos={[0, 0, 0]} />
       </group>
-      {/* Chair mat under chair — CLEAR PLASTIC office chair mat with a
-          dark rim. Offset slightly per `variant` so each booth's mat
-          sits in a slightly different spot (real workers shuffle the
-          mat around). */}
-      <mesh rotation-x={-Math.PI / 2} position={[0.05 + PROPS.matDx, 0.011, CHAIR_Z + PROPS.matDz]} renderOrder={2}>
-        <circleGeometry args={[0.65, 48]} />
-        <meshStandardMaterial color="#3A4A40" roughness={0.55} metalness={0.15} transparent opacity={0.50} />
+      {/* Chair mat — CLEAR PLASTIC office chair mat per the reference.
+          Replaces the dark green tinted disc with a thin transmissive
+          PHYSICAL material so you actually see the carpet through it
+          with a faint glass cast, and a bevelled CHROME RIM that
+          catches the ceiling-panel reflections.
+          Offset per `variant` so each booth's mat sits in a slightly
+          different spot. */}
+      {/* main mat — thin cylinder so the rim has visible side */}
+      <mesh
+        position={[0.05 + PROPS.matDx, 0.018, CHAIR_Z + PROPS.matDz]}
+        renderOrder={2}
+      >
+        <cylinderGeometry args={[0.65, 0.65, 0.012, 64]} />
+        <meshPhysicalMaterial
+          color="#F2F4F0"
+          roughness={0.05}
+          metalness={0.0}
+          transmission={0.92}
+          thickness={0.012}
+          ior={1.48}
+          attenuationColor="#E8EEEA"
+          attenuationDistance={1.2}
+          transparent
+          opacity={1.0}
+        />
       </mesh>
-      {/* darker rim of the mat */}
-      <mesh rotation-x={-Math.PI / 2} position={[0.05 + PROPS.matDx, 0.013, CHAIR_Z + PROPS.matDz]} renderOrder={3}>
-        <ringGeometry args={[0.62, 0.66, 48]} />
-        <meshStandardMaterial color="#1A2218" roughness={0.65} transparent opacity={0.85} />
+      {/* slim chrome / shiny BEVEL RING around the perimeter — catches
+          the bright ceiling panel reflections, gives the mat a clear
+          "glass edge" silhouette like the reference photo. */}
+      <mesh
+        rotation-x={-Math.PI / 2}
+        position={[0.05 + PROPS.matDx, 0.0245, CHAIR_Z + PROPS.matDz]}
+        renderOrder={3}
+      >
+        <ringGeometry args={[0.62, 0.665, 64]} />
+        <meshStandardMaterial color="#D8DCDA" roughness={0.20} metalness={0.85} />
       </mesh>
     </>
   );
