@@ -79,8 +79,27 @@ const WIN95_STYLE = `
 }
 /* Sidebar shrinks too — 220 px is a lot of a ~600 px-wide CRT. */
 .win95-desktop.embedded .win95-nav {
-  width: 170px;
+  width: 138px;
+  padding: 12px 10px;
 }
+.win95-desktop.embedded .win95-nav-name {
+  font-size: 1.5rem;
+  line-height: 1.05;
+}
+.win95-desktop.embedded .win95-nav-subtitle {
+  font-size: 0.62rem;
+  margin-top: 4px;
+}
+.win95-desktop.embedded .win95-nav-link {
+  font-size: 0.78rem;
+  padding: 3px 0;
+}
+.win95-desktop.embedded .win95-content {
+  padding: 14px 18px;
+}
+/* slightly tighter title + body inside the window when CRT-fit */
+.win95-desktop.embedded .win95-titlebar { padding: 2px 4px 2px 5px; }
+.win95-desktop.embedded .win95-titlebar-title { font-size: 11px; }
 
 /* ---------- window chrome ----------------------------------------- */
 .win95-window {

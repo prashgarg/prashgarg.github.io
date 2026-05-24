@@ -143,8 +143,12 @@ const CAM_MONITOR_TGT = MONITOR_WORLD.clone();
 // back tucks into the bottom-foreground (not blocking the keyboard +
 // monitor). Camera is high enough that the chair-top is well below
 // the target line.
-const CAM_LEAN_POS   = new THREE.Vector3(SOUTH_DX + 0.10, 2.45, -1.60);
-const CAM_LEAN_TGT   = new THREE.Vector3(SOUTH_DX + 0.10, 0.78, -4.65);
+// Lean pulled BACK + DOWN slightly so the central column / divider
+// tops aren't chopped at the frame edge. Target nudged forward toward
+// the chair so the keyboard + active CRT are dead-centre instead of
+// hugging the bottom.
+const CAM_LEAN_POS   = new THREE.Vector3(SOUTH_DX + 0.10, 2.20, -1.05);
+const CAM_LEAN_TGT   = new THREE.Vector3(SOUTH_DX + 0.10, 0.88, -4.45);
 
 /* ---------- CRT screen shader — pronounced scanlines + faux ASCII ---- */
 const CRT_FRAG = `
@@ -866,6 +870,23 @@ function CrtMonitor({ phase, onClick }: { phase: Phase; onClick?: () => void }) 
         <boxGeometry args={[0.03, 0.012, 0.005]} />
         <meshStandardMaterial color="#9E9A92" roughness={0.5} />
       </mesh>
+      {/* INVISIBLE EXPANDED HIT TARGET — wraps the whole CRT silhouette
+          (body + a generous halo) so on small displays / touch screens
+          users don't have to land precisely on a 30-px screen plane.
+          Renders in front of the body so it always wins the raycast,
+          and is fully invisible (transparent + opacity 0). Click +
+          cursor behaviour matches the screen mesh below. */}
+      {clickable && (
+        <mesh
+          position={[0, 0.0, 0.22]}
+          onClick={onClick}
+          onPointerEnter={() => { setHovered(true); document.body.style.cursor = 'pointer'; }}
+          onPointerLeave={() => { setHovered(false); document.body.style.cursor = 'default'; }}
+        >
+          <planeGeometry args={[0.85, 0.65]} />
+          <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+        </mesh>
+      )}
       {/* screen — CRT shader + the actual click target */}
       <mesh
         position={[0, 0.02, 0.207]}
@@ -2482,10 +2503,11 @@ function OfficeScene({ phase, onMonitorClick }: {
         </mesh>
       </group>
 
-      {/* ── FLOOR LAMP — tall standing accent in the visible RIGHT-MID
-          area of the room (camera-visible from idle). Severance MDR has
-          these subtle vertical accents breaking up the empty floor. */}
-      <group position={[5.5, 0, -1.0]}>
+      {/* ── FLOOR LAMP — tall standing accent in the visible MID area
+          of the room. Re-positioned for the corner-quarter camera so
+          the lamp body actually reads in frame instead of only its
+          glow leaking in from off-screen. */}
+      <group position={[4.2, 0, -2.5]}>
         {/* base disc */}
         <mesh position={[0, 0.025, 0]} castShadow receiveShadow>
           <cylinderGeometry args={[0.18, 0.20, 0.05, 24]} />
@@ -2627,9 +2649,18 @@ function BiosScreen({ onDone }: { onDone: () => void }) {
   return (
     <div style={{
       position: 'fixed', inset: 0, zIndex: 9999,
+      // Layered background:
+      //   1. tight horizontal scanlines (2-px period, slightly stronger
+      //      than before — 0.022 → 0.045)
+      //   2. radial DARK vignette pinching the corners
+      //   3. a faint phosphor green wash baseline so the whole screen
+      //      reads as a real glowing CRT instead of pure black
       background: '#000',
-      // very subtle CRT scanlines for the BIOS background — period 3px
-      backgroundImage: 'repeating-linear-gradient(to bottom, rgba(255,255,255,0.022) 0px, rgba(255,255,255,0.022) 1px, transparent 1px, transparent 3px)',
+      backgroundImage: [
+        'repeating-linear-gradient(to bottom, rgba(164,217,197,0.060) 0px, rgba(164,217,197,0.060) 1px, transparent 1px, transparent 2px)',
+        'radial-gradient(ellipse at center, rgba(0,0,0,0) 50%, rgba(0,0,0,0.85) 100%)',
+        'radial-gradient(ellipse at center, rgba(40,80,60,0.16) 0%, rgba(0,0,0,0) 60%)',
+      ].join(','),
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       fontFamily: mono,
     }}>
@@ -3007,19 +3038,25 @@ function HudOverlay({ muted, onMuteToggle }: { muted: boolean; onMuteToggle: () 
 }
 
 /* ---------- tap hint -------------------------------------------------- */
-function TapHint() {
-  const [visible, setVisible] = useState(true);
+function TapHint({ isTouch }: { isTouch: boolean }) {
+  // Touch users get the hint immediately; desktop users only after ~3 s
+  // of idle (visitors land on the corner-quarter view and might not
+  // realise the small CRT is the click target).
+  const [visible, setVisible] = useState(isTouch);
   useEffect(() => {
-    const t = setTimeout(() => setVisible(false), 4000);
-    const hide = () => { setVisible(false); clearTimeout(t); };
-    window.addEventListener('pointerdown', hide, { once: true });
-    return () => { clearTimeout(t); window.removeEventListener('pointerdown', hide); };
-  }, []);
+    let showT: any, hideT: any;
+    if (!isTouch) showT = setTimeout(() => setVisible(true), 3200);
+    hideT = setTimeout(() => setVisible(false), isTouch ? 4500 : 9000);
+    const off = () => { setVisible(false); clearTimeout(showT); clearTimeout(hideT); };
+    window.addEventListener('pointerdown', off, { once: true });
+    return () => { clearTimeout(showT); clearTimeout(hideT); window.removeEventListener('pointerdown', off); };
+  }, [isTouch]);
   if (!visible) return null;
+  const label = isTouch ? 'tap the monitor' : 'click the monitor';
   return (
-    <div style={{ position: 'fixed', bottom: '18%', left: 0, right: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, pointerEvents: 'none', zIndex: 10 }}>
+    <div style={{ position: 'fixed', bottom: '22%', left: 0, right: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, pointerEvents: 'none', zIndex: 10 }}>
       <div style={{ width: 44, height: 44, borderRadius: '50%', border: '1.5px solid rgba(164,217,197,0.55)', animation: 'tap-pulse 1.6s ease-out infinite' }} />
-      <span style={{ fontFamily: "ui-monospace,'SF Mono',Menlo,monospace", fontSize: 11, color: 'rgba(164,217,197,0.7)', letterSpacing: '0.08em', animation: 'tap-fade 1.6s ease-in-out infinite' }}>tap the monitor</span>
+      <span style={{ fontFamily: "ui-monospace,'SF Mono',Menlo,monospace", fontSize: 11, color: 'rgba(164,217,197,0.75)', letterSpacing: '0.08em', animation: 'tap-fade 1.6s ease-in-out infinite' }}>{label}</span>
       <style>{`@keyframes tap-pulse{0%{transform:scale(0.85);opacity:0.7}60%{transform:scale(1.25);opacity:0.15}100%{transform:scale(0.85);opacity:0.7}}@keyframes tap-fade{0%,100%{opacity:0.5}50%{opacity:0.9}}`}</style>
     </div>
   );
@@ -3063,10 +3100,17 @@ export default function Office() {
   return (
     <div style={{ position: 'fixed', inset: 0, background: '#C8CAC4' }}>
       {/* Subtle cool color grade — gives the institutional fluorescent
-          feel of the references (slight contrast + cool tint). */}
+          feel of the references (slight contrast + cool tint). When the
+          inner Win95 desktop is mounted (phase==='desktop' or 'booting'),
+          DIM the 3D scene to ~30 % brightness so the bright teal/cream
+          desktop window doesn't fight the green carpet/cubicle bezel
+          showing around its edges — keeps the eye on the inner site. */}
       <div style={{
         position: 'absolute', inset: 0,
-        filter: 'contrast(1.03) saturate(0.98) hue-rotate(-2deg)',
+        filter: (phase === 'desktop' || phase === 'booting')
+          ? 'contrast(1.03) saturate(0.98) hue-rotate(-2deg) brightness(0.32)'
+          : 'contrast(1.03) saturate(0.98) hue-rotate(-2deg)',
+        transition: 'filter 0.55s ease-out',
       }}>
         <Canvas
           shadows="soft"
@@ -3099,7 +3143,7 @@ export default function Office() {
       {phase !== 'splash' && (
         <HudOverlay muted={muted} onMuteToggle={() => setMuted(m => !m)} />
       )}
-      {(phase === 'idle' || phase === 'entering') && isTouch && <TapHint />}
+      {(phase === 'idle' || phase === 'entering') && <TapHint isTouch={isTouch} />}
       {phase === 'splash'  && <BiosScreen onDone={() => setPhase('entering')} />}
       {phase === 'booting' && <BootOverlay onDone={handleBootDone} />}
       {phase === 'desktop' && <InnerDesktop onClose={handleDesktopClose} embedded />}
