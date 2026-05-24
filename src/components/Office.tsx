@@ -2507,7 +2507,7 @@ function OfficeScene({ phase, onMonitorClick }: {
           of the room. Re-positioned for the corner-quarter camera so
           the lamp body actually reads in frame instead of only its
           glow leaking in from off-screen. */}
-      <group position={[4.2, 0, -2.5]}>
+      <group position={[4.5, 0, -2.0]}>
         {/* base disc */}
         <mesh position={[0, 0.025, 0]} castShadow receiveShadow>
           <cylinderGeometry args={[0.18, 0.20, 0.05, 24]} />

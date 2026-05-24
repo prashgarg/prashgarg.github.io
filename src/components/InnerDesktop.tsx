@@ -79,7 +79,7 @@ const WIN95_STYLE = `
 }
 /* Sidebar shrinks too — 220 px is a lot of a ~600 px-wide CRT. */
 .win95-desktop.embedded .win95-nav {
-  width: 138px;
+  width: 140px;
   padding: 12px 10px;
 }
 .win95-desktop.embedded .win95-nav-name {
