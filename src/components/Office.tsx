@@ -1993,9 +1993,13 @@ function OfficeScene({ phase, onMonitorClick }: {
           All nine ceiling pointLights provide flat fluorescent flood
           without shadow cost; this one casts contact shadows under
           furniture so the scene reads grounded. */}
+      {/* Dominant shadow caster — strengthened (0.55 → 1.05) for the
+          dramatic pool-and-shadow contrast the reference has. Same
+          angled-from-above position; carries all the hard furniture
+          shadows. */}
       <directionalLight
         position={[8, 9, 4]}
-        intensity={0.55}
+        intensity={1.05}
         color="#FFFFFF"
         castShadow
         shadow-mapSize={[2048, 2048]}
@@ -2009,26 +2013,42 @@ function OfficeScene({ phase, onMonitorClick }: {
         shadow-normalBias={0.02}
       />
 
-      {/* Cool ambient — fluorescent rooms have almost no shadow gradient.
-          Slight green-cyan tint to mimic the carpet bounce light pooling
-          near the ceiling (per the Severance MDR reference photo). */}
-      <ambientLight intensity={1.75} color="#E8F0EA" />
-      {/* Very subtle green up-light from the carpet — fills shadowed
-          undersides of dividers + monitor with cool sage cast. */}
-      <hemisphereLight args={['#F4F8F2', '#A8C2A6', 0.55]} />
+      {/* Ambient + hemisphere TURNED DOWN. Previously the room was
+          flooded with so much ambient fill that the directional light's
+          shadows couldn't develop. Halving ambient (1.75 → 0.85) and
+          hemisphere (0.55 → 0.28) lets the dir-light and the spot
+          carry the contrast — bright surfaces stay bright, under-desk
+          stays dark. */}
+      <ambientLight intensity={0.85} color="#E8F0EA" />
+      <hemisphereLight args={['#F4F8F2', '#A8C2A6', 0.28]} />
 
-      {/* Dedicated desk fill — compensates for partitions blocking ceiling lights */}
-      <pointLight position={[0.3, ROOM_H - 0.5, DESK_Z + 0.5]} intensity={7.5} distance={9} decay={2} color="#F6F9FF" />
+      {/* DESK POOL spotlight — a focused down-light right above the
+          active SW station's desk surface. Penumbra creates a soft
+          circular pool on the desk + a sharper-shadowed gradient at
+          the edge. The bright pool is exactly what the reference
+          ceiling panels do for the desks directly beneath them. */}
+      <spotLight
+        position={[SOUTH_DX + 0.10, ROOM_H - 0.30, DESK_Z - 0.30]}
+        target-position={[SOUTH_DX + 0.10, 0.74, DESK_Z - 0.10]}
+        angle={0.45}
+        penumbra={0.55}
+        intensity={11.0}
+        distance={8.0}
+        decay={1.8}
+        color="#FBFCFF"
+        castShadow={false}
+      />
 
-      {/* (Active-station spotlight removed — reference is uniform flood) */}
-
-      {/* Ceiling panel lights — true fluorescent flood */}
+      {/* Ceiling panel point lights — fluorescent flood, but intensity
+          knocked down (7.0 → 4.0) so the new dir-light and spot can
+          carry the drama. Still bright enough to fill the cavernous
+          room corners. */}
       {lightGrid.map(([x, z], i) => (
         <pointLight
           key={i}
           position={[x, ROOM_H - 0.25, z]}
-          intensity={7.0}
-          distance={26}
+          intensity={4.0}
+          distance={24}
           decay={2}
           color="#F5F8FF"
         />
@@ -2045,15 +2065,18 @@ function OfficeScene({ phase, onMonitorClick }: {
       {/* ── DUST PARTICLES — atmospheric haze ─────────────────────── */}
       <DustParticles />
 
-      {/* ── ContactShadows under chair + desk area ──────────────────── */}
+      {/* ── ContactShadows under chair + desk area — DEEPER (0.42 →
+          0.75) to read as a proper grounding shadow now that ambient
+          + hemisphere are turned down. Wider scale + slightly sharper
+          blur so the desk silhouette shows on the carpet underneath. */}
       <ContactShadows
         position={[0.3, 0.012, DESK_Z + 0.7]}
-        opacity={0.42}
-        scale={5.5}
-        blur={2.8}
-        far={1.8}
-        resolution={512}
-        color="#0A1A0F"
+        opacity={0.75}
+        scale={7.0}
+        blur={2.4}
+        far={2.2}
+        resolution={1024}
+        color="#091812"
       />
 
       {/* ── CEILING — actual 3-D coffered grid (recessed geometry) ──── */}
