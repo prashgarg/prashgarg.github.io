@@ -103,13 +103,15 @@ function easeInOutCubic(t: number) {
 // Desk and monitor sit at centre of the room (z=0 in room-depth terms,
 // which in world coords is z = -4.5 when the camera enters from z ≈ +13)
 const DESK_Z         = -4.5;
-// PINWHEEL 4-station layout: each booth is the same StationLite rotated
-// 90° around the centre, so each owns one quadrant of the central +
-// partition. Active SOUTH station shifts WEST by 0.83 (`SOUTH_DX`) to
-// sit in the SW quadrant — desk to the LEFT of centre, monitor in the
-// SW corner of the +. All world anchors that follow the active monitor
-// (camera targets, accessories, projector) use SOUTH_DX.
-const SOUTH_DX       = -0.62;
+// SYMMETRIC 4-station layout: each booth is the same StationLite on
+// its cardinal axis, no pinwheel offset. SOUTH centres on x=0, NORTH
+// mirrors it; EAST/WEST mirror across the centre divider line. Every
+// desk aligns with the central + divider, the active CRT + camera
+// sit dead-centre, and adjacent booths no longer collide visually.
+// SOUTH_DX kept as a constant (now 0) so every world anchor that
+// references it (camera targets, accessories group, projector) auto-
+// re-centres without per-mesh edits.
+const SOUTH_DX       = 0;
 const MONITOR_WORLD  = new THREE.Vector3(SOUTH_DX + 0.10, 1.05, DESK_Z - 0.35);   // (-0.73, 1.05, -4.85)
 
 // IDLE wide view — empty-office atmosphere (reference 3) where the
@@ -120,17 +122,15 @@ const MONITOR_WORLD  = new THREE.Vector3(SOUTH_DX + 0.10, 1.05, DESK_Z - 0.35); 
 // Closer + lower + horizontal-ish view → workstation larger in frame,
 // less floor visible, walls + ceiling more balanced (matches reference)
 // Centred camera so the workstation sits dead-centre horizontally
-// Idle camera = ROTATED-FRONT corner per the reference, with the
-// rotation pulled in tighter so the ACTIVE SW desk dominates the
-// frame (it's the click target — it should read big). Still ~15°
-// off-axis SE (not dead-frontal) so the WEST station's perpendicular
-// silhouette still reads at the back-left, but the active CRT now
-// faces the camera much more head-on. Target is the active CRT
-// itself so the framing centres on what you can click.
-const CAM_ENTRY_POS  = new THREE.Vector3(2.60, 1.92, 5.20);
-const CAM_ENTRY_TGT  = new THREE.Vector3(-0.73, 1.05, -5.00);
-const CAM_IDLE_POS   = new THREE.Vector3(1.80, 1.50, 4.10);
-const CAM_IDLE_TGT   = new THREE.Vector3(-0.73, 1.10, -5.00);
+// Idle camera = slightly off-axis (still corner-quarter character)
+// but with the active desk now centred on x=0 (symmetric layout),
+// the camera shifts back to centre too. Modest ~12° SE rotation so
+// the WEST and EAST stations read at perpendicular angles in the
+// back-left/right corners without competing with the active desk.
+const CAM_ENTRY_POS  = new THREE.Vector3(2.20, 1.92, 5.20);
+const CAM_ENTRY_TGT  = new THREE.Vector3(0.10, 1.05, -5.00);
+const CAM_IDLE_POS   = new THREE.Vector3(1.40, 1.50, 4.10);
+const CAM_IDLE_TGT   = new THREE.Vector3(0.10, 1.10, -5.00);
 // Camera ends VERY close to the monitor face — ~0.3 m from the screen.
 // At FOV 58° this makes the monitor screen fill roughly 66%×78% of the
 // viewport, so the bezel reads as a frame around the inner site (Heffer
@@ -2202,27 +2202,24 @@ function OfficeScene({ phase, onMonitorClick }: {
           Centre of the + is at (CX, _, CZ). */}
       <MdrDividerCluster cx={0} cz={DESK_Z - 0.74} fabric={partitionFabric as any} />
 
-      {/* ── 4 PINWHEEL BOOTHS ────────────────────────────────────────
-          Real Severance MDR layout: each station is the same pose
-          rotated 90° around the centre, so each desk occupies exactly
-          ONE quadrant of the central + partition. Shift `p` along each
-          station's local +x moves it sideways into its quadrant. CCW
-          pinwheel viewed from above. SOUTH is the active station. */}
-      {/* SOUTH (active) — SW quadrant. variant=0 (own accessories live
-          outside StationLite in the SOUTH_DX accessories group). */}
-      <group position={[SOUTH_DX, 0, DESK_Z]}>
+      {/* ── 4 SYMMETRIC BOOTHS ────────────────────────────────────────
+          Each station centred on its cardinal axis. Pod centre is at
+          (0, _, DESK_Z - 0.74) = (0, _, -5.24). Every desk faces the
+          centre and aligns to one arm of the central + divider.
+          - SOUTH (active): centred on x=0, chair south of desk
+          - NORTH: mirror of SOUTH across the EW divider
+          - EAST/WEST: mirror pair across the NS divider, rotated 90°
+          Symmetric across both axes — no pinwheel offset. */}
+      <group position={[0, 0, DESK_Z]}>
         <StationLite active variant={0} />
       </group>
-      {/* NORTH — NE quadrant. */}
-      <group position={[-SOUTH_DX, 0, DESK_Z - 1.42]} rotation-y={Math.PI}>
+      <group position={[0, 0, DESK_Z - 1.48]} rotation-y={Math.PI}>
         <StationLite variant={1} />
       </group>
-      {/* EAST — SE quadrant. */}
-      <group position={[1.3, 0, DESK_Z + Math.abs(SOUTH_DX) + 0.05]} rotation-y={Math.PI / 2}>
+      <group position={[1.3, 0, DESK_Z - 0.74]} rotation-y={Math.PI / 2}>
         <StationLite variant={2} />
       </group>
-      {/* WEST — NW quadrant. */}
-      <group position={[-1.3, 0, DESK_Z - 1.42 - Math.abs(SOUTH_DX) - 0.05]} rotation-y={-Math.PI / 2}>
+      <group position={[-1.3, 0, DESK_Z - 0.74]} rotation-y={-Math.PI / 2}>
         <StationLite variant={3} />
       </group>
 
