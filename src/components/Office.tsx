@@ -131,12 +131,13 @@ const CAM_ENTRY_POS  = new THREE.Vector3(2.20, 1.92, 5.20);
 const CAM_ENTRY_TGT  = new THREE.Vector3(0.10, 1.05, -5.00);
 const CAM_IDLE_POS   = new THREE.Vector3(1.40, 1.50, 4.10);
 const CAM_IDLE_TGT   = new THREE.Vector3(0.10, 1.10, -5.00);
-// Camera ends VERY close to the monitor face — ~0.3 m from the screen.
-// At FOV 58° this makes the monitor screen fill roughly 66%×78% of the
-// viewport, so the bezel reads as a frame around the inner site (Heffer
-// pattern). Camera is dead-centred on the monitor so the screen always
-// projects to viewport center.
-const CAM_MONITOR_POS = new THREE.Vector3(SOUTH_DX + 0.10, 1.05, DESK_Z + 0.20);
+// Monitor close-up — camera ends ~0.20 m from the screen face (was
+// 0.34). At FOV 54° this makes the screen fill ~92% of the viewport
+// vertically, so the InnerDesktop dominates the frame and the user
+// genuinely feels "inside the monitor" instead of looking at a smaller
+// window with the 3D bezel framing it. Tiny sliver of bezel still
+// visible at the edges for the Heffer-style frame.
+const CAM_MONITOR_POS = new THREE.Vector3(SOUTH_DX + 0.10, 1.05, DESK_Z + 0.13);
 const CAM_MONITOR_TGT = MONITOR_WORLD.clone();
 
 // Lean-in close-up frame — looks STEEPLY DOWN at the desk so the chair
@@ -2867,16 +2868,32 @@ function GrainOverlay() {
 
 /* ---------- ambient audio -------------------------------------------- */
 const AMBIENT_VOL = 0.32;
-function StudyAudio({ active, muted }: { active: boolean; muted: boolean }) {
+function StudyAudio({ active, muted, focusMode }: { active: boolean; muted: boolean; focusMode: boolean }) {
   const ctxRef  = useRef<AudioContext | null>(null);
   const gainRef = useRef<GainNode | null>(null);
+  // BiquadFilterNode applied between master gain and ac.destination.
+  // When `focusMode` is on (i.e. user is "inside" the monitor), we
+  // slide its cutoff DOWN to ~700 Hz so the music feels muffled —
+  // the noise-cancelling / behind-glass effect Heffernan uses on his
+  // study site. When focus is off it sits at 18 kHz (effectively flat).
+  const filterRef = useRef<BiquadFilterNode | null>(null);
   const startedRef = useRef(false);
   useEffect(() => {
     const start = async () => {
       if (startedRef.current) return; startedRef.current = true;
       const ac = new AudioContext(); ctxRef.current = ac;
       const master = ac.createGain(); gainRef.current = master;
-      master.gain.setValueAtTime(0, ac.currentTime); master.connect(ac.destination);
+      master.gain.setValueAtTime(0, ac.currentTime);
+      // Insert focus-mode low-pass filter between master gain and
+      // destination. Starts wide-open (18 kHz) so it's effectively flat;
+      // the phase-change useEffect lerps its cutoff down/up.
+      const focusFilter = ac.createBiquadFilter();
+      focusFilter.type = 'lowpass';
+      focusFilter.frequency.setValueAtTime(18000, ac.currentTime);
+      focusFilter.Q.setValueAtTime(0.7, ac.currentTime);
+      filterRef.current = focusFilter;
+      master.connect(focusFilter);
+      focusFilter.connect(ac.destination);
 
       // ── HVAC AMBIENT HUM — always plays alongside whatever else,
       // mp3 or synth fallback. A 42 Hz sub-rumble + a 5th harmonic
@@ -2929,6 +2946,16 @@ function StudyAudio({ active, muted }: { active: boolean; muted: boolean }) {
     g.gain.cancelScheduledValues(ac.currentTime);
     g.gain.linearRampToValueAtTime(target, ac.currentTime + 1.2);
   }, [active, muted]);
+  // Focus-mode filter: slide the low-pass cutoff down when inside the
+  // monitor (700 Hz — kills crisp highs, leaves a muffled bass-heavy
+  // bed), back up to 18 kHz when out. Exponential ramp over 1.4 s so
+  // it feels like a door closing, not a click.
+  useEffect(() => {
+    const f = filterRef.current, ac = ctxRef.current; if (!f || !ac) return;
+    const target = focusMode ? 700 : 18000;
+    f.frequency.cancelScheduledValues(ac.currentTime);
+    f.frequency.exponentialRampToValueAtTime(target, ac.currentTime + 1.4);
+  }, [focusMode]);
   return null;
 }
 
@@ -3136,7 +3163,11 @@ export default function Office() {
       {phase !== 'splash' && <VignetteOverlay />}
       {phase !== 'splash' && <GrainOverlay />}
       <PhaseFlash phase={phase} />
-      <StudyAudio active={audioActive} muted={muted} />
+      <StudyAudio
+        active={audioActive}
+        muted={muted}
+        focusMode={phase === 'desktop' || phase === 'booting'}
+      />
       {phase !== 'splash' && (
         <HudOverlay muted={muted} onMuteToggle={() => setMuted(m => !m)} />
       )}
