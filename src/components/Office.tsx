@@ -1369,38 +1369,45 @@ function StationLite({ active = false, variant = 0 }: { active?: boolean; varian
       <RoundedBox args={[0.66, 0.72, 1.20]} radius={0.015} smoothness={3} position={[-0.50, 0.36, DESK_DZ]} castShadow receiveShadow>
         <meshStandardMaterial {...(deskNormals as any)} color={C.deskLeg} roughness={0.5} normalScale={[0.20, 0.20] as any} />
       </RoundedBox>
-      {/* LEFT drawer lines */}
-      {[0.18, 0.42, 0.62].map((y, i) => (
-        <mesh key={`lp-${i}`} position={[-0.50, y, DESK_DZ + 0.60]}>
-          <boxGeometry args={[0.56, 0.005, 0.004]} />
-          <meshStandardMaterial color="#6E6E6A" />
-        </mesh>
-      ))}
-      {/* LEFT drawer pulls */}
-      {[0.27, 0.50, 0.65].map((y, i) => (
-        <mesh key={`lph-${i}`} position={[-0.50, y, DESK_DZ + 0.604]}>
-          <boxGeometry args={[0.12, 0.018, 0.008]} />
-          <meshStandardMaterial color="#3F3F3F" roughness={0.45} metalness={0.4} />
-        </mesh>
-      ))}
+      {/* LEFT pedestal — 2-DRAWER Lumon layout per the reference:
+          one SHALLOW drawer at top (y range 0.50→0.70, height 0.20)
+          and one DEEP file drawer below (y range 0.02→0.48, height 0.46).
+          Single divider seam between them; bigger pull on the file drawer. */}
+      {/* divider seam between the two drawers */}
+      <mesh position={[-0.50, 0.49, DESK_DZ + 0.602]}>
+        <boxGeometry args={[0.62, 0.006, 0.004]} />
+        <meshStandardMaterial color="#6E6E6A" />
+      </mesh>
+      {/* TOP shallow-drawer pull — slim horizontal bar centred on the
+          top drawer face. */}
+      <mesh position={[-0.50, 0.60, DESK_DZ + 0.605]}>
+        <boxGeometry args={[0.22, 0.020, 0.010]} />
+        <meshStandardMaterial color="#3F3F3F" roughness={0.45} metalness={0.45} />
+      </mesh>
+      {/* BOTTOM file-drawer pull — wider + thicker (file drawers
+          need a chunkier handle), centred on the file drawer face. */}
+      <mesh position={[-0.50, 0.25, DESK_DZ + 0.605]}>
+        <boxGeometry args={[0.32, 0.028, 0.012]} />
+        <meshStandardMaterial color="#3F3F3F" roughness={0.45} metalness={0.45} />
+      </mesh>
+
       {/* RIGHT pedestal — bevelled, mirror of left */}
       <RoundedBox args={[0.66, 0.72, 1.20]} radius={0.015} smoothness={3} position={[0.50, 0.36, DESK_DZ]} castShadow receiveShadow>
         <meshStandardMaterial {...(deskNormals as any)} color={C.deskLeg} roughness={0.5} normalScale={[0.20, 0.20] as any} />
       </RoundedBox>
-      {/* RIGHT drawer lines */}
-      {[0.18, 0.42, 0.62].map((y, i) => (
-        <mesh key={`rp-${i}`} position={[0.50, y, DESK_DZ + 0.60]}>
-          <boxGeometry args={[0.56, 0.005, 0.004]} />
-          <meshStandardMaterial color="#6E6E6A" />
-        </mesh>
-      ))}
-      {/* RIGHT drawer pulls */}
-      {[0.27, 0.50, 0.65].map((y, i) => (
-        <mesh key={`rph-${i}`} position={[0.50, y, DESK_DZ + 0.604]}>
-          <boxGeometry args={[0.12, 0.018, 0.008]} />
-          <meshStandardMaterial color="#3F3F3F" roughness={0.45} metalness={0.4} />
-        </mesh>
-      ))}
+      {/* RIGHT pedestal — same 2-drawer Lumon layout */}
+      <mesh position={[0.50, 0.49, DESK_DZ + 0.602]}>
+        <boxGeometry args={[0.62, 0.006, 0.004]} />
+        <meshStandardMaterial color="#6E6E6A" />
+      </mesh>
+      <mesh position={[0.50, 0.60, DESK_DZ + 0.605]}>
+        <boxGeometry args={[0.22, 0.020, 0.010]} />
+        <meshStandardMaterial color="#3F3F3F" roughness={0.45} metalness={0.45} />
+      </mesh>
+      <mesh position={[0.50, 0.25, DESK_DZ + 0.605]}>
+        <boxGeometry args={[0.32, 0.028, 0.012]} />
+        <meshStandardMaterial color="#3F3F3F" roughness={0.45} metalness={0.45} />
+      </mesh>
       {/* Inactive CRT — boxy beige body. SKIPPED on the active station;
           the parent renders an active CRT (with shader + click) instead. */}
       {!active && (
