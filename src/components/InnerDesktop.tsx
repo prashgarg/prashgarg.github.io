@@ -482,6 +482,21 @@ const WIN95_STYLE = `
 .win95-statusbar-cell.wide { flex: 1; }
 .win95-statusbar-cell.sm   { width: 16px; }
 
+/* invisible resize handles on the 4 sides + 4 corners. Sit OUTSIDE
+   the visible window box (-4 px offset) so they're easy to hit. */
+.win95-resize-edge {
+  position: absolute;
+  z-index: 10;
+}
+.win95-resize-edge.n  { top: -4px;    left: 6px;     right: 6px;     height: 8px;  cursor: ns-resize; }
+.win95-resize-edge.s  { bottom: -4px; left: 6px;     right: 6px;     height: 8px;  cursor: ns-resize; }
+.win95-resize-edge.e  { right: -4px;  top: 6px;      bottom: 6px;    width: 8px;   cursor: ew-resize; }
+.win95-resize-edge.w  { left: -4px;   top: 6px;      bottom: 6px;    width: 8px;   cursor: ew-resize; }
+.win95-resize-edge.ne { top: -4px;    right: -4px;   width: 12px;    height: 12px; cursor: nesw-resize; }
+.win95-resize-edge.nw { top: -4px;    left: -4px;    width: 12px;    height: 12px; cursor: nwse-resize; }
+.win95-resize-edge.se { bottom: -4px; right: -4px;   width: 12px;    height: 12px; cursor: nwse-resize; }
+.win95-resize-edge.sw { bottom: -4px; left: -4px;    width: 12px;    height: 12px; cursor: nesw-resize; }
+
 /* resize grip in status bar */
 .win95-resize-grip {
   width: 16px;
@@ -1399,6 +1414,62 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
     return () => window.removeEventListener('popstate', onPop);
   }, [openApp]);
 
+  // ── KEYBOARD SHORTCUTS ────────────────────────────────────────────
+  // Alt+Tab  — cycle focus through open windows
+  // Esc      — close the focused window (or close Start/ctx menu)
+  // F11      — toggle maximize on focused window
+  // ⌘/Ctrl+W — close focused window (Mac-style)
+  // ⌘/Ctrl+Q — shut down (exit back to the study)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      // compute focused window id inline (top zIndex, non-minimized)
+      const visible = wins.filter(w => !w.minimized).sort((a, b) => b.zIndex - a.zIndex);
+      const focusedId: AppId | null = visible[0] ? visible[0].id : null;
+      const tgt = e.target as HTMLElement;
+      const inText = tgt && (
+        tgt.tagName === 'INPUT' ||
+        tgt.tagName === 'TEXTAREA' ||
+        tgt.isContentEditable
+      );
+
+      // Alt+Tab — cycle visible windows
+      if (e.altKey && e.key === 'Tab') {
+        e.preventDefault();
+        if (visible.length < 2) return;
+        const idx = e.shiftKey ? visible.length - 1 : 1;
+        focusApp(visible[idx].id);
+        return;
+      }
+      // Escape — close start/ctx menu first, then close focused window
+      if (e.key === 'Escape') {
+        if (startOpen) { setStartOpen(false); e.preventDefault(); return; }
+        if (ctxMenu)   { setCtxMenu(null);    e.preventDefault(); return; }
+        if (inText) return;
+        if (focusedId) { closeApp(focusedId); e.preventDefault(); return; }
+      }
+      // F11 — toggle maximize on focused window
+      if (e.key === 'F11' && focusedId) {
+        e.preventDefault();
+        toggleMaximize(focusedId);
+        return;
+      }
+      // ⌘/Ctrl+W — close focused window
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'w' || e.key === 'W') && focusedId) {
+        e.preventDefault();
+        closeApp(focusedId);
+        return;
+      }
+      // ⌘/Ctrl+Q — shut down (back to study)
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'q' || e.key === 'Q')) {
+        e.preventDefault();
+        onClose();
+        return;
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [wins, startOpen, ctxMenu, focusApp, closeApp, toggleMaximize, onClose]);
+
   // ---------- ambient audio (continues from the study) ----------
   const [muted, setMuted] = useState<boolean>(() => {
     try { return sessionStorage.getItem(SS_MUTED) === '1'; } catch { return false; }
@@ -1524,27 +1595,49 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
     document.addEventListener('mousemove', onMove);
     document.addEventListener('mouseup', onUp);
   };
-  const startResizeWin = (id: AppId) => (e: React.MouseEvent) => {
+  // Resize from ANY of 8 edges. `edge` is one of n/s/e/w/ne/nw/se/sw.
+  // For edges that touch the LEFT (w, nw, sw) dragging moves the
+  // window's x AND shrinks its width. Same for TOP edges. Right/Bottom
+  // edges just grow/shrink width/height. Min size 360 × 260.
+  type ResizeEdge = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw';
+  const cursorFor = (edge: ResizeEdge): string => (
+    edge === 'n' || edge === 's' ? 'ns-resize' :
+    edge === 'e' || edge === 'w' ? 'ew-resize' :
+    edge === 'ne' || edge === 'sw' ? 'nesw-resize' :
+    'nwse-resize'
+  );
+  const startResizeEdge = (id: AppId, edge: ResizeEdge) => (e: React.MouseEvent) => {
     const w = wins.find(x => x.id === id);
     if (!w || w.maximized) return;
     e.preventDefault(); e.stopPropagation();
+    focusApp(id);
     const sx = e.clientX, sy = e.clientY;
-    const ow = w.w, oh = w.h;
+    const ox = w.x, oy = w.y, ow = w.w, oh = w.h;
+    const MIN_W = 360, MIN_H = 260;
+    const touchTop  = edge === 'n' || edge === 'ne' || edge === 'nw';
+    const touchBot  = edge === 's' || edge === 'se' || edge === 'sw';
+    const touchLeft = edge === 'w' || edge === 'nw' || edge === 'sw';
+    const touchRight= edge === 'e' || edge === 'ne' || edge === 'se';
     const onMove = (ev: MouseEvent) => {
-      const dw = ev.clientX - sx, dh = ev.clientY - sy;
-      setWins(ws => ws.map(s => s.id === id
-        ? { ...s, w: Math.max(360, ow + dw), h: Math.max(260, oh + dh) }
-        : s));
+      const dx = ev.clientX - sx, dy = ev.clientY - sy;
+      let nx = ox, ny = oy, nw = ow, nh = oh;
+      if (touchRight) nw = Math.max(MIN_W, ow + dx);
+      if (touchLeft)  { const proposed = ow - dx; nw = Math.max(MIN_W, proposed); nx = ox + (ow - nw); }
+      if (touchBot)   nh = Math.max(MIN_H, oh + dy);
+      if (touchTop)   { const proposed = oh - dy; nh = Math.max(MIN_H, proposed); ny = oy + (oh - nh); }
+      setWins(ws => ws.map(s => s.id === id ? { ...s, x: nx, y: ny, w: nw, h: nh } : s));
     };
     const onUp = () => {
       document.removeEventListener('mousemove', onMove);
       document.removeEventListener('mouseup', onUp);
       document.body.style.cursor = '';
     };
-    document.body.style.cursor = 'nwse-resize';
+    document.body.style.cursor = cursorFor(edge);
     document.addEventListener('mousemove', onMove);
     document.addEventListener('mouseup', onUp);
   };
+  // Backward-compat alias for the corner grip (SE corner)
+  const startResizeWin = (id: AppId) => startResizeEdge(id, 'se');
 
   // Topmost (non-minimized) window is the "focused" one — drives the
   // titlebar colour and taskbar chip sunken state.
@@ -1644,6 +1737,18 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
             style={style}
             onMouseDown={e => { e.stopPropagation(); focusApp(w.id); }}
           >
+            {/* 8 invisible resize edges + corners (only when not maximized) */}
+            {!w.maximized && (
+              <>
+                {(['n','s','e','w','ne','nw','se','sw'] as const).map(edge => (
+                  <div
+                    key={`edge-${edge}`}
+                    className={`win95-resize-edge ${edge}`}
+                    onMouseDown={startResizeEdge(w.id, edge)}
+                  />
+                ))}
+              </>
+            )}
             {/* title bar */}
             <div
               className="win95-titlebar"
