@@ -1013,6 +1013,29 @@ const APPS: AppDef[] = [
 const APP_BY_ID: Record<AppId, AppDef> = APPS.reduce((acc, a) => { acc[a.id] = a; return acc; }, {} as any);
 const APP_BY_PATH: Record<string, AppDef> = APPS.reduce((acc, a) => { acc[a.path] = a; return acc; }, {} as any);
 
+/**
+ * Find the app whose root path is the longest prefix of `href`. Used
+ * to route a sub-path navigation (e.g. /research/some-paper-slug) to
+ * the matching app window (the Research app). Returns null for paths
+ * that don't fall under any app (those are external-ish and ignored).
+ */
+function findAppForPath(href: string): AppDef | null {
+  if (!href) return null;
+  // strip query/hash for matching
+  const path = href.split(/[?#]/)[0];
+  // exact match first
+  if (APP_BY_PATH[path]) return APP_BY_PATH[path];
+  // longest prefix (skip '/' which would match everything)
+  let best: AppDef | null = null;
+  for (const app of APPS) {
+    if (app.path === '/') continue;
+    if (path === app.path || path.startsWith(app.path + '/')) {
+      if (!best || app.path.length > best.path.length) best = app;
+    }
+  }
+  return best;
+}
+
 /* ---------- Win95 NavLink ---------------------------------------------- */
 // Accepts an optional `onNavigate` so the parent InnerDesktop can route
 // internally (pushState + state update) instead of doing a full page
@@ -1192,6 +1215,12 @@ interface OpenWin {
   // animation state
   openFrom?: { x: number; y: number };   // origin point for zoom-in
   state: 'opening' | 'open' | 'closing' | 'minimizing';
+  // Optional sub-path override — when a link inside the iframe targets
+  // a path under the app's base (e.g. /research/some-paper inside the
+  // Research app), this captures it so the iframe.src points at the
+  // sub-page instead of the app's root path. Stays in sync with the
+  // browser URL.
+  path?: string;
 }
 
 export default function InnerDesktop({ onClose, embedded = false }: InnerDesktopProps) {
@@ -1257,17 +1286,17 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
   // Open an app — restore + focus if already open, otherwise add a
   // new window to the array. `fromPoint` (icon centre) anchors the
   // zoom-in animation's transform-origin.
-  const openApp = useCallback((id: AppId, fromPoint?: { x: number; y: number }) => {
+  const openApp = useCallback((id: AppId, fromPoint?: { x: number; y: number }, pathOverride?: string) => {
     const app = APP_BY_ID[id]; if (!app) return;
     let wasOpen = false;
     setWins(ws => {
       const existing = ws.find(w => w.id === id);
       if (existing) {
         wasOpen = true;
-        // already open → restore + focus (focusApp also bumps z, so we
-        // only need to clear minimized + state here; z is set below)
+        // already open → restore + focus. If a pathOverride is supplied,
+        // update the sub-path so the iframe navigates to the new URL.
         return ws.map(w => w.id === id
-          ? { ...w, minimized: false, state: 'open' as const }
+          ? { ...w, minimized: false, state: 'open' as const, path: pathOverride || w.path }
           : w);
       }
       const geo = defaultGeo(app);
@@ -1277,14 +1306,16 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
         minimized: false, maximized: false,
         ...geo,
         openFrom: fromPoint, state: 'opening',
+        path: pathOverride,
       }];
     });
     setTopZ(z => z + 1);
     // play the classic Windows "ding" only for genuinely new windows
     if (!wasOpen) setTimeout(() => playWindowOpenDing(), 30);
-    // promote to URL after a tick so opening animations show
+    // promote to URL after a tick so opening animations show.
+    // URL is the sub-path override (if any), else the app's root path.
     setTimeout(() => {
-      try { window.history.pushState({}, '', app.path); } catch { /* */ }
+      try { window.history.pushState({}, '', pathOverride || app.path); } catch { /* */ }
       // mark animation done
       setWins(ws => ws.map(w => w.id === id ? { ...w, state: 'open' as const } : w));
     }, 220);
@@ -1320,14 +1351,19 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
 
   // Receive in-iframe link clicks (Win95Layout embed-mode bootstrap
   // posts {type:'pg-nav', href}) and route them as app openings.
+  // Supports sub-paths (e.g. /research/some-paper) by finding the
+  // longest-prefix app and passing the full href as a path override.
   useEffect(() => {
     const onMsg = (e: MessageEvent) => {
       const d = e.data as any;
       if (!d || d.type !== 'pg-nav' || typeof d.href !== 'string') return;
       const href = d.href;
-      const app = APP_BY_PATH[href];
-      if (app) openApp(app.id);
-      // else: external-ish path — ignore for now
+      const app = findAppForPath(href);
+      if (!app) return;            // not under any app — ignore
+      // Pass href as override so iframe navigates to sub-path (e.g.
+      // a paper detail) inside the matched app's window.
+      const overridePath = href !== app.path ? href : undefined;
+      openApp(app.id, undefined, overridePath);
     };
     window.addEventListener('message', onMsg);
     return () => window.removeEventListener('message', onMsg);
@@ -1340,8 +1376,11 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
     if (typeof window === 'undefined') return;
     const path = window.location.pathname || '/';
     if (path === '/') return;     // empty desktop on home url
-    const app = APP_BY_PATH[path];
-    if (app) openApp(app.id);
+    const app = findAppForPath(path);
+    if (app) {
+      const overridePath = path !== app.path ? path : undefined;
+      openApp(app.id, undefined, overridePath);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -1350,8 +1389,11 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
   useEffect(() => {
     const onPop = () => {
       const path = window.location.pathname || '/';
-      const app = APP_BY_PATH[path];
-      if (app) openApp(app.id);
+      const app = findAppForPath(path);
+      if (app) {
+        const overridePath = path !== app.path ? path : undefined;
+        openApp(app.id, undefined, overridePath);
+      }
     };
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
@@ -1639,8 +1681,16 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
               {w.id === 'home' ? (
                 <HomeContent openApp={openApp} />
               ) : (
+                /* When the window has a sub-path override (e.g. a paper
+                   detail under /research/...), the iframe loads that
+                   instead of the app's root path. Add ?embed=1 so
+                   Win95Layout strips its chrome. */
                 <iframe
-                  src={app.path + (app.path.includes('?') ? '&' : '?') + 'embed=1'}
+                  key={w.path || app.path}      /* force reload on path change */
+                  src={(() => {
+                    const base = w.path || app.path;
+                    return base + (base.includes('?') ? '&' : '?') + 'embed=1';
+                  })()}
                   className="win95-iframe"
                   title={app.title}
                   style={{ width: '100%', height: '100%', border: 0, display: 'block', background: '#EFEAD8' }}
