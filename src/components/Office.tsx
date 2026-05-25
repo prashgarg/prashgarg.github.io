@@ -921,25 +921,52 @@ function CrtMonitor({ phase, onClick }: { phase: Phase; onClick?: () => void }) 
         <meshStandardMaterial color="#CFCBC3" roughness={0.5} />
       </mesh>
 
-      {/* ── LUMON TRACKBALL — distinctive white sphere on a base, sits
-          to the RIGHT of the CRT on the desk. The MDR terminal has
-          this as its primary input device (used to navigate refinement
-          data). Reads as a large white ball at desk height. */}
-      <group position={[0.65, -0.39, 0.10]}>
-        {/* base pedestal */}
-        <mesh castShadow receiveShadow>
-          <cylinderGeometry args={[0.075, 0.085, 0.025, 20]} />
-          <meshStandardMaterial color={C.monitor} roughness={0.55} />
-        </mesh>
-        {/* ring rim */}
-        <mesh position={[0, 0.013, 0]}>
-          <torusGeometry args={[0.075, 0.006, 8, 24]} />
-          <meshStandardMaterial color="#9E9A92" roughness={0.5} metalness={0.4} />
-        </mesh>
-        {/* the ball itself */}
-        <mesh position={[0, 0.075, 0]} castShadow>
+      {/* ── LUMON TRACKBALL — spins on hover, clickable */}
+      <LumonTrackball />
+    </group>
+  );
+}
+
+/**
+ * Lumon trackball with hover-driven spin. The ball spins around its
+ * vertical axis (Y) at a target angular velocity that ramps up when
+ * hovered and decays back to a slow ambient drift when not.
+ */
+function LumonTrackball() {
+  const spinRef = useRef<THREE.Group>(null);
+  const [hover, setHover] = useState(false);
+  const omegaRef = useRef(0.15);   // current angular velocity (rad/s)
+  useFrame((_, dt) => {
+    if (!spinRef.current) return;
+    const target = hover ? 4.0 : 0.15;
+    omegaRef.current += (target - omegaRef.current) * Math.min(1, dt * 4);
+    spinRef.current.rotation.y += omegaRef.current * dt;
+  });
+  return (
+    <group position={[0.65, -0.39, 0.10]}>
+      <mesh castShadow receiveShadow>
+        <cylinderGeometry args={[0.075, 0.085, 0.025, 20]} />
+        <meshStandardMaterial color={C.monitor} roughness={0.55} />
+      </mesh>
+      <mesh position={[0, 0.013, 0]}>
+        <torusGeometry args={[0.075, 0.006, 8, 24]} />
+        <meshStandardMaterial color="#9E9A92" roughness={0.5} metalness={0.4} />
+      </mesh>
+      {/* spinning ball + equator mark in one group, so they spin
+          together. Pointer events on the ball only. */}
+      <group ref={spinRef} position={[0, 0.075, 0]}>
+        <mesh
+          castShadow
+          onPointerEnter={() => { setHover(true); document.body.style.cursor = 'pointer'; }}
+          onPointerLeave={() => { setHover(false); document.body.style.cursor = 'default'; }}
+        >
           <sphereGeometry args={[0.075, 24, 18]} />
           <meshStandardMaterial color="#F0EDE6" roughness={0.35} metalness={0.05} />
+        </mesh>
+        {/* tiny dark equator mark — makes the spin visible from idle */}
+        <mesh position={[0.072, 0, 0]} rotation-z={Math.PI/2}>
+          <cylinderGeometry args={[0.002, 0.002, 0.012, 6]} />
+          <meshStandardMaterial color="#3A3A3A" />
         </mesh>
       </group>
     </group>
@@ -1280,6 +1307,52 @@ function LivingProp({
   return <group ref={ref}>{children}</group>;
 }
 
+/* ---------- coffee mug + click-puff -------------------------------- */
+/**
+ * Clickable coffee mug. On click, briefly emits a fast burst of steam
+ * particles (a "sip" puff) by scaling the mug down + up and broadcasting
+ * a `pg-mug-sip` custom event the CoffeeSteam component listens for.
+ */
+function CoffeeMug() {
+  const groupRef = useRef<THREE.Group>(null);
+  const sipUntilRef = useRef(0);
+  useFrame((state) => {
+    if (!groupRef.current) return;
+    const t = state.clock.elapsedTime;
+    // gentle breathing (replaces the old LivingProp wrapper)
+    const breath = Math.sin(t * 0.18) * 0.0015;
+    // sip animation: brief downward bob if within sip window
+    let sipBob = 0;
+    if (sipUntilRef.current > t) {
+      const k = 1 - (sipUntilRef.current - t) / 0.45;  // 0→1
+      sipBob = Math.sin(k * Math.PI) * -0.015;          // tip downward then back
+    }
+    groupRef.current.position.y = breath + sipBob;
+    groupRef.current.rotation.z = Math.sin(t * 0.13 + 1.3) * 0.025;
+  });
+  const sip = () => {
+    sipUntilRef.current = performance.now() / 1000 + 0.45;
+    window.dispatchEvent(new CustomEvent('pg-mug-sip'));
+  };
+  return (
+    <group ref={groupRef}>
+      <mesh
+        position={[0.65, 0.785, DESK_Z + 0.15]}
+        onPointerEnter={() => { document.body.style.cursor = 'pointer'; }}
+        onPointerLeave={() => { document.body.style.cursor = 'default'; }}
+        onClick={(e) => { e.stopPropagation(); sip(); }}
+      >
+        <cylinderGeometry args={[0.052, 0.046, 0.10, 14]} />
+        <meshStandardMaterial color="#DCDAD6" roughness={0.55} />
+      </mesh>
+      <mesh position={[0.71, 0.785, DESK_Z + 0.15]} rotation-z={Math.PI / 2}>
+        <torusGeometry args={[0.028, 0.008, 6, 10, Math.PI]} />
+        <meshStandardMaterial color="#D8D6D2" roughness={0.55} />
+      </mesh>
+    </group>
+  );
+}
+
 /* ---------- coffee steam (rising wisps from mug) -------------------- */
 function CoffeeSteam({ origin }: { origin: [number, number, number] }) {
   const ref = useRef<THREE.Points>(null);
@@ -1290,20 +1363,30 @@ function CoffeeSteam({ origin }: { origin: [number, number, number] }) {
     for (let i = 0; i < COUNT; i++) s[i] = Math.random();
     return s;
   }, []);
+  // sipUntil: timestamp until which the steam BOOSTS (faster rise +
+  // higher opacity), driven by `pg-mug-sip` custom event from CoffeeMug.
+  const sipUntilRef = useRef(0);
+  useEffect(() => {
+    const onSip = () => { sipUntilRef.current = performance.now() / 1000 + 1.4; };
+    window.addEventListener('pg-mug-sip', onSip);
+    return () => window.removeEventListener('pg-mug-sip', onSip);
+  }, []);
   useFrame((state) => {
     if (!ref.current) return;
     const t = state.clock.elapsedTime;
+    const burst = sipUntilRef.current > t;          // boosted window
+    const speed = burst ? 0.95 : 0.35;              // faster during sip
+    const reach = burst ? 0.65 : 0.40;              // higher rise
     for (let i = 0; i < COUNT; i++) {
-      const cycle = (t * 0.35 + seeds[i]) % 1.0;   // 0..1 lifecycle
-      // y rises from 0 to 0.35 over the cycle
+      const cycle = (t * speed + seeds[i]) % 1.0;
       positions[i * 3]     = Math.sin(cycle * 6.0 + seeds[i] * 6.28) * 0.035 * cycle;
-      positions[i * 3 + 1] = cycle * 0.40;
+      positions[i * 3 + 1] = cycle * reach;
       positions[i * 3 + 2] = Math.cos(cycle * 5.5 + seeds[i] * 4.0) * 0.025 * cycle;
     }
     ref.current.geometry.attributes.position.needsUpdate = true;
-    // fade material by averaging lifecycle — peaks mid, fades at top
     const mat = ref.current.material as THREE.PointsMaterial;
-    mat.opacity = 0.22;
+    mat.opacity = burst ? 0.50 : 0.22;
+    mat.size    = burst ? 0.06 : 0.04;
   });
   return (
     <points ref={ref} position={origin}>
@@ -1612,8 +1695,11 @@ function Keyboard({ pos }: { pos: [number, number, number] }) {
   );
 }
 
-/* ---------- desk lamp (banker's style, small, emits warm light) ----- */
+/* ---------- desk lamp (banker's style, click to toggle) ------------ */
 function DeskLamp({ pos }: { pos: [number, number, number] }) {
+  // Toggleable on/off via click. Heffer-style — clicking the shade
+  // flicks the light on or off (emissive + pointLight both gated).
+  const [on, setOn] = useState(true);
   return (
     <group position={pos}>
       {/* base disc */}
@@ -1626,24 +1712,33 @@ function DeskLamp({ pos }: { pos: [number, number, number] }) {
         <cylinderGeometry args={[0.012, 0.012, 0.28, 10]} />
         <meshStandardMaterial color="#E8E6E2" roughness={0.4} metalness={0.1} />
       </mesh>
-      {/* lampshade — slanted box, faintly emissive underside */}
-      <mesh position={[0.05, 0.31, 0]} rotation-z={-0.45} castShadow>
+      {/* lampshade — clickable; emissive only when on */}
+      <mesh
+        position={[0.05, 0.31, 0]}
+        rotation-z={-0.45}
+        castShadow
+        onPointerEnter={() => { document.body.style.cursor = 'pointer'; }}
+        onPointerLeave={() => { document.body.style.cursor = 'default'; }}
+        onClick={(e) => { e.stopPropagation(); setOn(o => !o); }}
+      >
         <boxGeometry args={[0.16, 0.07, 0.13]} />
         <meshStandardMaterial
           color="#F2F0EC"
           roughness={0.6}
           emissive="#FFD8A0"
-          emissiveIntensity={0.20}
+          emissiveIntensity={on ? 0.20 : 0.0}
         />
       </mesh>
-      {/* warm pool of light cast onto the desk surface */}
-      <pointLight
-        position={[0.12, 0.25, 0]}
-        intensity={1.6}
-        distance={1.4}
-        decay={2}
-        color="#FFCD7E"
-      />
+      {/* warm pool of light — only when on */}
+      {on && (
+        <pointLight
+          position={[0.12, 0.25, 0]}
+          intensity={1.6}
+          distance={1.4}
+          decay={2}
+          color="#FFCD7E"
+        />
+      )}
     </group>
   );
 }
@@ -2258,20 +2353,8 @@ function OfficeScene({ phase, onMonitorClick }: {
         <meshStandardMaterial color="#F0EDE4" roughness={0.9} />
       </mesh>
 
-      {/* coffee mug — gently breathes (subtle rotation drift + tiny y-bob)
-          via LivingProp wrapper. Adds "this room is alive" feel without
-          looking janky. */}
-      <LivingProp speed={0.18} ampY={0.0015} ampRot={0.025}>
-        <mesh position={[0.65, 0.785, DESK_Z + 0.15]}>
-          <cylinderGeometry args={[0.052, 0.046, 0.10, 14]} />
-          <meshStandardMaterial color="#DCDAD6" roughness={0.55} />
-        </mesh>
-        <mesh position={[0.71, 0.785, DESK_Z + 0.15]} rotation-z={Math.PI / 2}>
-          <torusGeometry args={[0.028, 0.008, 6, 10, Math.PI]} />
-          <meshStandardMaterial color="#D8D6D2" roughness={0.55} />
-        </mesh>
-      </LivingProp>
-      {/* rising coffee steam — subtle white wisps above the mug */}
+      {/* coffee mug — clickable, click triggers a steam-puff burst. */}
+      <CoffeeMug />
       <CoffeeSteam origin={[0.65, 0.84, DESK_Z + 0.15]} />
 
       {/* small framed picture — back-right of desk */}
@@ -3062,6 +3145,68 @@ function HudOverlay({ muted, onMuteToggle }: { muted: boolean; onMuteToggle: () 
 }
 
 /* ---------- tap hint -------------------------------------------------- */
+/**
+ * First-visit welcome card. Shown ONCE per browser (localStorage
+ * flag); fades in 4 s after entry, sits in the upper-right of the
+ * scene with a brief explainer. Dismisses on click or after 14 s.
+ * Heffer-style — gives visitors who land on the 3D scene cold a hint
+ * about what to do.
+ */
+function FirstVisitWelcome() {
+  const KEY = 'pg_seen_welcome_v1';
+  const [show, setShow] = useState(false);
+  const [closing, setClosing] = useState(false);
+  useEffect(() => {
+    try {
+      if (localStorage.getItem(KEY) === '1') return;
+    } catch { /* ignore */ }
+    const t = setTimeout(() => setShow(true), 4000);
+    return () => clearTimeout(t);
+  }, []);
+  useEffect(() => {
+    if (!show) return;
+    const t = setTimeout(() => { setClosing(true); setTimeout(() => setShow(false), 400); }, 14000);
+    return () => clearTimeout(t);
+  }, [show]);
+  const dismiss = () => {
+    setClosing(true);
+    try { localStorage.setItem(KEY, '1'); } catch { /* ignore */ }
+    setTimeout(() => setShow(false), 400);
+  };
+  if (!show) return null;
+  return (
+    <div
+      onClick={dismiss}
+      style={{
+        position: 'fixed', top: '7%', right: '6%', maxWidth: 280,
+        padding: '12px 14px 10px',
+        background: 'rgba(31, 47, 39, 0.92)',
+        border: '1px solid rgba(199, 213, 195, 0.30)',
+        color: '#E8EEDF',
+        fontFamily: "ui-monospace,'SF Mono',Menlo,Consolas,monospace",
+        fontSize: 12, lineHeight: 1.5,
+        backdropFilter: 'blur(6px)' as any,
+        zIndex: 11, pointerEvents: 'auto', cursor: 'pointer',
+        boxShadow: '0 8px 24px rgba(0,0,0,0.45)',
+        opacity: closing ? 0 : 1,
+        transition: 'opacity 0.4s ease',
+        animation: closing ? 'none' : 'pg-welcome-in 0.5s cubic-bezier(0.16,1,0.3,1) both',
+      }}
+    >
+      <div style={{ fontSize: 10, opacity: 0.55, letterSpacing: '0.12em', marginBottom: 4 }}>
+        WELCOME
+      </div>
+      <div style={{ marginBottom: 6 }}>
+        This is a 3-D study. The monitor is the way in — click it to enter the desktop. The objects on the desk respond to you.
+      </div>
+      <div style={{ fontSize: 10, opacity: 0.55, marginTop: 8, textAlign: 'right' }}>
+        click to dismiss
+      </div>
+      <style>{`@keyframes pg-welcome-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }`}</style>
+    </div>
+  );
+}
+
 function TapHint({ isTouch }: { isTouch: boolean }) {
   // Touch users get the hint immediately; desktop users only after ~3 s
   // of idle (visitors land on the corner-quarter view and might not
@@ -3179,6 +3324,7 @@ export default function Office() {
         <HudOverlay muted={muted} onMuteToggle={() => setMuted(m => !m)} />
       )}
       {(phase === 'idle' || phase === 'entering') && <TapHint isTouch={isTouch} />}
+      {phase === 'idle' && <FirstVisitWelcome />}
       {phase === 'splash'  && <BiosScreen onDone={() => setPhase('entering')} />}
       {phase === 'booting' && <BootOverlay onDone={handleBootDone} />}
       {phase === 'desktop' && <InnerDesktop onClose={handleDesktopClose} embedded />}

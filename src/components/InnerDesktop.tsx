@@ -695,6 +695,34 @@ const WIN95_STYLE = `
 }
 .win95-startmenu-icon { width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 
+/* ---------- Right-click desktop context menu ----------------------- */
+.win95-context {
+  position: absolute;
+  min-width: 160px;
+  background: #c3c6ca;
+  box-shadow: inset -1px -1px #2b2b2b, inset 1px 1px #fff,
+              inset -2px -2px #86898d, inset 2px 2px #c3c6ca,
+              2px 2px 10px rgba(0,0,0,0.40);
+  padding: 2px;
+  z-index: 9500;
+  font-family: MSSerif, Arial, sans-serif;
+  font-size: 12px;
+  animation: w95-startmenu-in 0.12s ease-out;
+}
+.win95-context-item {
+  display: flex;
+  align-items: center;
+  padding: 4px 16px 4px 22px;
+  cursor: pointer;
+  user-select: none;
+  color: #000;
+}
+.win95-context-item:hover { background: #000080; color: #fff; }
+.win95-context-item.disabled { color: #86898d; cursor: default; }
+.win95-context-item.disabled:hover { background: transparent; color: #86898d; }
+.win95-context-sep { height: 0; border-top: 1px solid #86898d; border-bottom: 1px solid #fff; margin: 3px 2px; }
+.win95-context-chevron { margin-left: auto; padding-left: 24px; font-size: 10px; }
+
 /* ---------- window open/close/minimize animations ----------------- */
 .win95-window.opening {
   animation: w95-zoom-in 0.20s cubic-bezier(0.16,1,0.3,1);
@@ -1064,6 +1092,10 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
   const [topZ, setTopZ] = useState(100);
   const [startOpen, setStartOpen] = useState(false);
   const [selectedIcon, setSelectedIcon] = useState<AppId | null>(null);
+  // Right-click context menu state — {x,y} of the menu top-left in
+  // container-relative coords, or null if hidden.
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
+  const [refreshFlash, setRefreshFlash] = useState(false);   // flash anim on "Refresh"
 
   // ── Multi-window management ──────────────────────────────────────
 
@@ -1329,7 +1361,21 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
     <div
       ref={containerRef}
       className={`win95-desktop${embedded ? ' embedded' : ''}`}
-      onMouseDown={() => { setStartOpen(false); setSelectedIcon(null); }}
+      onMouseDown={() => { setStartOpen(false); setSelectedIcon(null); setCtxMenu(null); }}
+      onContextMenu={(e) => {
+        // Only show context menu when right-clicking the empty desktop
+        // (not on a window or icon). Stop the browser's native menu.
+        e.preventDefault();
+        const ce = containerRef.current?.getBoundingClientRect();
+        if (!ce) return;
+        const x = e.clientX - ce.x;
+        const y = e.clientY - ce.y;
+        // clamp so menu stays on-screen
+        const menuW = 168, menuH = 180;
+        const cx = Math.min(x, ce.width - menuW - 4);
+        const cy = Math.min(y, ce.height - menuH - 34);
+        setCtxMenu({ x: cx, y: cy });
+      }}
     >
 
       {/* ───────────── desktop icons ───────────── */}
@@ -1472,6 +1518,53 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
         </div>
       )}
 
+      {/* ───────────── right-click desktop context menu ───────────── */}
+      {ctxMenu && (
+        <div
+          className="win95-context"
+          style={{ left: ctxMenu.x, top: ctxMenu.y }}
+          onMouseDown={e => e.stopPropagation()}
+          onContextMenu={e => e.preventDefault()}
+        >
+          <div
+            className="win95-context-item"
+            onClick={() => {
+              setCtxMenu(null);
+              setRefreshFlash(true);
+              setTimeout(() => setRefreshFlash(false), 280);
+              playUiClick('down');
+            }}
+          >Refresh</div>
+          <div className="win95-context-sep" />
+          <div className="win95-context-item disabled">
+            Arrange Icons <span className="win95-context-chevron">▶</span>
+          </div>
+          <div className="win95-context-item disabled">
+            New <span className="win95-context-chevron">▶</span>
+          </div>
+          <div className="win95-context-sep" />
+          <div
+            className="win95-context-item"
+            onClick={() => { setCtxMenu(null); onStartMenuItem('home' as AppId); }}
+          >Open Home</div>
+          <div
+            className="win95-context-item"
+            onClick={() => { setCtxMenu(null); onClose(); }}
+          >Back to Study…</div>
+          <div className="win95-context-sep" />
+          <div className="win95-context-item disabled">Properties</div>
+        </div>
+      )}
+      {refreshFlash && (
+        <div style={{
+          position: 'absolute', inset: 0, background: '#3e9697', opacity: 0.55,
+          pointerEvents: 'none', zIndex: 9999,
+          animation: 'pg-refresh-flash 0.28s ease-out forwards',
+        }}>
+          <style>{`@keyframes pg-refresh-flash { from { opacity: 0.55; } to { opacity: 0; } }`}</style>
+        </div>
+      )}
+
       {/* ───────────── taskbar ───────────── */}
       <div className="win95-toolbar" onMouseDown={e => e.stopPropagation()}>
         <button
@@ -1499,10 +1592,21 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
               className={`win95-taskbar-chip ${focused ? 'focused' : ''}`}
               onMouseDown={() => playUiClick('down')}
               onMouseUp={() => playUiClick('up')}
-              onClick={() => {
+              onClick={(e) => {
+                // Find the chip's screen position so restore animates
+                // OUT from the chip (zoom-up from taskbar).
+                const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                const ce = containerRef.current?.getBoundingClientRect();
+                const fp = ce ? { x: r.x + r.width/2 - ce.x, y: r.y + r.height/2 - ce.y } : undefined;
                 if (w.minimized) {
-                  setWins(ws => ws.map(s => s.id === w.id ? { ...s, minimized: false } : s));
+                  // restore — unset minimized, replay opening animation
+                  // from the taskbar chip so it visually zooms up.
+                  setWins(ws => ws.map(s => s.id === w.id
+                    ? { ...s, minimized: false, state: 'opening' as const, openFrom: fp }
+                    : s));
                   focusApp(w.id);
+                  setTimeout(() => setWins(ws => ws.map(s => s.id === w.id
+                    ? { ...s, state: 'open' as const } : s)), 220);
                 } else if (focused) {
                   minimizeApp(w.id);
                 } else {
