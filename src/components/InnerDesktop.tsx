@@ -584,6 +584,139 @@ const WIN95_STYLE = `
   box-shadow: inset -1px -1px #2b2b2b, inset 1px 1px #fff,
               inset -2px -2px #86898d,  inset 2px 2px #c3c6ca;
 }
+
+/* ---------- desktop icons (Win95 shortcut tiles on the teal bg) ---- */
+.win95-icons {
+  position: absolute;
+  top: 14px; left: 14px;
+  display: grid;
+  grid-template-columns: 84px;
+  gap: 8px 0;
+  z-index: 1;       /* below windows but above background */
+}
+.win95-desktop.embedded .win95-icons { top: 8px; left: 8px; }
+.win95-icon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 4px 4px;
+  width: 84px;
+  cursor: pointer;
+  user-select: none;
+  border: 1px solid transparent;
+}
+.win95-icon-img {
+  width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+}
+.win95-icon-label {
+  font-family: MSSerif, Arial, sans-serif;
+  font-size: 11px;
+  color: #fff;
+  text-align: center;
+  line-height: 1.2;
+  text-shadow: 1px 1px 0 #000;
+  padding: 1px 3px;
+}
+.win95-icon:hover .win95-icon-label {
+  background: rgba(0, 0, 128, 0.55);
+}
+.win95-icon.selected .win95-icon-label {
+  background: #000080;
+  border: 1px dotted #c8c8c8;
+}
+.win95-icon.selected .win95-icon-img {
+  filter: brightness(0.65) contrast(1.2);
+}
+
+/* ---------- Start menu --------------------------------------------- */
+.win95-startmenu {
+  position: absolute;
+  left: 1px;
+  bottom: 30px;       /* sits on top of the toolbar */
+  width: 200px;
+  background: #c3c6ca;
+  box-shadow: inset -1px -1px #2b2b2b, inset 1px 1px #fff,
+              inset -2px -2px #86898d, inset 2px 2px #c3c6ca,
+              3px 3px 12px rgba(0,0,0,0.45);
+  display: flex;
+  z-index: 9000;
+  animation: w95-startmenu-in 0.14s ease-out;
+}
+@keyframes w95-startmenu-in {
+  from { transform: translateY(8px) scaleY(0.5); transform-origin: bottom; opacity: 0; }
+  to   { transform: translateY(0)   scaleY(1);   opacity: 1; }
+}
+.win95-startmenu-spine {
+  width: 26px;
+  background: linear-gradient(to bottom, #000080 0%, #1084d0 100%);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 8px;
+}
+.win95-startmenu-spine span {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  color: #fff;
+  font-family: MSSerif, Arial, sans-serif;
+  font-size: 14px;
+  font-weight: bold;
+  letter-spacing: 1px;
+}
+.win95-startmenu-spine span b { color: #c8c8c8; }
+.win95-startmenu-list {
+  flex: 1;
+  padding: 2px;
+  display: flex;
+  flex-direction: column;
+}
+.win95-startmenu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px 4px 6px;
+  font-family: MSSerif, Arial, sans-serif;
+  font-size: 12px;
+  color: #000;
+  cursor: pointer;
+  user-select: none;
+}
+.win95-startmenu-item:hover {
+  background: #000080;
+  color: #fff;
+}
+.win95-startmenu-sep {
+  height: 0;
+  border-top: 1px solid #86898d;
+  border-bottom: 1px solid #fff;
+  margin: 3px 2px;
+}
+.win95-startmenu-icon { width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+
+/* ---------- window open/close/minimize animations ----------------- */
+.win95-window.opening {
+  animation: w95-zoom-in 0.20s cubic-bezier(0.16,1,0.3,1);
+  transform-origin: var(--from-x, 50%) var(--from-y, 50%);
+}
+.win95-window.closing {
+  animation: w95-zoom-out 0.20s cubic-bezier(0.7,0,0.84,0) forwards;
+  transform-origin: var(--from-x, 50%) var(--from-y, 50%);
+}
+.win95-window.minimizing {
+  animation: w95-zoom-out 0.20s cubic-bezier(0.7,0,0.84,0) forwards;
+  transform-origin: var(--to-x, 50%) 100%;
+}
+@keyframes w95-zoom-in {
+  0%   { transform: scale(0.06); opacity: 0; }
+  60%  { opacity: 1; }
+  100% { transform: scale(1);    opacity: 1; }
+}
+@keyframes w95-zoom-out {
+  0%   { transform: scale(1);    opacity: 1; }
+  100% { transform: scale(0.06); opacity: 0; }
+}
 `;
 
 /* ---------- synthesised UI click sounds (Henry Heffernan pattern, MIT) ---
@@ -682,6 +815,101 @@ const NAV_LINKS: { label: string; href: string }[] = [
   { label: 'LIBRARY',  href: '/library'  },
   { label: 'NOW',      href: '/now'      },
 ];
+
+/* ---------- App registry (multi-window) -------------------------------- */
+type AppId = 'home' | 'research' | 'talks' | 'library' | 'now' | 'cv';
+
+/* small 32×32 Win95-style shortcut icons (one per app). Drawn inline as
+ * SVG using primitive shapes + the classic Win95 palette so each app has
+ * a distinct silhouette on the desktop background. */
+function HomeIconLg() {
+  return (
+    <svg width="32" height="32" viewBox="0 0 32 32">
+      <rect x="6" y="14" width="20" height="13" fill="#dcdfe4" stroke="#000" />
+      <polygon points="16,4 4,15 28,15" fill="#a82020" stroke="#000" />
+      <rect x="13" y="19" width="6" height="8" fill="#7a3a13" stroke="#000" />
+      <rect x="14" y="20" width="4" height="3" fill="#f9d56e" />
+    </svg>
+  );
+}
+function ResearchIconLg() {
+  return (
+    <svg width="32" height="32" viewBox="0 0 32 32">
+      <rect x="6" y="3" width="20" height="26" fill="#f4eedb" stroke="#000" />
+      <rect x="6" y="3" width="20" height="4" fill="#3e9697" stroke="#000" />
+      {[10, 14, 18, 22].map(y => <line key={y} x1="9" y1={y} x2="23" y2={y} stroke="#3a3a3a" strokeWidth="1" />)}
+      <rect x="18" y="22" width="6" height="3" fill="#f25022" stroke="#000" />
+    </svg>
+  );
+}
+function TalksIconLg() {
+  return (
+    <svg width="32" height="32" viewBox="0 0 32 32">
+      <rect x="14" y="3" width="4" height="14" rx="2" fill="#2a2a2a" stroke="#000" />
+      <rect x="13" y="17" width="6" height="2" fill="#2a2a2a" />
+      <rect x="11" y="19" width="10" height="2" fill="#9a9a9a" stroke="#000" />
+      <rect x="6"  y="24" width="20" height="5" fill="#dcdfe4" stroke="#000" />
+      <line x1="9"  y1="26.5" x2="23" y2="26.5" stroke="#3a3a3a" />
+    </svg>
+  );
+}
+function LibraryIconLg() {
+  return (
+    <svg width="32" height="32" viewBox="0 0 32 32">
+      <rect x="6"  y="6" width="4" height="22" fill="#a82020" stroke="#000" />
+      <rect x="11" y="6" width="4" height="22" fill="#3a8b8c" stroke="#000" />
+      <rect x="16" y="9" width="4" height="19" fill="#f9bd2b" stroke="#000" />
+      <rect x="21" y="6" width="4" height="22" fill="#4b6a36" stroke="#000" />
+      <rect x="4"  y="28" width="24" height="2" fill="#6a4a2a" stroke="#000" />
+    </svg>
+  );
+}
+function NowIconLg() {
+  return (
+    <svg width="32" height="32" viewBox="0 0 32 32">
+      <rect x="5" y="6" width="22" height="22" fill="#fff" stroke="#000" />
+      <rect x="5" y="6" width="22" height="5" fill="#a82020" stroke="#000" />
+      <line x1="11" y1="6" x2="11" y2="3" stroke="#000" strokeWidth="2" />
+      <line x1="21" y1="6" x2="21" y2="3" stroke="#000" strokeWidth="2" />
+      <circle cx="16" cy="20" r="6" fill="none" stroke="#000" strokeWidth="1.4" />
+      <line x1="16" y1="20" x2="16" y2="16" stroke="#000" strokeWidth="1.4" />
+      <line x1="16" y1="20" x2="19" y2="22" stroke="#000" strokeWidth="1.4" />
+    </svg>
+  );
+}
+function CvIconLg() {
+  return (
+    <svg width="32" height="32" viewBox="0 0 32 32">
+      <rect x="7" y="3" width="18" height="26" fill="#fff" stroke="#000" />
+      <polygon points="19,3 25,9 19,9" fill="#dcdfe4" stroke="#000" />
+      {[12, 15, 18, 21, 24].map(y => <line key={y} x1="10" y1={y} x2="22" y2={y} stroke="#777" strokeWidth="0.8" />)}
+      <rect x="10" y="6" width="6" height="1.5" fill="#000" />
+    </svg>
+  );
+}
+
+interface AppDef {
+  id: AppId;
+  label: string;       // icon + taskbar label
+  title: string;       // window titlebar full text
+  path: string;        // url path (also iframe src; '/' = inline home content)
+  Icon: () => React.ReactElement;
+  // default window geometry on a desktop-sized canvas
+  defW: number;
+  defH: number;
+  // offset for default placement (so windows cascade)
+  cascadeIdx: number;
+}
+const APPS: AppDef[] = [
+  { id: 'home',     label: 'Home',     title: 'Prashant Garg — Home',     path: '/',         Icon: HomeIconLg,     defW: 720, defH: 540, cascadeIdx: 0 },
+  { id: 'research', label: 'Research', title: 'Research — Prashant Garg', path: '/research', Icon: ResearchIconLg, defW: 760, defH: 560, cascadeIdx: 1 },
+  { id: 'talks',    label: 'Talks',    title: 'Talks — Prashant Garg',    path: '/talks',    Icon: TalksIconLg,    defW: 700, defH: 540, cascadeIdx: 2 },
+  { id: 'library',  label: 'Library',  title: 'Library — Prashant Garg',  path: '/library',  Icon: LibraryIconLg,  defW: 720, defH: 540, cascadeIdx: 3 },
+  { id: 'now',      label: 'Now',      title: 'Now — Prashant Garg',      path: '/now',      Icon: NowIconLg,      defW: 660, defH: 520, cascadeIdx: 4 },
+  { id: 'cv',       label: 'CV',       title: 'CV — Prashant Garg',       path: '/cv',       Icon: CvIconLg,       defW: 780, defH: 580, cascadeIdx: 5 },
+];
+const APP_BY_ID: Record<AppId, AppDef> = APPS.reduce((acc, a) => { acc[a.id] = a; return acc; }, {} as any);
+const APP_BY_PATH: Record<string, AppDef> = APPS.reduce((acc, a) => { acc[a.path] = a; return acc; }, {} as any);
 
 /* ---------- Win95 NavLink ---------------------------------------------- */
 // Accepts an optional `onNavigate` so the parent InnerDesktop can route
@@ -797,53 +1025,173 @@ interface InnerDesktopProps {
   embedded?: boolean;
 }
 
+// ── Multi-window state types ──────────────────────────────────────
+interface OpenWin {
+  id: AppId;
+  zIndex: number;
+  minimized: boolean;
+  maximized: boolean;
+  // unmaximized geometry
+  x: number; y: number; w: number; h: number;
+  // animation state
+  openFrom?: { x: number; y: number };   // origin point for zoom-in
+  state: 'opening' | 'open' | 'closing' | 'minimizing';
+}
+
 export default function InnerDesktop({ onClose, embedded = false }: InnerDesktopProps) {
   const [time, setTime] = useState(getTime);
-  const [win, setWin] = useState<WinState>(getInitial);
-  // When embedded inside the CRT (the desktop container is only as big
-  // as the CRT screen rect), default to MAXIMIZED so the inner window
-  // fills the bezel cleanly instead of overflowing the right edge with
-  // its 520 px min-width chrome.
-  const [isMaximized, setIsMaximized] = useState(embedded);
-  const [preMax, setPreMax] = useState<WinState | null>(null);
-  const [isMinimized, setIsMinimized] = useState(false);
-  const [isActive, setIsActive] = useState(true);
-
-  // ── INTERNAL ROUTING ─────────────────────────────────────────────
-  // currentPath drives what shows in the main content area:
-  //   - '/'        → inline React HOME content (the original home view)
-  //   - any other  → an <iframe> loading that path + ?embed=1, which
-  //                  renders just the page body (Win95Layout sees the
-  //                  embed flag and strips its own chrome).
-  // Nav link clicks update currentPath + pushState — NO full page
-  // reload, so the 3D scene + audio + camera all survive.
-  const [currentPath, setCurrentPath] = useState<string>(() => {
-    if (typeof window === 'undefined') return '/';
-    return window.location.pathname || '/';
-  });
-  // Navigate inside the monitor: update URL + content, no page reload.
-  const navigateInside = useCallback((href: string) => {
-    if (typeof window === 'undefined') return;
-    if (href === currentPath) return;
-    try { window.history.pushState({}, '', href); } catch { /* noop */ }
-    setCurrentPath(href);
-  }, [currentPath]);
-  // Handle browser back/forward
+  // Container ref so we can measure the desktop bounding rect for
+  // window cascade defaults + animation origin transforms.
+  const containerRef = useRef<HTMLDivElement>(null);
+  // Container size — recomputed on resize. Used so the cascade window
+  // defaults size sensibly in the embedded CRT viewport vs full-screen.
+  const [containerSize, setContainerSize] = useState({ w: 800, h: 600 });
   useEffect(() => {
-    const onPop = () => setCurrentPath(window.location.pathname || '/');
-    window.addEventListener('popstate', onPop);
-    return () => window.removeEventListener('popstate', onPop);
+    const measure = () => {
+      const el = containerRef.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      setContainerSize({ w: r.width, h: r.height });
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    if (containerRef.current) ro.observe(containerRef.current);
+    return () => ro.disconnect();
   }, []);
-  // Receive {type:'pg-nav', href} from iframe content (see Win95Layout
-  // embed-mode interceptor) and route via navigateInside.
+
+  // Open windows + zIndex counter + Start-menu visibility
+  const [wins, setWins] = useState<OpenWin[]>([]);
+  const [topZ, setTopZ] = useState(100);
+  const [startOpen, setStartOpen] = useState(false);
+  const [selectedIcon, setSelectedIcon] = useState<AppId | null>(null);
+
+  // ── Multi-window management ──────────────────────────────────────
+
+  // Default cascade geometry for a new window. Cascade origin is RIGHT
+  // of the desktop-icon column (icons live at left:14, width:84) so
+  // windows don't cover the icons. Successive windows step down+right.
+  const defaultGeo = useCallback((app: AppDef) => {
+    const iconColWidth = 110;     // icons + padding
+    const margin = 14;
+    const startX = iconColWidth + margin;
+    const startY = margin;
+    const maxW = Math.max(360, containerSize.w - startX - margin);
+    const maxH = Math.max(280, containerSize.h - margin - 30 /* taskbar */);
+    const w = Math.min(app.defW, maxW);
+    const h = Math.min(app.defH, maxH);
+    const stepX = 32, stepY = 26;
+    const x = startX + ((app.cascadeIdx * stepX) % Math.max(40, maxW - w));
+    const y = startY + ((app.cascadeIdx * stepY) % Math.max(40, maxH - h));
+    return { x, y, w, h };
+  }, [containerSize]);
+
+  // Bring a window to the front by bumping its z-index.
+  const focusApp = useCallback((id: AppId) => {
+    setTopZ(z => {
+      const nz = z + 1;
+      setWins(ws => ws.map(w => w.id === id ? { ...w, zIndex: nz, minimized: false } : w));
+      return nz;
+    });
+  }, []);
+
+  // Open an app — restore + focus if already open, otherwise add a
+  // new window to the array. `fromPoint` (icon centre) anchors the
+  // zoom-in animation's transform-origin.
+  const openApp = useCallback((id: AppId, fromPoint?: { x: number; y: number }) => {
+    const app = APP_BY_ID[id]; if (!app) return;
+    setWins(ws => {
+      const existing = ws.find(w => w.id === id);
+      if (existing) {
+        // already open → restore + focus (focusApp also bumps z, so we
+        // only need to clear minimized + state here; z is set below)
+        return ws.map(w => w.id === id
+          ? { ...w, minimized: false, state: 'open' as const }
+          : w);
+      }
+      const geo = defaultGeo(app);
+      const nextZ = topZ + 1;
+      return [...ws, {
+        id, zIndex: nextZ,
+        minimized: false, maximized: false,
+        ...geo,
+        openFrom: fromPoint, state: 'opening',
+      }];
+    });
+    setTopZ(z => z + 1);
+    // promote to URL after a tick so opening animations show
+    setTimeout(() => {
+      try { window.history.pushState({}, '', app.path); } catch { /* */ }
+      // mark animation done
+      setWins(ws => ws.map(w => w.id === id ? { ...w, state: 'open' as const } : w));
+    }, 220);
+    if (fromPoint) focusApp(id);
+  }, [defaultGeo, topZ, focusApp]);
+
+  // Close an app — play closing animation, then remove from array
+  // and update URL to whatever is now the topmost open window (or '/').
+  const closeApp = useCallback((id: AppId) => {
+    setWins(ws => ws.map(w => w.id === id ? { ...w, state: 'closing' as const } : w));
+    setTimeout(() => {
+      setWins(ws => {
+        const remaining = ws.filter(w => w.id !== id);
+        // pick new top window, URL follows
+        const top = [...remaining].filter(w => !w.minimized).sort((a,b) => b.zIndex - a.zIndex)[0];
+        const newPath = top ? APP_BY_ID[top.id].path : '/';
+        try { window.history.pushState({}, '', newPath); } catch { /* */ }
+        return remaining;
+      });
+    }, 220);
+  }, []);
+
+  // Minimize / restore / maximize toggle
+  const minimizeApp = useCallback((id: AppId) => {
+    setWins(ws => ws.map(w => w.id === id ? { ...w, state: 'minimizing' as const } : w));
+    setTimeout(() => {
+      setWins(ws => ws.map(w => w.id === id ? { ...w, minimized: true, state: 'open' as const } : w));
+    }, 200);
+  }, []);
+  const toggleMaximize = useCallback((id: AppId) => {
+    setWins(ws => ws.map(w => w.id === id ? { ...w, maximized: !w.maximized } : w));
+  }, []);
+
+  // Receive in-iframe link clicks (Win95Layout embed-mode bootstrap
+  // posts {type:'pg-nav', href}) and route them as app openings.
   useEffect(() => {
     const onMsg = (e: MessageEvent) => {
       const d = e.data as any;
-      if (d && d.type === 'pg-nav' && typeof d.href === 'string') navigateInside(d.href);
+      if (!d || d.type !== 'pg-nav' || typeof d.href !== 'string') return;
+      const href = d.href;
+      const app = APP_BY_PATH[href];
+      if (app) openApp(app.id);
+      // else: external-ish path — ignore for now
     };
     window.addEventListener('message', onMsg);
     return () => window.removeEventListener('message', onMsg);
-  }, [navigateInside]);
+  }, [openApp]);
+
+  // Initial-load app: only auto-open if the URL points to a specific
+  // app (not '/'). '/' shows the empty desktop with icons so the user
+  // can pick a section — like a real Windows desktop.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const path = window.location.pathname || '/';
+    if (path === '/') return;     // empty desktop on home url
+    const app = APP_BY_PATH[path];
+    if (app) openApp(app.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // popstate (back/forward) — open the app for the new path if not
+  // already, else focus it.
+  useEffect(() => {
+    const onPop = () => {
+      const path = window.location.pathname || '/';
+      const app = APP_BY_PATH[path];
+      if (app) openApp(app.id);
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, [openApp]);
 
   // ---------- ambient audio (continues from the study) ----------
   const [muted, setMuted] = useState<boolean>(() => {
@@ -892,31 +1240,28 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
     try { sessionStorage.setItem(SS_PHASE, 'desktop'); } catch { /* ignore */ }
   }, []);
 
-  // persist window geometry across navigations
-  useEffect(() => {
-    try { sessionStorage.setItem(SS_WIN, JSON.stringify(win)); } catch { /* ignore */ }
-  }, [win]);
 
-  // tick clock
+  // ── tick clock ────────────────────────────────────────────────────
   useEffect(() => {
     const id = setInterval(() => setTime(getTime()), 5000);
     return () => clearInterval(id);
   }, []);
 
-  /* ---- drag title bar ---- */
-  const startDrag = (e: React.MouseEvent) => {
-    if (isMaximized) return;
-    e.preventDefault();
-    e.stopPropagation();
+  // ── per-window drag/resize handlers ────────────────────────────────
+  const startDragWin = (id: AppId) => (e: React.MouseEvent) => {
+    const w = wins.find(x => x.id === id);
+    if (!w || w.maximized) return;
+    e.preventDefault(); e.stopPropagation();
+    focusApp(id);
     const sx = e.clientX, sy = e.clientY;
-    const ox = win.x, oy = win.y;
+    const ox = w.x, oy = w.y;
     const onMove = (ev: MouseEvent) => {
-      setWin(s => ({
-        ...s,
-        // keep at least the title bar in viewport
-        x: Math.max(-s.w + 80, Math.min(window.innerWidth - 80, ox + ev.clientX - sx)),
-        y: Math.max(0,          Math.min(window.innerHeight - 60, oy + ev.clientY - sy)),
-      }));
+      const dx = ev.clientX - sx, dy = ev.clientY - sy;
+      const maxX = containerSize.w - 80;
+      const maxY = containerSize.h - 60;
+      setWins(ws => ws.map(s => s.id === id
+        ? { ...s, x: Math.max(-s.w + 80, Math.min(maxX, ox + dx)), y: Math.max(0, Math.min(maxY, oy + dy)) }
+        : s));
     };
     const onUp = () => {
       document.removeEventListener('mousemove', onMove);
@@ -927,20 +1272,17 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
     document.addEventListener('mousemove', onMove);
     document.addEventListener('mouseup', onUp);
   };
-
-  /* ---- resize bottom-right grip ---- */
-  const startResize = (e: React.MouseEvent) => {
-    if (isMaximized) return;
-    e.preventDefault();
-    e.stopPropagation();
+  const startResizeWin = (id: AppId) => (e: React.MouseEvent) => {
+    const w = wins.find(x => x.id === id);
+    if (!w || w.maximized) return;
+    e.preventDefault(); e.stopPropagation();
     const sx = e.clientX, sy = e.clientY;
-    const ow = win.w, oh = win.h;
+    const ow = w.w, oh = w.h;
     const onMove = (ev: MouseEvent) => {
-      setWin(s => ({
-        ...s,
-        w: Math.max(520, ow + ev.clientX - sx),
-        h: Math.max(360, oh + ev.clientY - sy),
-      }));
+      const dw = ev.clientX - sx, dh = ev.clientY - sy;
+      setWins(ws => ws.map(s => s.id === id
+        ? { ...s, w: Math.max(360, ow + dw), h: Math.max(260, oh + dh) }
+        : s));
     };
     const onUp = () => {
       document.removeEventListener('mousemove', onMove);
@@ -952,232 +1294,193 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
     document.addEventListener('mouseup', onUp);
   };
 
-  /* ---- maximize / restore ---- */
-  const toggleMaximize = () => {
-    if (isMaximized) {
-      if (preMax) setWin(preMax);
-      setIsMaximized(false);
-    } else {
-      setPreMax(win);
-      setIsMaximized(true);
-    }
+  // Topmost (non-minimized) window is the "focused" one — drives the
+  // titlebar colour and taskbar chip sunken state.
+  const topId: AppId | null = (() => {
+    const v = [...wins].filter(w => !w.minimized).sort((a,b) => b.zIndex - a.zIndex)[0];
+    return v ? v.id : null;
+  })();
+
+  // ── icon click + Start-menu open ──────────────────────────────────
+  const onIconActivate = (id: AppId, e: React.MouseEvent) => {
+    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const ce = containerRef.current?.getBoundingClientRect();
+    const fp = ce ? { x: r.x + r.width/2 - ce.x, y: r.y + r.height/2 - ce.y } : undefined;
+    playUiClick('down');
+    openApp(id, fp);
+    setSelectedIcon(null);
   };
-
-  /* ---- minimize / restore ---- */
-  const minimize = () => { setIsMinimized(true); setIsActive(false); };
-  const restore  = () => { setIsMinimized(false); setIsActive(true); };
-
-  /* ---- taskbar chip click ---- */
-  const onChipClick = () => {
-    if (isMinimized) { restore(); return; }
-    if (isActive)    { minimize(); return; }
-    setIsActive(true);
+  const onStartMenuItem = (id: AppId) => {
+    // pick a sensible animation origin: the Start button position
+    const ce = containerRef.current?.getBoundingClientRect();
+    const fp = ce ? { x: 30, y: containerSize.h - 24 } : undefined;
+    openApp(id, fp);
+    setStartOpen(false);
   };
-
-  const titleBg = isActive ? '#0000a3' : '#686868';
-  const chipFocused = !isMinimized && isActive;
-
-  // window geometry: maximized fills viewport minus taskbar (30px)
-  const windowStyle: React.CSSProperties = isMaximized
-    ? { left: 0, top: 0, width: '100%', height: 'calc(100% - 30px)' }
-    : { left: win.x, top: win.y, width: win.w, height: win.h };
+  const shutDown = () => {
+    setStartOpen(false);
+    // closing the desktop returns to the 3D study (parent's onClose)
+    onClose();
+  };
 
   return (
-    /* clicking the teal desktop background deactivates the window */
-    <div className={`win95-desktop${embedded ? ' embedded' : ''}`} onMouseDown={() => setIsActive(false)}>
+    /* The whole desktop. Clicking the teal background closes Start +
+       deselects icons. */
+    <div
+      ref={containerRef}
+      className={`win95-desktop${embedded ? ' embedded' : ''}`}
+      onMouseDown={() => { setStartOpen(false); setSelectedIcon(null); }}
+    >
 
-      {!isMinimized && (
-        /* clicking anywhere on the window activates it */
-        <div
-          className="win95-window"
-          style={windowStyle}
-          onMouseDown={e => { e.stopPropagation(); setIsActive(true); }}
-        >
-          {/* ---- title bar ---- */}
+      {/* ───────────── desktop icons ───────────── */}
+      <div className="win95-icons" onMouseDown={e => e.stopPropagation()}>
+        {APPS.map(app => (
           <div
-            className="win95-titlebar"
-            style={{ background: titleBg, cursor: isMaximized ? 'default' : 'move' }}
-            onMouseDown={startDrag}
-            onDoubleClick={e => { e.stopPropagation(); toggleMaximize(); }}
+            key={app.id}
+            className={`win95-icon${selectedIcon === app.id ? ' selected' : ''}`}
+            onMouseDown={e => { e.stopPropagation(); setSelectedIcon(app.id); playUiClick('down'); }}
+            onMouseUp={() => playUiClick('up')}
+            onDoubleClick={e => onIconActivate(app.id, e)}
+            // single-click on touch acts as activate too
+            onClick={(e) => { if (window.matchMedia('(hover: none)').matches) onIconActivate(app.id, e); }}
+            title={app.label}
           >
-            <MonitorIcon />
-            <span className="win95-titlebar-title">Prashant Garg — Academic</span>
-            <button
-              className="win95-titlebtn"
-              title="Minimise"
-              onMouseDown={e => { e.stopPropagation(); playUiClick('down'); }}
-              onMouseUp={() => playUiClick('up')}
-              onClick={e => { e.stopPropagation(); minimize(); }}
-            >_</button>
-            <button
-              className="win95-titlebtn"
-              title={isMaximized ? 'Restore' : 'Maximise'}
-              onMouseDown={e => { e.stopPropagation(); playUiClick('down'); }}
-              onMouseUp={() => playUiClick('up')}
-              onClick={e => { e.stopPropagation(); toggleMaximize(); }}
-            >□</button>
-            <button
-              className="win95-titlebtn win95-titlebtn-close"
-              title="Close / back to study"
-              onMouseDown={e => { e.stopPropagation(); playUiClick('down'); }}
-              onMouseUp={() => playUiClick('up')}
-              onClick={e => { e.stopPropagation(); onClose(); }}
-            >✕</button>
+            <div className="win95-icon-img"><app.Icon /></div>
+            <div className="win95-icon-label">{app.label}</div>
           </div>
+        ))}
+      </div>
 
-          {/* ---- body: left nav + right content ---- */}
-          <div className="win95-body">
-            <nav className="win95-nav">
-              <div className="win95-nav-name">Prashant<br/>Garg</div>
-              <div className="win95-nav-subtitle">Economist · Postdoc</div>
-              <div className="win95-nav-links">
-                {NAV_LINKS.map(l => (
-                  <NavLink
-                    key={l.href}
-                    label={l.label}
-                    href={l.href}
-                    onNavigate={navigateInside}
-                    active={currentPath === l.href || currentPath.startsWith(l.href + '/')}
-                  />
-                ))}
-              </div>
-              <div className="win95-nav-spacer" />
-              <span
-                className="win95-nav-back"
-                onMouseDown={() => playUiClick('down')}
+      {/* ───────────── open windows ───────────── */}
+      {wins.map(w => {
+        const app = APP_BY_ID[w.id];
+        const isTop = topId === w.id;
+        if (w.minimized && w.state !== 'minimizing') return null;
+        // Position/size. maximized fills the desktop minus taskbar.
+        const style: React.CSSProperties = w.maximized
+          ? { left: 0, top: 0, width: '100%', height: 'calc(100% - 30px)', zIndex: w.zIndex }
+          : { left: w.x, top: w.y, width: w.w, height: w.h, zIndex: w.zIndex };
+        // transform-origin for opening/closing zoom anim — anchored to the
+        // icon position where the window was launched from.
+        if (w.openFrom) {
+          (style as any)['--from-x'] = `${w.openFrom.x - (w.maximized ? 0 : w.x)}px`;
+          (style as any)['--from-y'] = `${w.openFrom.y - (w.maximized ? 0 : w.y)}px`;
+        }
+        const classes = ['win95-window'];
+        if (w.state === 'opening')    classes.push('opening');
+        if (w.state === 'closing')    classes.push('closing');
+        if (w.state === 'minimizing') classes.push('minimizing');
+        const titleBg = isTop ? '#0000a3' : '#686868';
+        return (
+          <div
+            key={w.id}
+            className={classes.join(' ')}
+            style={style}
+            onMouseDown={e => { e.stopPropagation(); focusApp(w.id); }}
+          >
+            {/* title bar */}
+            <div
+              className="win95-titlebar"
+              style={{ background: titleBg, cursor: w.maximized ? 'default' : 'move' }}
+              onMouseDown={startDragWin(w.id)}
+              onDoubleClick={e => { e.stopPropagation(); toggleMaximize(w.id); }}
+            >
+              <span style={{ display: 'flex', flexShrink: 0, transform: 'scale(0.7)', transformOrigin: 'center' }}><app.Icon /></span>
+              <span className="win95-titlebar-title">{app.title}</span>
+              <button
+                className="win95-titlebtn"
+                title="Minimise"
+                onMouseDown={e => { e.stopPropagation(); playUiClick('down'); }}
                 onMouseUp={() => playUiClick('up')}
-                onClick={onClose}
-              >← back to study</span>
-            </nav>
+                onClick={e => { e.stopPropagation(); minimizeApp(w.id); }}
+              >_</button>
+              <button
+                className="win95-titlebtn"
+                title={w.maximized ? 'Restore' : 'Maximise'}
+                onMouseDown={e => { e.stopPropagation(); playUiClick('down'); }}
+                onMouseUp={() => playUiClick('up')}
+                onClick={e => { e.stopPropagation(); toggleMaximize(w.id); }}
+              >□</button>
+              <button
+                className="win95-titlebtn win95-titlebtn-close"
+                title="Close"
+                onMouseDown={e => { e.stopPropagation(); playUiClick('down'); }}
+                onMouseUp={() => playUiClick('up')}
+                onClick={e => { e.stopPropagation(); closeApp(w.id); }}
+              >✕</button>
+            </div>
 
+            {/* content area — inline HOME for app=home, iframe otherwise */}
             <div className="win95-content">
-              {currentPath !== '/' && (
+              {w.id === 'home' ? (
+                <HomeContent openApp={openApp} />
+              ) : (
                 <iframe
-                  key={currentPath}
-                  src={currentPath + (currentPath.includes('?') ? '&' : '?') + 'embed=1'}
+                  src={app.path + (app.path.includes('?') ? '&' : '?') + 'embed=1'}
                   className="win95-iframe"
-                  title="Prashant Garg site"
+                  title={app.title}
                   style={{ width: '100%', height: '100%', border: 0, display: 'block', background: '#EFEAD8' }}
                 />
               )}
-              {currentPath === '/' && (
-              <div className="win95-home">
-                <div className="win95-home-header">
-                  <div className="win95-home-name">Prashant<br/>Garg</div>
-                  <div className="win95-home-subtitle">
-                    Economist · Research Associate at Cambridge
-                  </div>
-                  <div className="win95-home-stats">
-                    <span>{LATEST_PAPER_COUNT} papers</span>
-                    <span className="dot">·</span>
-                    <span>{LATEST_TALK_COUNT} talks</span>
-                    {INCOMING_AFFILIATION && (
-                      <>
-                        <span className="dot">·</span>
-                        <span title="Incoming">→ {(INCOMING_AFFILIATION as any).org}</span>
-                      </>
-                    )}
-                  </div>
-                </div>
+            </div>
 
-                {/* Two-card grid: most recent paper + current focus ("now") */}
-                <div className="win95-home-grid">
-                  {LATEST_PAPER && (
-                    <div className="win95-card">
-                      <div className="win95-card-label">Latest paper</div>
-                      <div className="win95-card-title">{LATEST_PAPER.title}</div>
-                      <div className="win95-card-meta">
-                        {LATEST_PAPER.venue || 'Working paper'}{LATEST_PAPER.year ? ` · ${LATEST_PAPER.year}` : ''}
-                        {LATEST_PAPER.coauthors.length ? ` · with ${LATEST_PAPER.coauthors.join(', ')}` : ''}
-                      </div>
-                      <a
-                        className="win95-card-link"
-                        href={`/research/${LATEST_PAPER.slug}`}
-                        onMouseDown={() => playUiClick('down')}
-                        onMouseUp={() => playUiClick('up')}
-                      >Open paper →</a>
-                    </div>
-                  )}
-                  <div className="win95-card">
-                    <div className="win95-card-label">Now</div>
-                    <div className="win95-card-text">
-                      Cambridge, May 2026. Working on the <strong>Global Automation Atlas</strong> — mapping where automation arrives across global production networks and what it displaces.
-                    </div>
-                    <a
-                      className="win95-card-link"
-                      href="/now"
-                      onMouseDown={() => playUiClick('down')}
-                      onMouseUp={() => playUiClick('up')}
-                    >Read more →</a>
-                  </div>
+            {/* status bar */}
+            <div className="win95-statusbar">
+              <span className="win95-statusbar-cell wide">Ready</span>
+              <span className="win95-statusbar-cell">prashantgarg.os</span>
+              <span className="win95-statusbar-cell sm" />
+              {!w.maximized && (
+                <div className="win95-resize-grip" onMouseDown={startResizeWin(w.id)}>
+                  <ResizeGripIcon />
                 </div>
-
-                {/* AFFILIATIONS strip — all roles from data */}
-                <div className="win95-affil">
-                  <div className="win95-affil-label">Affiliations</div>
-                  <div className="win95-affil-list">
-                    {affiliations.map((a: any, i: number) => (
-                      <div className="win95-affil-row" key={i}>
-                        <span className="win95-affil-role">{a.role} ·</span>
-                        <a
-                          href={a.url}
-                          target="_blank"
-                          rel="noopener"
-                          className="win95-affil-org"
-                          onMouseDown={() => playUiClick('down')}
-                          onMouseUp={() => playUiClick('up')}
-                        >{a.org}</a>
-                        {a.current  && <span className="win95-affil-tag current">current</span>}
-                        {a.incoming && <span className="win95-affil-tag incoming">incoming</span>}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* CONTACT strip — email (selectable, copyable) + buttons */}
-                <ContactStrip />
-
-                <div className="win95-home-buttons">
-                  {NAV_LINKS.map(l => (
-                    <button
-                      key={l.href}
-                      className="win95-btn"
-                      onMouseDown={() => playUiClick('down')}
-                      onMouseUp={() => playUiClick('up')}
-                      onClick={() => navigateInside(l.href)}
-                    >
-                      {l.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
               )}
             </div>
           </div>
+        );
+      })}
 
-          {/* ---- status bar ---- */}
-          <div className="win95-statusbar">
-            <span className="win95-statusbar-cell wide">Ready</span>
-            <span className="win95-statusbar-cell">prashantgarg.os</span>
-            <span className="win95-statusbar-cell sm" />
-            {/* resize grip — only when not maximized */}
-            {!isMaximized && (
-              <div className="win95-resize-grip" onMouseDown={startResize}>
-                <ResizeGripIcon />
+      {/* ───────────── Start menu ───────────── */}
+      {startOpen && (
+        <div className="win95-startmenu" onMouseDown={e => e.stopPropagation()}>
+          <div className="win95-startmenu-spine"><span><b>prashant</b>garg.os</span></div>
+          <div className="win95-startmenu-list">
+            {APPS.map(app => (
+              <div
+                key={app.id}
+                className="win95-startmenu-item"
+                onMouseDown={() => playUiClick('down')}
+                onMouseUp={() => playUiClick('up')}
+                onClick={() => onStartMenuItem(app.id)}
+              >
+                <div className="win95-startmenu-icon"><app.Icon /></div>
+                {app.label}
               </div>
-            )}
+            ))}
+            <div className="win95-startmenu-sep" />
+            <div
+              className="win95-startmenu-item"
+              onMouseDown={() => playUiClick('down')}
+              onMouseUp={() => playUiClick('up')}
+              onClick={shutDown}
+            >
+              <div className="win95-startmenu-icon">
+                <svg width="20" height="20" viewBox="0 0 20 20"><circle cx="10" cy="10" r="7" fill="none" stroke="#c00" strokeWidth="2"/><line x1="10" y1="3" x2="10" y2="10" stroke="#c00" strokeWidth="2"/></svg>
+              </div>
+              Shut Down…
+            </div>
           </div>
         </div>
       )}
 
-      {/* ---- taskbar ---- */}
-      <div className="win95-toolbar">
+      {/* ───────────── taskbar ───────────── */}
+      <div className="win95-toolbar" onMouseDown={e => e.stopPropagation()}>
         <button
           className="win95-start-btn"
           onMouseDown={() => playUiClick('down')}
           onMouseUp={() => playUiClick('up')}
+          onClick={() => setStartOpen(o => !o)}
         >
-          <svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+          <svg width="16" height="16" viewBox="0 0 16 16">
             <rect x="0" y="0" width="7" height="7" fill="#f25022"/>
             <rect x="9" y="0" width="7" height="7" fill="#7fba00"/>
             <rect x="0" y="9" width="7" height="7" fill="#00a4ef"/>
@@ -1186,16 +1489,32 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
           Start
         </button>
 
-        {/* window chip — always visible, sunken when active */}
-        <button
-          className={`win95-taskbar-chip ${chipFocused ? 'focused' : ''}`}
-          onMouseDown={() => playUiClick('down')}
-          onMouseUp={() => playUiClick('up')}
-          onClick={onChipClick}
-        >
-          <MonitorIcon />
-          Prashant Garg
-        </button>
+        {/* one taskbar chip per open window */}
+        {wins.map(w => {
+          const app = APP_BY_ID[w.id];
+          const focused = topId === w.id && !w.minimized;
+          return (
+            <button
+              key={w.id}
+              className={`win95-taskbar-chip ${focused ? 'focused' : ''}`}
+              onMouseDown={() => playUiClick('down')}
+              onMouseUp={() => playUiClick('up')}
+              onClick={() => {
+                if (w.minimized) {
+                  setWins(ws => ws.map(s => s.id === w.id ? { ...s, minimized: false } : s));
+                  focusApp(w.id);
+                } else if (focused) {
+                  minimizeApp(w.id);
+                } else {
+                  focusApp(w.id);
+                }
+              }}
+            >
+              <span style={{ display: 'flex', transform: 'scale(0.55)', transformOrigin: 'center', flexShrink: 0 }}><app.Icon /></span>
+              {app.label}
+            </button>
+          );
+        })}
 
         <div className="win95-toolbar-spacer" />
         {/* system tray: mute toggle */}
@@ -1208,6 +1527,97 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
           {muted ? <VolumeOffIcon /> : <VolumeOnIcon />}
         </button>
         <div className="win95-clock">{time}</div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- HOME content — the inline React view for app=home -------- */
+function HomeContent({ openApp }: { openApp: (id: AppId, fp?: { x: number; y: number }) => void }) {
+  return (
+    <div className="win95-home">
+      <div className="win95-home-header">
+        <div className="win95-home-name">Prashant<br/>Garg</div>
+        <div className="win95-home-subtitle">
+          Economist · Research Associate at Cambridge
+        </div>
+        <div className="win95-home-stats">
+          <span>{LATEST_PAPER_COUNT} papers</span>
+          <span className="dot">·</span>
+          <span>{LATEST_TALK_COUNT} talks</span>
+          {INCOMING_AFFILIATION && (
+            <>
+              <span className="dot">·</span>
+              <span title="Incoming">→ {(INCOMING_AFFILIATION as any).org}</span>
+            </>
+          )}
+        </div>
+      </div>
+      <div className="win95-home-grid">
+        {LATEST_PAPER && (
+          <div className="win95-card">
+            <div className="win95-card-label">Latest paper</div>
+            <div className="win95-card-title">{LATEST_PAPER.title}</div>
+            <div className="win95-card-meta">
+              {LATEST_PAPER.venue || 'Working paper'}{LATEST_PAPER.year ? ` · ${LATEST_PAPER.year}` : ''}
+              {LATEST_PAPER.coauthors.length ? ` · with ${LATEST_PAPER.coauthors.join(', ')}` : ''}
+            </div>
+            <a
+              className="win95-card-link"
+              href={`/research/${LATEST_PAPER.slug}`}
+              onMouseDown={() => playUiClick('down')}
+              onMouseUp={() => playUiClick('up')}
+              onClick={(e) => { e.preventDefault(); openApp('research'); }}
+            >Open paper →</a>
+          </div>
+        )}
+        <div className="win95-card">
+          <div className="win95-card-label">Now</div>
+          <div className="win95-card-text">
+            Cambridge, May 2026. Working on the <strong>Global Automation Atlas</strong> — mapping where automation arrives across global production networks and what it displaces.
+          </div>
+          <a
+            className="win95-card-link"
+            href="/now"
+            onMouseDown={() => playUiClick('down')}
+            onMouseUp={() => playUiClick('up')}
+            onClick={(e) => { e.preventDefault(); openApp('now'); }}
+          >Read more →</a>
+        </div>
+      </div>
+      <div className="win95-affil">
+        <div className="win95-affil-label">Affiliations</div>
+        <div className="win95-affil-list">
+          {affiliations.map((a: any, i: number) => (
+            <div className="win95-affil-row" key={i}>
+              <span className="win95-affil-role">{a.role} ·</span>
+              <a
+                href={a.url}
+                target="_blank"
+                rel="noopener"
+                className="win95-affil-org"
+                onMouseDown={() => playUiClick('down')}
+                onMouseUp={() => playUiClick('up')}
+              >{a.org}</a>
+              {a.current  && <span className="win95-affil-tag current">current</span>}
+              {a.incoming && <span className="win95-affil-tag incoming">incoming</span>}
+            </div>
+          ))}
+        </div>
+      </div>
+      <ContactStrip />
+      <div className="win95-home-buttons">
+        {APPS.filter(a => a.id !== 'home').map(a => (
+          <button
+            key={a.id}
+            className="win95-btn"
+            onMouseDown={() => playUiClick('down')}
+            onMouseUp={() => playUiClick('up')}
+            onClick={() => openApp(a.id)}
+          >
+            {a.label.toUpperCase()}
+          </button>
+        ))}
       </div>
     </div>
   );
