@@ -3095,6 +3095,13 @@ const SS_MUTED = 'pg_muted';
 export default function Office() {
   const [phase, setPhase] = useState<Phase>(() => {
     if (typeof window === 'undefined') return 'splash';
+    // If the user landed directly on an inner URL (e.g. /research,
+    // /talks, /now, /cv, /research/some-paper), skip BIOS + entry +
+    // dolly + boot and drop them straight into the desktop phase so
+    // the content shows immediately. The 3D scene still mounts in
+    // the background — they're "inside the monitor" from the start.
+    const path = window.location.pathname || '/';
+    if (path !== '/' && path !== '') return 'desktop';
     try { if (sessionStorage.getItem(SS_PHASE) === 'desktop') return 'desktop'; } catch { /* */ }
     return 'splash';
   });

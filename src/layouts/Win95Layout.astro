@@ -25,6 +25,11 @@ const ogPath  = path === '/' ? '/og/index.png' : `/og${path}.png`;
 const ogImageUrl = Astro.site ? new URL(ogPath, Astro.site).toString() : ogPath;
 const canonical  = Astro.site ? new URL(path, Astro.site).toString() : path;
 
+// EMBED MODE is detected CLIENT-SIDE (see bootstrap script at the
+// bottom of <body>). Static-site build can't read request URLs at
+// build time, so we emit a single HTML that works in both modes and
+// let the script toggle a body class.
+
 const winTitle = title.replace(' — Prashant Garg', '');
 
 const navItems = [
@@ -313,6 +318,22 @@ const paletteIndex = [
   </style>
 
   <body>
+    {/* EMBED-mode CSS — activated by a body class set CLIENT-SIDE
+        when ?embed=1 is present in the URL. Static-site build can't
+        read request URLs at build time, so the class toggle runs in
+        a tiny inline script in <head>. CSS hides every chrome
+        element so only the .w95-body content shows; parent iframe
+        owns the chrome. */}
+    <style>
+      body.w95-embed-body { height: auto !important; overflow: auto !important; background: var(--color-cream) !important; font-family: MSSerif, Arial, sans-serif; }
+      body.w95-embed-body .w95-shell { padding: 0 !important; padding-bottom: 0 !important; }
+      body.w95-embed-body .w95-taskbar,
+      body.w95-embed-body .w95-titlebar,
+      body.w95-embed-body .w95-menubar,
+      body.w95-embed-body .w95-statusbar { display: none !important; }
+      body.w95-embed-body .w95-window { box-shadow: none !important; border: none !important; max-width: none !important; max-height: none !important; margin: 0 !important; height: auto !important; }
+      body.w95-embed-body .w95-body { background: var(--color-cream) !important; min-height: 100vh; padding-left: 8px; padding-right: 8px; box-shadow: none !important; }
+    </style>
     <div class="w95-shell">
       <div class="w95-window">
 
@@ -394,6 +415,37 @@ const paletteIndex = [
       </button>
       <div class="w95-clock" id="w95-clock">12:00 PM</div>
     </div>
+
+    <script is:inline>
+      /* CLIENT-SIDE embed-mode bootstrap — static-site build can't read
+         request URLs at build time, so we do the detection here.
+         If ?embed=1 is in the URL OR the page is inside an iframe, we:
+         (1) add body.w95-embed-body — CSS hides all chrome
+         (2) install a link interceptor that posts {type:'pg-nav', href}
+             up to the parent InnerDesktop instead of letting the iframe
+             do a real navigation. The parent does pushState + iframe.src
+             update so the music + 3D scene stay continuous. */
+      (function () {
+        var inIframe = window.top !== window;
+        var hasEmbed = /[?&]embed=1\b/.test(location.search);
+        if (!inIframe && !hasEmbed) return;
+        document.body.classList.add('w95-embed-body');
+        document.addEventListener('click', function (e) {
+          var a = e.target && e.target.closest && e.target.closest('a');
+          if (!a) return;
+          var href = a.getAttribute('href') || '';
+          var isExternal = a.target === '_blank' || /^https?:|^mailto:|^tel:/i.test(href);
+          if (!href || isExternal) return;
+          if (href.indexOf('/') !== 0) return;
+          e.preventDefault();
+          if (inIframe) {
+            try { window.parent.postMessage({ type: 'pg-nav', href: href }, '*'); } catch (_e) {}
+          } else {
+            try { window.history.pushState({}, '', href); } catch (_e) {}
+          }
+        }, true);
+      })();
+    </script>
 
     <script is:inline>
       /* ----- synthesised UI click sounds (mirrors InnerDesktop.tsx) ----- */

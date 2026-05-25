@@ -14,7 +14,7 @@
  *   - maximize toggle (dbl-click title bar or □ button)
  *   - minimize to taskbar button (click _ or the taskbar chip)
  */
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { papers, talks, affiliations, site } from '../data/site';
 
 // Compute the most recent paper for the homepage "Latest" card.
@@ -684,20 +684,31 @@ const NAV_LINKS: { label: string; href: string }[] = [
 ];
 
 /* ---------- Win95 NavLink ---------------------------------------------- */
-function NavLink({ label, href }: { label: string; href: string }) {
+// Accepts an optional `onNavigate` so the parent InnerDesktop can route
+// internally (pushState + state update) instead of doing a full page
+// reload. Falls back to window.location for any caller that didn't
+// wire it up.
+function NavLink({ label, href, onNavigate, active }: { label: string; href: string; onNavigate?: (h: string) => void; active?: boolean }) {
   const [flash, setFlash] = useState(false);
+  // `<a>` default nav fires on CLICK (not mousedown), so onClick is
+  // where we must call preventDefault. mousedown just plays the click
+  // sound + flashes the link red for the brief flash animation.
   const go = (e: React.MouseEvent) => {
     e.preventDefault();
-    playUiClick('down');
     setFlash(true);
-    setTimeout(() => { window.location.href = href; }, 100);
+    setTimeout(() => {
+      setFlash(false);
+      if (onNavigate) onNavigate(href);
+      else window.location.href = href;
+    }, 100);
   };
   return (
     <a
       href={href}
-      className={`win95-nav-link ${flash ? 'flash' : ''}`}
-      onMouseDown={go}
+      className={`win95-nav-link ${flash ? 'flash' : ''}${active ? ' active' : ''}`}
+      onMouseDown={() => playUiClick('down')}
       onMouseUp={() => playUiClick('up')}
+      onClick={go}
     >
       <span className="win95-nav-link-dot" />
       <h4>{label}</h4>
@@ -797,6 +808,42 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
   const [preMax, setPreMax] = useState<WinState | null>(null);
   const [isMinimized, setIsMinimized] = useState(false);
   const [isActive, setIsActive] = useState(true);
+
+  // ── INTERNAL ROUTING ─────────────────────────────────────────────
+  // currentPath drives what shows in the main content area:
+  //   - '/'        → inline React HOME content (the original home view)
+  //   - any other  → an <iframe> loading that path + ?embed=1, which
+  //                  renders just the page body (Win95Layout sees the
+  //                  embed flag and strips its own chrome).
+  // Nav link clicks update currentPath + pushState — NO full page
+  // reload, so the 3D scene + audio + camera all survive.
+  const [currentPath, setCurrentPath] = useState<string>(() => {
+    if (typeof window === 'undefined') return '/';
+    return window.location.pathname || '/';
+  });
+  // Navigate inside the monitor: update URL + content, no page reload.
+  const navigateInside = useCallback((href: string) => {
+    if (typeof window === 'undefined') return;
+    if (href === currentPath) return;
+    try { window.history.pushState({}, '', href); } catch { /* noop */ }
+    setCurrentPath(href);
+  }, [currentPath]);
+  // Handle browser back/forward
+  useEffect(() => {
+    const onPop = () => setCurrentPath(window.location.pathname || '/');
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+  // Receive {type:'pg-nav', href} from iframe content (see Win95Layout
+  // embed-mode interceptor) and route via navigateInside.
+  useEffect(() => {
+    const onMsg = (e: MessageEvent) => {
+      const d = e.data as any;
+      if (d && d.type === 'pg-nav' && typeof d.href === 'string') navigateInside(d.href);
+    };
+    window.addEventListener('message', onMsg);
+    return () => window.removeEventListener('message', onMsg);
+  }, [navigateInside]);
 
   // ---------- ambient audio (continues from the study) ----------
   const [muted, setMuted] = useState<boolean>(() => {
@@ -984,7 +1031,15 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
               <div className="win95-nav-name">Prashant<br/>Garg</div>
               <div className="win95-nav-subtitle">Economist · Postdoc</div>
               <div className="win95-nav-links">
-                {NAV_LINKS.map(l => <NavLink key={l.href} label={l.label} href={l.href} />)}
+                {NAV_LINKS.map(l => (
+                  <NavLink
+                    key={l.href}
+                    label={l.label}
+                    href={l.href}
+                    onNavigate={navigateInside}
+                    active={currentPath === l.href || currentPath.startsWith(l.href + '/')}
+                  />
+                ))}
               </div>
               <div className="win95-nav-spacer" />
               <span
@@ -996,6 +1051,16 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
             </nav>
 
             <div className="win95-content">
+              {currentPath !== '/' && (
+                <iframe
+                  key={currentPath}
+                  src={currentPath + (currentPath.includes('?') ? '&' : '?') + 'embed=1'}
+                  className="win95-iframe"
+                  title="Prashant Garg site"
+                  style={{ width: '100%', height: '100%', border: 0, display: 'block', background: '#EFEAD8' }}
+                />
+              )}
+              {currentPath === '/' && (
               <div className="win95-home">
                 <div className="win95-home-header">
                   <div className="win95-home-name">Prashant<br/>Garg</div>
@@ -1079,13 +1144,14 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
                       className="win95-btn"
                       onMouseDown={() => playUiClick('down')}
                       onMouseUp={() => playUiClick('up')}
-                      onClick={() => { window.location.href = l.href; }}
+                      onClick={() => navigateInside(l.href)}
                     >
                       {l.label}
                     </button>
                   ))}
                 </div>
               </div>
+              )}
             </div>
           </div>
 
