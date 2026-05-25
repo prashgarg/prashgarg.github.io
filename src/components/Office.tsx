@@ -3023,12 +3023,27 @@ function StudyAudio({ active, muted, focusMode }: { active: boolean; muted: bool
     window.addEventListener('pointerdown', start, { once: true });
     return () => window.removeEventListener('pointerdown', start);
   }, []);
+  // Read the shared volume (0..1) from localStorage and update it on
+  // `pg-volume` events fired by the InnerDesktop volume slider. Mute
+  // toggle still respected on top (mute = effective volume 0).
+  const [vol, setVol] = useState<number>(() => {
+    if (typeof window === 'undefined') return 0.6;
+    try { const v = parseFloat(localStorage.getItem('pg_volume_v1') || '0.6'); return isNaN(v) ? 0.6 : Math.max(0, Math.min(1, v)); } catch { return 0.6; }
+  });
+  useEffect(() => {
+    const onVol = (e: any) => {
+      const v = typeof e.detail === 'number' ? e.detail : parseFloat(localStorage.getItem('pg_volume_v1') || '0.6');
+      setVol(Math.max(0, Math.min(1, isNaN(v) ? 0.6 : v)));
+    };
+    window.addEventListener('pg-volume', onVol);
+    return () => window.removeEventListener('pg-volume', onVol);
+  }, []);
   useEffect(() => {
     const g = gainRef.current, ac = ctxRef.current; if (!g || !ac) return;
-    const target = (active && !muted) ? AMBIENT_VOL : 0;
+    const target = (active && !muted) ? (AMBIENT_VOL * vol) : 0;
     g.gain.cancelScheduledValues(ac.currentTime);
     g.gain.linearRampToValueAtTime(target, ac.currentTime + 1.2);
-  }, [active, muted]);
+  }, [active, muted, vol]);
   // Focus-mode filter: slide the low-pass cutoff down when inside the
   // monitor (700 Hz — kills crisp highs, leaves a muffled bass-heavy
   // bed), back up to 18 kHz when out. Exponential ramp over 1.4 s so

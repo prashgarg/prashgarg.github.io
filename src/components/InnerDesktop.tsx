@@ -769,20 +769,49 @@ function getUiAc(): AudioContext | null {
   return _uiAc;
 }
 
-function playUiClick(type: 'down' | 'up' = 'down') {
+// PER-VARIANT click profiles. The "variant" arg lets callers play a
+// different timbre for different button types (Heffer-style layered
+// clicks). Each variant tunes:
+//   - durDown / durUp  — sample length of the press / release impulses
+//   - freqDown / freqUp — bandpass centre frequencies
+//   - gainDown / gainUp — peak gain
+//   - decay — exponential decay rate of the noise envelope
+type ClickVariant = 'default' | 'close' | 'soft' | 'tap' | 'menu' | 'titlebtn';
+interface ClickProfile {
+  durDown: number; durUp: number;
+  freqDown: number; freqUp: number;
+  gainDown: number; gainUp: number;
+  decay: number;
+}
+const CLICK_PROFILES: Record<ClickVariant, ClickProfile> = {
+  default:  { durDown: 0.022, durUp: 0.015, freqDown: 1800, freqUp: 3200, gainDown: 0.22, gainUp: 0.16, decay: 0.25 },
+  // close (X button): sharper, brighter — almost a snap
+  close:    { durDown: 0.018, durUp: 0.012, freqDown: 2600, freqUp: 4500, gainDown: 0.28, gainUp: 0.22, decay: 0.18 },
+  // soft (primary action buttons): mellower, lower freq
+  soft:     { durDown: 0.028, durUp: 0.020, freqDown: 1100, freqUp: 1900, gainDown: 0.18, gainUp: 0.12, decay: 0.32 },
+  // tap (desktop icons): light, percussive
+  tap:      { durDown: 0.016, durUp: 0.010, freqDown: 2100, freqUp: 2900, gainDown: 0.16, gainUp: 0.10, decay: 0.20 },
+  // menu (start menu items): muted thunk
+  menu:     { durDown: 0.020, durUp: 0.014, freqDown: 1400, freqUp: 2400, gainDown: 0.20, gainUp: 0.14, decay: 0.28 },
+  // titlebtn (minimise/maximise): standard but slightly tighter
+  titlebtn: { durDown: 0.020, durUp: 0.013, freqDown: 2000, freqUp: 3400, gainDown: 0.20, gainUp: 0.15, decay: 0.22 },
+};
+
+function playUiClick(type: 'down' | 'up' = 'down', variant: ClickVariant = 'default') {
   const ac = getUiAc();
   if (!ac) return;
+  const p = CLICK_PROFILES[variant] || CLICK_PROFILES.default;
   const now     = ac.currentTime;
-  const durS    = type === 'down' ? 0.022 : 0.015;
-  const bpFreq  = type === 'down' ? 1800  : 3200;
-  const gain    = type === 'down' ? 0.22  : 0.16;
+  const durS    = type === 'down' ? p.durDown : p.durUp;
+  const bpFreq  = type === 'down' ? p.freqDown : p.freqUp;
+  const gain    = type === 'down' ? p.gainDown : p.gainUp;
   const samples = Math.floor(ac.sampleRate * durS);
 
   const buf = ac.createBuffer(1, samples, ac.sampleRate);
   const d   = buf.getChannelData(0);
   for (let i = 0; i < samples; i++) {
     // white noise shaped with a fast exponential decay
-    d[i] = (Math.random() * 2 - 1) * Math.exp(-i / (samples * 0.25));
+    d[i] = (Math.random() * 2 - 1) * Math.exp(-i / (samples * p.decay));
   }
 
   const src = ac.createBufferSource();
@@ -794,10 +823,55 @@ function playUiClick(type: 'down' | 'up' = 'down') {
   bpf.Q.value      = 0.7;
 
   const g          = ac.createGain();
-  g.gain.value     = gain;
+  g.gain.value     = gain * (typeof window !== 'undefined' ? getUiVolume() : 1);
 
   src.connect(bpf); bpf.connect(g); g.connect(ac.destination);
   src.start(now);
+}
+
+// Window-open "ding" — synthesised two-tone bell instead of a WAV.
+// A short 440 Hz + 660 Hz pair with exponential decay; reads as the
+// classic Windows open-window chime without shipping audio assets.
+function playWindowOpenDing() {
+  const ac = getUiAc();
+  if (!ac) return;
+  const vol = (typeof window !== 'undefined' ? getUiVolume() : 1);
+  if (vol <= 0.001) return;
+  const now = ac.currentTime;
+  const tones = [
+    { freq: 988,  delay: 0.00, dur: 0.28, gain: 0.07 },  // B5
+    { freq: 1318, delay: 0.06, dur: 0.32, gain: 0.06 },  // E6
+  ];
+  for (const t of tones) {
+    const osc = ac.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.value = t.freq;
+    const g = ac.createGain();
+    // ADSR: instant attack, exponential decay
+    g.gain.setValueAtTime(0.0001, now + t.delay);
+    g.gain.exponentialRampToValueAtTime(t.gain * vol, now + t.delay + 0.005);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + t.delay + t.dur);
+    osc.connect(g); g.connect(ac.destination);
+    osc.start(now + t.delay);
+    osc.stop(now + t.delay + t.dur + 0.01);
+  }
+}
+
+// Single shared volume value (0..1). Persisted to localStorage so the
+// setting survives navigation. UI volume slider + audio gain both read
+// from this; mute = volume === 0.
+const LS_VOLUME = 'pg_volume_v1';
+function getUiVolume(): number {
+  try {
+    const v = parseFloat(localStorage.getItem(LS_VOLUME) || '0.6');
+    if (isNaN(v)) return 0.6;
+    return Math.max(0, Math.min(1, v));
+  } catch { return 0.6; }
+}
+function setUiVolume(v: number) {
+  try { localStorage.setItem(LS_VOLUME, String(Math.max(0, Math.min(1, v)))); } catch { /* */ }
+  // notify listeners
+  try { window.dispatchEvent(new CustomEvent('pg-volume', { detail: v })); } catch { /* */ }
 }
 
 /* ---------- helpers ---------------------------------------------------- */
@@ -1045,6 +1119,60 @@ function VolumeOffIcon() {
   );
 }
 
+/* ---------- volume tray (icon + slider) -------------------------------- */
+// Replaces the binary mute toggle with a real volume slider. The slider
+// writes to localStorage via setUiVolume() and dispatches a pg-volume
+// event the audio system listens for. Clicking the icon toggles mute
+// (saves current volume to "lastNonZero" for unmute restore).
+function VolumeTray() {
+  const [vol, setVolLocal] = useState<number>(() => getUiVolume());
+  const lastNonZeroRef = useRef<number>(vol > 0 ? vol : 0.6);
+  useEffect(() => {
+    const onExt = (e: any) => {
+      const v = typeof e.detail === 'number' ? e.detail : getUiVolume();
+      if (v !== vol) setVolLocal(v);
+    };
+    window.addEventListener('pg-volume', onExt);
+    return () => window.removeEventListener('pg-volume', onExt);
+  }, [vol]);
+  const apply = (v: number) => {
+    const clamped = Math.max(0, Math.min(1, v));
+    if (clamped > 0) lastNonZeroRef.current = clamped;
+    setVolLocal(clamped);
+    setUiVolume(clamped);
+  };
+  const toggleMute = () => {
+    if (vol > 0) apply(0);
+    else apply(lastNonZeroRef.current || 0.6);
+  };
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingRight: 6 }}>
+      <button
+        className="win95-tray-btn"
+        title={vol > 0 ? 'Mute ambient' : 'Unmute ambient'}
+        onMouseDown={() => { playUiClick('down'); toggleMute(); }}
+        onMouseUp={() => playUiClick('up')}
+        style={{ flexShrink: 0 }}
+      >
+        {vol > 0 ? <VolumeOnIcon /> : <VolumeOffIcon />}
+      </button>
+      <input
+        type="range"
+        min={0} max={1} step={0.02} value={vol}
+        onChange={e => apply(parseFloat(e.target.value))}
+        title="Volume"
+        style={{
+          width: 70,
+          height: 14,
+          cursor: 'pointer',
+          accentColor: '#0000a3',
+          background: 'transparent',
+        }}
+      />
+    </div>
+  );
+}
+
 /* ---------- main component --------------------------------------------- */
 interface InnerDesktopProps {
   onClose: () => void;
@@ -1131,9 +1259,11 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
   // zoom-in animation's transform-origin.
   const openApp = useCallback((id: AppId, fromPoint?: { x: number; y: number }) => {
     const app = APP_BY_ID[id]; if (!app) return;
+    let wasOpen = false;
     setWins(ws => {
       const existing = ws.find(w => w.id === id);
       if (existing) {
+        wasOpen = true;
         // already open → restore + focus (focusApp also bumps z, so we
         // only need to clear minimized + state here; z is set below)
         return ws.map(w => w.id === id
@@ -1150,6 +1280,8 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
       }];
     });
     setTopZ(z => z + 1);
+    // play the classic Windows "ding" only for genuinely new windows
+    if (!wasOpen) setTimeout(() => playWindowOpenDing(), 30);
     // promote to URL after a tick so opening animations show
     setTimeout(() => {
       try { window.history.pushState({}, '', app.path); } catch { /* */ }
@@ -1279,26 +1411,72 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
     return () => clearInterval(id);
   }, []);
 
-  // ── per-window drag/resize handlers ────────────────────────────────
+  // ── per-window drag with INERTIA ─────────────────────────────────
+  // Tracks the last few pointer samples to compute release velocity,
+  // then decays the velocity over ~350 ms after release so the window
+  // glides briefly. Pure JS animation loop (not CSS) so the position
+  // state stays the source of truth.
+  const inertiaRafRef = useRef<Record<string, number>>({});
   const startDragWin = (id: AppId) => (e: React.MouseEvent) => {
     const w = wins.find(x => x.id === id);
     if (!w || w.maximized) return;
     e.preventDefault(); e.stopPropagation();
     focusApp(id);
+    // cancel any in-flight inertia for this window
+    if (inertiaRafRef.current[id]) cancelAnimationFrame(inertiaRafRef.current[id]);
     const sx = e.clientX, sy = e.clientY;
     const ox = w.x, oy = w.y;
+    // velocity samples: ring buffer of recent (t, x, y)
+    const samples: { t: number; x: number; y: number }[] = [];
+    samples.push({ t: performance.now(), x: ox, y: oy });
     const onMove = (ev: MouseEvent) => {
       const dx = ev.clientX - sx, dy = ev.clientY - sy;
-      const maxX = containerSize.w - 80;
-      const maxY = containerSize.h - 60;
-      setWins(ws => ws.map(s => s.id === id
-        ? { ...s, x: Math.max(-s.w + 80, Math.min(maxX, ox + dx)), y: Math.max(0, Math.min(maxY, oy + dy)) }
-        : s));
+      const nx = Math.max(-200, Math.min(containerSize.w - 80, ox + dx));
+      const ny = Math.max(0,    Math.min(containerSize.h - 60, oy + dy));
+      samples.push({ t: performance.now(), x: nx, y: ny });
+      if (samples.length > 6) samples.shift();
+      setWins(ws => ws.map(s => s.id === id ? { ...s, x: nx, y: ny } : s));
     };
     const onUp = () => {
       document.removeEventListener('mousemove', onMove);
       document.removeEventListener('mouseup', onUp);
       document.body.style.cursor = '';
+      // compute release velocity from first→last sample window
+      if (samples.length < 2) return;
+      const last = samples[samples.length - 1];
+      // look at samples in the last 80 ms for stable velocity estimate
+      const ref = samples.find(s => last.t - s.t < 80) || samples[0];
+      const dt = Math.max(1, last.t - ref.t);
+      let vx = (last.x - ref.x) / dt * 1000;  // px/sec
+      let vy = (last.y - ref.y) / dt * 1000;
+      // clamp so a sudden flick doesn't fly off-screen
+      const VMAX = 1800;
+      const vmag = Math.hypot(vx, vy);
+      if (vmag > VMAX) { vx *= VMAX / vmag; vy *= VMAX / vmag; }
+      // inertia decay: ~350 ms ease-out
+      let lastFrame = performance.now();
+      let cx = last.x, cy = last.y;
+      const decay = 0.92;   // multiplied per frame, settles fast
+      const step = () => {
+        const now = performance.now();
+        const dt2 = (now - lastFrame) / 1000;
+        lastFrame = now;
+        cx += vx * dt2;
+        cy += vy * dt2;
+        const nx = Math.max(-200, Math.min(containerSize.w - 80, cx));
+        const ny = Math.max(0,    Math.min(containerSize.h - 60, cy));
+        setWins(ws => ws.map(s => s.id === id ? { ...s, x: nx, y: ny } : s));
+        vx *= Math.pow(decay, dt2 * 60);
+        vy *= Math.pow(decay, dt2 * 60);
+        if (Math.hypot(vx, vy) > 12) {
+          inertiaRafRef.current[id] = requestAnimationFrame(step);
+        } else {
+          delete inertiaRafRef.current[id];
+        }
+      };
+      if (Math.hypot(vx, vy) > 24) {
+        inertiaRafRef.current[id] = requestAnimationFrame(step);
+      }
     };
     document.body.style.cursor = 'move';
     document.addEventListener('mousemove', onMove);
@@ -1384,8 +1562,8 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
           <div
             key={app.id}
             className={`win95-icon${selectedIcon === app.id ? ' selected' : ''}`}
-            onMouseDown={e => { e.stopPropagation(); setSelectedIcon(app.id); playUiClick('down'); }}
-            onMouseUp={() => playUiClick('up')}
+            onMouseDown={e => { e.stopPropagation(); setSelectedIcon(app.id); playUiClick('down', 'tap'); }}
+            onMouseUp={() => playUiClick('up', 'tap')}
             onDoubleClick={e => onIconActivate(app.id, e)}
             // single-click on touch acts as activate too
             onClick={(e) => { if (window.matchMedia('(hover: none)').matches) onIconActivate(app.id, e); }}
@@ -1436,22 +1614,22 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
               <button
                 className="win95-titlebtn"
                 title="Minimise"
-                onMouseDown={e => { e.stopPropagation(); playUiClick('down'); }}
-                onMouseUp={() => playUiClick('up')}
+                onMouseDown={e => { e.stopPropagation(); playUiClick('down', 'titlebtn'); }}
+                onMouseUp={() => playUiClick('up', 'titlebtn')}
                 onClick={e => { e.stopPropagation(); minimizeApp(w.id); }}
               >_</button>
               <button
                 className="win95-titlebtn"
                 title={w.maximized ? 'Restore' : 'Maximise'}
-                onMouseDown={e => { e.stopPropagation(); playUiClick('down'); }}
-                onMouseUp={() => playUiClick('up')}
+                onMouseDown={e => { e.stopPropagation(); playUiClick('down', 'titlebtn'); }}
+                onMouseUp={() => playUiClick('up', 'titlebtn')}
                 onClick={e => { e.stopPropagation(); toggleMaximize(w.id); }}
               >□</button>
               <button
                 className="win95-titlebtn win95-titlebtn-close"
                 title="Close"
-                onMouseDown={e => { e.stopPropagation(); playUiClick('down'); }}
-                onMouseUp={() => playUiClick('up')}
+                onMouseDown={e => { e.stopPropagation(); playUiClick('down', 'close'); }}
+                onMouseUp={() => playUiClick('up', 'close')}
                 onClick={e => { e.stopPropagation(); closeApp(w.id); }}
               >✕</button>
             </div>
@@ -1494,8 +1672,8 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
               <div
                 key={app.id}
                 className="win95-startmenu-item"
-                onMouseDown={() => playUiClick('down')}
-                onMouseUp={() => playUiClick('up')}
+                onMouseDown={() => playUiClick('down', 'menu')}
+                onMouseUp={() => playUiClick('up', 'menu')}
                 onClick={() => onStartMenuItem(app.id)}
               >
                 <div className="win95-startmenu-icon"><app.Icon /></div>
@@ -1505,8 +1683,8 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
             <div className="win95-startmenu-sep" />
             <div
               className="win95-startmenu-item"
-              onMouseDown={() => playUiClick('down')}
-              onMouseUp={() => playUiClick('up')}
+              onMouseDown={() => playUiClick('down', 'menu')}
+              onMouseUp={() => playUiClick('up', 'menu')}
               onClick={shutDown}
             >
               <div className="win95-startmenu-icon">
@@ -1621,15 +1799,8 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
         })}
 
         <div className="win95-toolbar-spacer" />
-        {/* system tray: mute toggle */}
-        <button
-          className="win95-tray-btn"
-          title={muted ? 'Unmute ambient' : 'Mute ambient'}
-          onMouseDown={() => { playUiClick('down'); setMuted(m => !m); }}
-          onMouseUp={() => playUiClick('up')}
-        >
-          {muted ? <VolumeOffIcon /> : <VolumeOnIcon />}
-        </button>
+        {/* system tray: volume slider + icon (click icon = mute toggle) */}
+        <VolumeTray />
         <div className="win95-clock">{time}</div>
       </div>
     </div>
