@@ -74,7 +74,7 @@ const ROOM_H = 4.5;
 
 /* ---------- palette --------------------------------------------------- */
 const C = {
-  carpet:    '#88AB7E',
+  carpet:    '#6E9457',   // saturated putting-green (Severance MDR), not grey-sage
   wall:      '#F2F0EC',
   ceiling:   '#D2D4D6',
   desk:      '#E4E2DC',
@@ -385,35 +385,30 @@ function CofferedCeiling() {
 
   return (
     <group>
-      {/* Slab — pale green-grey, kept slightly darker than before so
-          the bright recessed panels read as the dominant light source
-          (2001: A Space Odyssey ceiling contrast). */}
+      {/* Slab — near-white pale green. The real Severance ceiling is one
+          of the BRIGHTEST things in frame (white-green, slightly
+          overexposed), NOT dark. Slab near-white; coffer facets pale too. */}
       <mesh rotation-x={Math.PI / 2} position={[0, ROOM_H, 0]}>
         <primitive object={slabGeo} attach="geometry" />
-        <meshStandardMaterial color="#A2B0A4" roughness={0.88} side={THREE.DoubleSide} />
+        <meshStandardMaterial color="#E6EAE4" roughness={0.9} side={THREE.DoubleSide} />
       </mesh>
-      {/* Coffer walls + emissive panels — one per hole.
-          - Walls darkened HARD (#CCDAC8 → #4C5E50) so each recess
-            casts a deep shadow gradient down toward its opening. The
-            diamond hole reads as a black/green void from below
-            surrounding the bright panel.
-          - Panel emissive intensity bumped (1.25 → 2.6) and color
-            pure white — so each panel pops as a bright fluorescent
-            against the deep-shadow recess walls.
-          Combined effect: dramatic ceiling that reads three-dimensional
-          instead of a flat tile pattern. */}
+      {/* Coffer facets + flat fluorescent panels — one per hole.
+          INVERTED from before: facets are PALE white-green (#D2DBD0) so
+          the recesses catch light and read luminous, never black — like
+          the real MDR pyramidal ceiling. The flat panel at the back of
+          each recess glows near-white (the actual fluorescent source). */}
       {positions.map(([x, z], i) => (
         <group key={i} position={[x, ROOM_H, z]}>
           <mesh>
             <primitive object={cofferGeo} attach="geometry" />
-            <meshStandardMaterial color="#4C5E50" roughness={0.92} side={THREE.DoubleSide} />
+            <meshStandardMaterial color="#D2DBD0" roughness={0.9} side={THREE.DoubleSide} />
           </mesh>
           <mesh position={[0, COFFER_DEPTH - 0.005, 0]}>
             <primitive object={panelGeo} attach="geometry" />
             <meshStandardMaterial
               color="#FFFFFF"
               emissive="#FFFFFF"
-              emissiveIntensity={2.6}
+              emissiveIntensity={2.2}
               side={THREE.DoubleSide}
               toneMapped={false}
             />
@@ -1722,21 +1717,23 @@ function DeskLamp({ pos }: { pos: [number, number, number] }) {
         onClick={(e) => { e.stopPropagation(); setOn(o => !o); }}
       >
         <boxGeometry args={[0.16, 0.07, 0.13]} />
+        {/* G3: cool white task lamp (was warm banker's #FFD8A0) to match
+            the small white desk lamp in the Severance reference. */}
         <meshStandardMaterial
-          color="#F2F0EC"
-          roughness={0.6}
-          emissive="#FFD8A0"
-          emissiveIntensity={on ? 0.20 : 0.0}
+          color="#F4F4F2"
+          roughness={0.5}
+          emissive="#EAF1FF"
+          emissiveIntensity={on ? 0.16 : 0.0}
         />
       </mesh>
-      {/* warm pool of light — only when on */}
+      {/* neutral-cool pool of light — only when on */}
       {on && (
         <pointLight
           position={[0.12, 0.25, 0]}
-          intensity={1.6}
-          distance={1.4}
+          intensity={1.2}
+          distance={1.3}
           decay={2}
-          color="#FFCD7E"
+          color="#EAF1FF"
         />
       )}
     </group>
@@ -1809,7 +1806,7 @@ function CarpetVacuumTracks({ width, depth, cx, cz }: {
         float avoid = smoothstep(1.5, 2.8, r);
         // outer FALLOFF — fade toward room corners where vacuum doesn't reach
         float falloff = 1.0 - smoothstep(11.0, 18.0, r);
-        float a = band * bright * 0.32 * avoid * falloff;
+        float a = band * bright * 0.16 * avoid * falloff;
         gl_FragColor = vec4(uTint, a);
       }
     `,
@@ -2004,25 +2001,28 @@ function MdrPanel({ w, h, fabric }: { w: number; h: number; fabric: any }) {
         <boxGeometry args={[w - FRAME_THICK * 2, h - FRAME_THICK * 2, PANEL_DEPTH]} />
         <meshStandardMaterial {...fabric} color={C.partition} roughness={0.92} normalScale={[0.55, 0.55] as any} />
       </mesh>
-      {/* TOP chrome bar */}
+      {/* G13: WHITE frame caps (was chrome) — the real MDR dividers have
+          a white frame edge over the dark-green fabric, not shiny chrome.
+          Slightly thicker so the white cap reads clearly in frame. */}
+      {/* TOP white cap */}
       <mesh position={[0, h - FRAME_THICK / 2, 0]} castShadow>
-        <boxGeometry args={[w, FRAME_THICK, FRAME_DEPTH]} />
-        <meshStandardMaterial color="#C8C8C8" roughness={0.32} metalness={0.85} />
+        <boxGeometry args={[w, FRAME_THICK * 1.4, FRAME_DEPTH]} />
+        <meshStandardMaterial color="#F4F5F2" roughness={0.55} metalness={0.02} />
       </mesh>
-      {/* BOTTOM chrome bar */}
+      {/* BOTTOM white cap */}
       <mesh position={[0, FRAME_THICK / 2, 0]} castShadow>
         <boxGeometry args={[w, FRAME_THICK, FRAME_DEPTH]} />
-        <meshStandardMaterial color="#C8C8C8" roughness={0.32} metalness={0.85} />
+        <meshStandardMaterial color="#F4F5F2" roughness={0.55} metalness={0.02} />
       </mesh>
-      {/* LEFT chrome bar */}
+      {/* LEFT white cap */}
       <mesh position={[-w / 2 + FRAME_THICK / 2, yMid, 0]} castShadow>
         <boxGeometry args={[FRAME_THICK, h - FRAME_THICK * 2, FRAME_DEPTH]} />
-        <meshStandardMaterial color="#C8C8C8" roughness={0.32} metalness={0.85} />
+        <meshStandardMaterial color="#F4F5F2" roughness={0.55} metalness={0.02} />
       </mesh>
-      {/* RIGHT chrome bar */}
+      {/* RIGHT white cap */}
       <mesh position={[w / 2 - FRAME_THICK / 2, yMid, 0]} castShadow>
         <boxGeometry args={[FRAME_THICK, h - FRAME_THICK * 2, FRAME_DEPTH]} />
-        <meshStandardMaterial color="#C8C8C8" roughness={0.32} metalness={0.85} />
+        <meshStandardMaterial color="#F4F5F2" roughness={0.55} metalness={0.02} />
       </mesh>
       {/* TWO WHITE PEDESTAL FEET — lift panel off the floor */}
       {([-1, 1] as const).map(side => (
@@ -2166,7 +2166,7 @@ function OfficeScene({ phase, onMonitorClick }: {
       {/* Image-based ambient lighting + reflections — soft "lobby" preset
           gives the scene proper environmental cues so metallic + glossy
           surfaces feel grounded. background={false} keeps our 3D walls. */}
-      <Environment preset="lobby" background={false} environmentIntensity={0.35} />
+      <Environment preset="lobby" background={false} environmentIntensity={0.50} />
 
       {/* Single dominant SHADOW caster — angled "sun"-style directional.
           All nine ceiling pointLights provide flat fluorescent flood
@@ -2178,7 +2178,7 @@ function OfficeScene({ phase, onMonitorClick }: {
           shadows. */}
       <directionalLight
         position={[8, 9, 4]}
-        intensity={1.05}
+        intensity={0.75}
         color="#FFFFFF"
         castShadow
         shadow-mapSize={[2048, 2048]}
@@ -2198,8 +2198,11 @@ function OfficeScene({ phase, onMonitorClick }: {
           hemisphere (0.55 → 0.28) lets the dir-light and the spot
           carry the contrast — bright surfaces stay bright, under-desk
           stays dark. */}
-      <ambientLight intensity={0.85} color="#E8F0EA" />
-      <hemisphereLight args={['#F4F8F2', '#A8C2A6', 0.28]} />
+      {/* G2: raised ambient + hemisphere for the bright, even, clinical
+          fluorescent flood of the reference (was 0.85 / 0.28 — too dim &
+          dramatic). Higher fill softens shadows toward the show's look. */}
+      <ambientLight intensity={1.55} color="#EAF2EC" />
+      <hemisphereLight args={['#F6FAF4', '#B6CCB2', 0.6]} />
 
       {/* DESK POOL spotlight — a focused down-light right above the
           active SW station's desk surface. Penumbra creates a soft
@@ -2226,8 +2229,8 @@ function OfficeScene({ phase, onMonitorClick }: {
         <pointLight
           key={i}
           position={[x, ROOM_H - 0.25, z]}
-          intensity={4.0}
-          distance={24}
+          intensity={5.5}
+          distance={26}
           decay={2}
           color="#F5F8FF"
         />
@@ -2584,29 +2587,9 @@ function OfficeScene({ phase, onMonitorClick }: {
         </mesh>
       </group>
 
-      {/* ── FLOOR LAMP — tall standing accent in the visible MID area
-          of the room. Re-positioned for the corner-quarter camera so
-          the lamp body actually reads in frame instead of only its
-          glow leaking in from off-screen. */}
-      <group position={[4.5, 0, -2.0]}>
-        {/* base disc */}
-        <mesh position={[0, 0.025, 0]} castShadow receiveShadow>
-          <cylinderGeometry args={[0.18, 0.20, 0.05, 24]} />
-          <meshStandardMaterial color="#3A3A3A" roughness={0.5} metalness={0.5} />
-        </mesh>
-        {/* slim chrome pole */}
-        <mesh position={[0, 0.90, 0]} castShadow>
-          <cylinderGeometry args={[0.020, 0.022, 1.75, 12]} />
-          <meshStandardMaterial color="#8C8C8C" roughness={0.35} metalness={0.7} />
-        </mesh>
-        {/* cream paper shade — conical drum */}
-        <mesh position={[0, 1.94, 0]} castShadow>
-          <cylinderGeometry args={[0.18, 0.22, 0.36, 24]} />
-          <meshStandardMaterial color="#F2EBD8" roughness={0.85} emissive="#F2EBD8" emissiveIntensity={0.20} />
-        </mesh>
-        {/* warm point light from the shade */}
-        <pointLight position={[0, 1.94, 0]} intensity={2.5} distance={5.0} decay={2} color="#FFE9B0" />
-      </group>
+      {/* G3: FLOOR LAMP removed — Severance MDR is lit purely by the
+          fluorescent ceiling; a warm freestanding lamp broke the cool,
+          clinical register (leftover from the old "study" concept). */}
 
       {/* ── DOOR (LEFT WALL, per the Severance MDR reference photo)
           The doorway is now on the side wall, just visible at the
@@ -3212,7 +3195,7 @@ function FirstVisitWelcome() {
         WELCOME
       </div>
       <div style={{ marginBottom: 6 }}>
-        This is a 3-D study. The monitor is the way in — click it to enter the desktop. The objects on the desk respond to you.
+        Welcome to the workstation. Click the monitor to step inside and open the desktop. The objects on the desk respond to you.
       </div>
       <div style={{ fontSize: 10, opacity: 0.55, marginTop: 8, textAlign: 'right' }}>
         click to dismiss
@@ -3309,7 +3292,7 @@ export default function Office() {
           gl={{
             antialias: true,
             toneMapping: THREE.ACESFilmicToneMapping,
-            toneMappingExposure: 1.20,
+            toneMappingExposure: 1.35,
           }}
         >
           <PerspectiveCamera makeDefault position={[CAM_ENTRY_POS.x, CAM_ENTRY_POS.y, CAM_ENTRY_POS.z]} fov={54} />

@@ -333,6 +333,11 @@ const paletteIndex = [
       body.w95-embed-body .w95-statusbar { display: none !important; }
       body.w95-embed-body .w95-window { box-shadow: none !important; border: none !important; max-width: none !important; max-height: none !important; margin: 0 !important; height: auto !important; }
       body.w95-embed-body .w95-body { background: var(--color-cream) !important; min-height: 100vh; padding-left: 8px; padding-right: 8px; box-shadow: none !important; }
+      /* G8: hide the floating dark + ⌘K buttons inside the embedded
+         window — they overlapped iframe content and are redundant there
+         (the parent desktop owns chrome). The ⌘K shortcut still works. */
+      body.w95-embed-body .theme-toggle,
+      body.w95-embed-body .cmdk-hint-btn { display: none !important; }
     </style>
     <div class="w95-shell">
       <div class="w95-window">
@@ -546,7 +551,7 @@ const paletteIndex = [
     <style>
       .theme-toggle {
         position: fixed;
-        bottom: 38px;
+        bottom: 64px;
         right: 130px;
         z-index: 90;
         display: inline-flex;
@@ -616,7 +621,7 @@ const paletteIndex = [
     <style>
       .cmdk-hint-btn {
         position: fixed;
-        bottom: 38px;
+        bottom: 64px;
         right: 14px;
         z-index: 90;
         display: flex;
@@ -652,7 +657,11 @@ const paletteIndex = [
     </button>
 
     <!-- ===== Cmd+K command palette ===== -->
-    <style>
+    <!-- G6: is:global is REQUIRED — the result rows are injected via
+         innerHTML at runtime, so they never receive Astro's scoped
+         data-astro-* attribute. A scoped block would not match them and
+         the 3-column grid would collapse (type/label/sub run together). -->
+    <style is:global>
       .cmdk-backdrop {
         position: fixed; inset: 0; z-index: 200;
         background: rgba(0,0,0,0.55);

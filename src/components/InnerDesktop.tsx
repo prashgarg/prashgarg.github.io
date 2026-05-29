@@ -1316,9 +1316,12 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
       }
       const geo = defaultGeo(app);
       const nextZ = topZ + 1;
+      // G7: on a narrow (mobile) viewport, open new windows MAXIMIZED so
+      // they fit the screen — the cascade geometry overflows badly < 600px.
+      const isMobile = containerSize.w < 600;
       return [...ws, {
         id, zIndex: nextZ,
-        minimized: false, maximized: false,
+        minimized: false, maximized: isMobile,
         ...geo,
         openFrom: fromPoint, state: 'opening',
         path: pathOverride,
@@ -1335,7 +1338,7 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
       setWins(ws => ws.map(w => w.id === id ? { ...w, state: 'open' as const } : w));
     }, 220);
     if (fromPoint) focusApp(id);
-  }, [defaultGeo, topZ, focusApp]);
+  }, [defaultGeo, topZ, focusApp, containerSize]);
 
   // Close an app — play closing animation, then remove from array
   // and update URL to whatever is now the topmost open window (or '/').

@@ -1,56 +1,92 @@
-# Reference image notes — the look we're targeting
+# Reference image notes — the Severance MDR look we're targeting
 
-## Composition
-- HUGE empty room — walls quite far from workstation
-- Workstation centered, camera at eye level (~1.7m), slight downward tilt
-- FOV moderate (~50–55°)
-- Workstation fills about 30–35% of frame width
-- Floor occupies bottom ~30% of frame
-- Walls middle ~40%
-- Ceiling top ~30%
+Updated 2026-05-29 from ACTUAL Severance show frames + fan 3D recreations
+(provided by the user). Save those frames alongside this file as
+`ref-severance-1.png` … `ref-severance-5.png` so future runs can `Read` them:
 
-## Floor / carpet
-- Sage green — LIGHTER than current. Slightly desaturated, like #8AAB85
-- Subtle vacuum-track patterns / wear visible
-- Matte texture
+- `ref-severance-1.png` — wide eye-level, full room (ceiling + doorway + clock)
+- `ref-severance-2.png` — top-down of the 4-desk PINWHEEL
+- `ref-severance-3.png` — fan 3D recreation of the pinwheel pod
+- `ref-severance-4.png` — NYT still, close eye-level (CRT + green dividers)
+- `ref-severance-5.png` — wide eye-level symmetric (best ceiling + floor read)
 
-## Ceiling
-- Bright fluorescent panel grid in a diamond/coffered layout
-- SMOOTH GRADIENT depth (not hard edges like current shader)
-- Panels are LARGE and bright — almost glowing white
-- Beams/joins between panels are pale grey, not dark
-- The whole ceiling has a soft, almost overexposed brightness
+These supersede the older, vaguer notes at the bottom.
 
-## Walls
-- Crisp white panels (off-white #F2F0EC)
-- Subtle horizontal trim lines:
-  - BASEBOARD at floor (~30cm high)
-  - UPPER TRIM at ~2.4m (above door height)
-  - CEILING JUNCTION trim (already have)
-- Vertical panel seams are VERY SUBTLE (almost invisible)
-- Some small dark grilles / HVAC vents at top of walls
-- Wall clock: small round on right wall
-- Doorway: dark rectangle on left wall (open to darkness)
+---
 
-## Active workstation
-- WHITE desk with TWO PEDESTALS (one on each side) — solid, boxy
-- BLACK office chair (not brown leather)
-- 5-spoke chrome base on dark CIRCULAR chair mat
-- CRT monitor: white boxy modern style with teal/blue screen
-- Keyboard: teal/blue keys
-- Pen holder + tissue box on desk
-- Minimal accessories
+## CEILING — the single biggest gap in our current build
 
-## Partitions
-- Dark green fabric, subtle gradient shading
-- L-shape arrangement around workstation (back + side)
-- Glimpse of another workstation visible through/over partition
+The real ceiling is **bright and luminous**, not dark. It is:
 
-## Lighting
-- Very bright, even, clinical fluorescent flood
-- No strong shadows
-- Clean institutional feel
-- 2001: A Space Odyssey end-scene aesthetic
+- A grid of shallow **inverted-pyramid coffers** — each cell rises to a point
+  with 4 sloped facets. The facets are **pale white-green** (slopes roughly
+  `#D8E0D6` lightening to `#EAEFEA` near the apex). They CATCH light; never black.
+- Interspersed **flat bright rectangular fluorescent panels** set flush into the
+  grid in a regular pattern (long rectangles, near-white, slightly cool). These
+  are the actual light sources and they glow.
+- Thin pale-grey T-bar grid lines between cells.
+- Net read: the ceiling is one of the BRIGHTEST things in frame — white-green and
+  slightly overexposed (2001: A Space Odyssey register).
 
-## Reference image filename
-shots/REFERENCE-target.png (user-provided, to compare against)
+> Our current `CofferedCeiling` does the OPPOSITE: dark recess walls (`#4C5E50`)
+> with small emissive panels, so the ceiling reads as dark squares. This is the
+> #1 fix (goal G1).
+
+## FLOOR / carpet
+
+- Saturated **mid-green** carpet — about `#6E9457` / `#6B8E5A` (a putting-green
+  muted green). NOT the grey-sage we currently use (`#88AB7E`); the show is
+  greener and a touch more saturated.
+- Subtle vacuum wear / faint directional marks, low contrast. Matte.
+
+## WALLS
+
+- Crisp **white** floor-to-ceiling panels (`#F2F0EC`-ish).
+- A thin **dark charcoal horizontal trim** line near the top (just under the
+  ceiling). Subtle baseboard at the floor.
+- Vertical panel seams VERY subtle.
+- Occasional **fluted vertical pilaster strips** between wall runs (see ref 5).
+- A **dark open doorway** (black void) set into one wall (ref 1, left).
+- A small round **wall clock** (ref 1, right wall).
+
+## WORKSTATION
+
+- **White** desks, two pedestals (drawers) each, white tops.
+- **Dark forest-green fabric** divider panels, low (≈ desk height), with **white
+  frame edges/caps** along the top and sides. (Our partition colour `#2F4D3A` is
+  close; we're missing the white frame cap.)
+- **4 desks in a PINWHEEL** (rotational) around a central column — each desk
+  rotated 90° and offset so they spiral (ref 2 top-down). NOTE: this project
+  deliberately switched to a SYMMETRIC cross (`SOUTH_DX=0`); the authentic layout
+  is the pinwheel. Treat re-pinwheeling as OPTIONAL (G15) since symmetry was a
+  deliberate call.
+- **CRT**: white/cream boxy monitor, small screen with a **navy bezel**, a round
+  **dial/knob on the right cheek** of the monitor; blue keyboard + control panel
+  with blue keys and a trackball.
+- Desk props: a **small white task lamp** (ref 5 — so a lamp IS screen-accurate,
+  but a tiny modern white task lamp, NOT a banker's lamp and NOT a floor lamp),
+  framed photo, pen cup, mug, notebook, tissue box, postcards.
+- **Chairs**: dark charcoal mid-back office chairs, 5-star base, on **translucent
+  grey chair mats with an irregular pentagon-ish shape** (not circular — ref 5).
+
+## LIGHTING
+
+- Very bright, even, clinical fluorescent flood; slightly cool/green tint.
+- Minimal shadow; gentle, soft. Slightly overexposed.
+
+## CAMERA / COMPOSITION
+
+- Hero shots are **eye-level (~1.6 m), centered, symmetric, wide**. Vast empty
+  green floor fills the bottom ~40%, white walls the middle, the bright faceted
+  ceiling the top ~30%. The workstation sits small and central — the EMPTINESS
+  is the point.
+
+---
+
+## (older notes, kept for reference — superseded where they conflict)
+
+- HUGE empty room — walls far from the workstation. ✓ (still true)
+- Workstation ~30–35% of frame width, centered. ✓
+- Partitions: dark green fabric, L-shape around workstation. ✓
+- Black office chairs, 5-spoke base, chair mat. ✓
+- CRT: white boxy, teal/blue screen; blue keys. ✓
