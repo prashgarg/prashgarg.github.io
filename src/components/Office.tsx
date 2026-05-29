@@ -2299,28 +2299,52 @@ function OfficeScene({ phase, onMonitorClick }: {
           small white pedestal feet. Half-arms (not full arms) — each
           panel separates one PAIR of adjacent stations only.
           Centre of the + is at (CX, _, CZ). */}
-      <MdrDividerCluster cx={0} cz={DESK_Z - 0.74} fabric={partitionFabric as any} />
-
-      {/* ── 4 SYMMETRIC BOOTHS ────────────────────────────────────────
-          Each station centred on its cardinal axis. Pod centre is at
-          (0, _, DESK_Z - 0.74) = (0, _, -5.24). Every desk faces the
-          centre and aligns to one arm of the central + divider.
-          - SOUTH (active): centred on x=0, chair south of desk
-          - NORTH: mirror of SOUTH across the EW divider
-          - EAST/WEST: mirror pair across the NS divider, rotated 90°
-          Symmetric across both axes — no pinwheel offset. */}
-      <group position={[0, 0, DESK_Z]}>
-        <StationLite active variant={0} />
-      </group>
-      <group position={[0, 0, DESK_Z - 1.48]} rotation-y={Math.PI}>
-        <StationLite variant={1} />
-      </group>
-      <group position={[1.3, 0, DESK_Z - 0.74]} rotation-y={Math.PI / 2}>
-        <StationLite variant={2} />
-      </group>
-      <group position={[-1.3, 0, DESK_Z - 0.74]} rotation-y={-Math.PI / 2}>
-        <StationLite variant={3} />
-      </group>
+      {/* ── PINWHEEL POD (authentic Severance MDR layout) ─────────────
+          The 4 desks SPIRAL around the pod centre (rotational symmetry),
+          not a mirror cross. Implementation keeps the ACTIVE (k=0) desk
+          EXACTLY at (0,0,DESK_Z) so the CRT, desk accessories, camera
+          dolly and the CRT-screen projector are all untouched — the
+          other 3 desks are the same desk rotated 90/180/270° about the
+          pod centre C, which is offset tangentially (POD_CX≠0) so the
+          arrangement windmills instead of mirroring.
+            C = (POD_CX, DESK_Z+POD_CZoff);  ARM = A − C  (A = active desk)
+          A divider wall rides the inner/back edge of each desk, so the 4
+          dividers pinwheel too and tuck against a central white column. */}
+      {(() => {
+        const POD_CX = 0.55;                 // tangential offset → windmill
+        const POD_CZ = DESK_Z - 1.02;         // radial: centre is north of active desk
+        const ARM_DX = 0 - POD_CX;            // active desk pos minus centre
+        const ARM_DZ = DESK_Z - POD_CZ;       // = 1.02
+        return (
+          <group position={[POD_CX, 0, POD_CZ]}>
+            {/* central white column + dark sensor crown (the junction post) */}
+            <mesh position={[0, 0.85, 0]} castShadow receiveShadow>
+              <boxGeometry args={[0.34, 1.70, 0.34]} />
+              <meshStandardMaterial color={C.desk} roughness={0.5} metalness={0.02} />
+            </mesh>
+            <mesh position={[0, 1.77, 0]} castShadow>
+              <boxGeometry args={[0.18, 0.14, 0.18]} />
+              <meshStandardMaterial color="#2A2A2A" roughness={0.55} metalness={0.3} />
+            </mesh>
+            <mesh position={[0, 1.74, 0.092]}>
+              <sphereGeometry args={[0.008, 8, 6]} />
+              <meshStandardMaterial color="#FF3030" emissive="#FF1010" emissiveIntensity={2.0} />
+            </mesh>
+            {[0, 1, 2, 3].map((k) => (
+              <group key={k} rotation-y={k * Math.PI / 2}>
+                <group position={[ARM_DX, 0, ARM_DZ]}>
+                  <StationLite active={k === 0} variant={k} />
+                  {/* low divider wall along this desk's back edge (toward
+                      the centre). 4 of these windmill around the column. */}
+                  <group position={[0, 0.52, -0.06 - 0.70]}>
+                    <MdrPanel w={1.46} h={1.05} fabric={partitionFabric as any} />
+                  </group>
+                </group>
+              </group>
+            ))}
+          </group>
+        );
+      })()}
 
       {/* ── ACTIVE STATION ITEMS — CRT + every desk accessory ─────────
           Wrapped in a group at (SOUTH_DX, 0, 0) so the whole bundle
