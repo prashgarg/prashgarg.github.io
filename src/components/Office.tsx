@@ -129,8 +129,10 @@ const MONITOR_WORLD  = new THREE.Vector3(SOUTH_DX + 0.10, 1.05, DESK_Z - 0.35); 
 // back-left/right corners without competing with the active desk.
 const CAM_ENTRY_POS  = new THREE.Vector3(2.20, 1.92, 5.20);
 const CAM_ENTRY_TGT  = new THREE.Vector3(0.10, 1.05, -5.00);
-const CAM_IDLE_POS   = new THREE.Vector3(1.40, 1.50, 4.10);
-const CAM_IDLE_TGT   = new THREE.Vector3(0.10, 1.10, -5.00);
+// N1: pulled back + a touch higher + more head-on so the pod reads small
+// in a cavernous green room (was (1.40,1.50,4.10) → close/half-frame).
+const CAM_IDLE_POS   = new THREE.Vector3(0.70, 1.62, 6.60);
+const CAM_IDLE_TGT   = new THREE.Vector3(0.25, 1.05, -5.00);
 // Monitor close-up — camera ends ~0.20 m from the screen face (was
 // 0.34). At FOV 54° this makes the screen fill ~92% of the viewport
 // vertically, so the InnerDesktop dominates the frame and the user
@@ -301,10 +303,15 @@ const CRT_FRAG = `
  *  (opening)
  */
 function CofferedCeiling() {
+  // N5: axis-aligned SQUARE pyramidal coffers (was 45° diamonds) on a
+  // regular grid, with a bright flat square light panel at the apex of
+  // each, a pale apex→opening gradient on the facets (vertex colours),
+  // and the pale slab BETWEEN openings reading as crisp grid lines — the
+  // luminous, orderly Severance MDR ceiling (ref-severance-1/5).
   const SPACING      = 3.0;     // grid spacing of coffer centres
-  const HOLE_HALF    = 1.05;    // opening diamond half-diagonal
-  const PANEL_HALF   = 0.50;    // recessed panel half-diagonal (narrower → steeper walls)
-  const COFFER_DEPTH = 0.85;    // how far up the recess extends (was 0.45 → 0.85 for 2001-style depth)
+  const HALF_OPEN    = 1.30;    // square opening half-size (gap 0.40 → grid lines)
+  const PANEL_HALF   = 0.62;    // square recessed light-panel half-size
+  const COFFER_DEPTH = 0.80;    // recess depth
 
   // 1) coffer positions on a regular grid (inset half-spacing from walls)
   const positions = useMemo(() => {
@@ -319,7 +326,8 @@ function CofferedCeiling() {
     return arr;
   }, []);
 
-  // 2) slab geometry — outer rect minus a diamond hole per coffer
+  // 2) slab geometry — outer rect minus a SQUARE hole per coffer. The
+  //    remaining slab webbing between holes is the pale grid line.
   const slabGeo = useMemo(() => {
     const w = ROOM_W / 2 + 0.5;
     const d = ROOM_D / 2 + 0.5;
@@ -331,84 +339,73 @@ function CofferedCeiling() {
     shape.lineTo(-w, -d);
     for (const [x, z] of positions) {
       const hole = new THREE.Path();
-      hole.moveTo(x - HOLE_HALF, z);
-      hole.lineTo(x,             z + HOLE_HALF);
-      hole.lineTo(x + HOLE_HALF, z);
-      hole.lineTo(x,             z - HOLE_HALF);
-      hole.lineTo(x - HOLE_HALF, z);
+      hole.moveTo(x - HALF_OPEN, z - HALF_OPEN);
+      hole.lineTo(x + HALF_OPEN, z - HALF_OPEN);
+      hole.lineTo(x + HALF_OPEN, z + HALF_OPEN);
+      hole.lineTo(x - HALF_OPEN, z + HALF_OPEN);
+      hole.lineTo(x - HALF_OPEN, z - HALF_OPEN);
       shape.holes.push(hole);
     }
     return new THREE.ShapeGeometry(shape);
   }, [positions]);
 
-  // 3) ONE coffer wall geometry (inverted frustum) — shared across all
+  // 3) ONE square inverted-pyramid coffer wall geometry — shared. 8 verts:
+  //    square opening at y=0, smaller square at y=DEPTH. Vertex colours give
+  //    a soft gradient: opening ring slightly darker, apex ring lighter.
   const cofferGeo = useMemo(() => {
     const g = new THREE.BufferGeometry();
+    const HO = HALF_OPEN, PA = PANEL_HALF, D = COFFER_DEPTH;
     const v = new Float32Array([
-      // opening diamond at y=0
-      -HOLE_HALF, 0, 0,                       // 0: west
-       0,         0,  HOLE_HALF,              // 1: south
-       HOLE_HALF, 0, 0,                       // 2: east
-       0,         0, -HOLE_HALF,              // 3: north
-      // panel diamond at y=COFFER_DEPTH
-      -PANEL_HALF, COFFER_DEPTH, 0,           // 4
-       0,          COFFER_DEPTH,  PANEL_HALF, // 5
-       PANEL_HALF, COFFER_DEPTH, 0,           // 6
-       0,          COFFER_DEPTH, -PANEL_HALF, // 7
+      -HO, 0, -HO,   // 0 opening
+       HO, 0, -HO,   // 1
+       HO, 0,  HO,   // 2
+      -HO, 0,  HO,   // 3
+      -PA, D, -PA,   // 4 apex
+       PA, D, -PA,   // 5
+       PA, D,  PA,   // 6
+      -PA, D,  PA,   // 7
+    ]);
+    // opening verts darker, apex verts lighter → gradient toward the light
+    const cOpen = [0.78, 0.82, 0.78];
+    const cApex = [0.92, 0.94, 0.92];
+    const col = new Float32Array([
+      ...cOpen, ...cOpen, ...cOpen, ...cOpen,
+      ...cApex, ...cApex, ...cApex, ...cApex,
     ]);
     const idx = [
-      0, 1, 4,  1, 5, 4,   // SW wall
-      1, 2, 5,  2, 6, 5,   // SE wall
-      2, 3, 6,  3, 7, 6,   // NE wall
-      3, 0, 7,  0, 4, 7,   // NW wall
+      0, 1, 5,  0, 5, 4,   // S wall
+      1, 2, 6,  1, 6, 5,   // E wall
+      2, 3, 7,  2, 7, 6,   // N wall
+      3, 0, 4,  3, 4, 7,   // W wall
     ];
     g.setAttribute('position', new THREE.BufferAttribute(v, 3));
+    g.setAttribute('color', new THREE.BufferAttribute(col, 3));
     g.setIndex(idx);
-    g.computeVertexNormals();
-    return g;
-  }, []);
-
-  // 4) panel geometry — diamond plane at back of recess (emissive)
-  const panelGeo = useMemo(() => {
-    const g = new THREE.BufferGeometry();
-    const v = new Float32Array([
-      -PANEL_HALF, 0, 0,           // west
-       0,         0,  PANEL_HALF,  // south
-       PANEL_HALF, 0, 0,           // east
-       0,         0, -PANEL_HALF,  // north
-    ]);
-    g.setAttribute('position', new THREE.BufferAttribute(v, 3));
-    g.setIndex([0, 2, 1,  0, 3, 2]);
     g.computeVertexNormals();
     return g;
   }, []);
 
   return (
     <group>
-      {/* Slab — near-white pale green. The real Severance ceiling is one
-          of the BRIGHTEST things in frame (white-green, slightly
-          overexposed), NOT dark. Slab near-white; coffer facets pale too. */}
+      {/* Slab + grid webbing — near-white pale green (the crisp grid lines). */}
       <mesh rotation-x={Math.PI / 2} position={[0, ROOM_H, 0]}>
         <primitive object={slabGeo} attach="geometry" />
-        <meshStandardMaterial color="#E6EAE4" roughness={0.9} side={THREE.DoubleSide} />
+        <meshStandardMaterial color="#E8ECE6" roughness={0.9} side={THREE.DoubleSide} />
       </mesh>
-      {/* Coffer facets + flat fluorescent panels — one per hole.
-          INVERTED from before: facets are PALE white-green (#D2DBD0) so
-          the recesses catch light and read luminous, never black — like
-          the real MDR pyramidal ceiling. The flat panel at the back of
-          each recess glows near-white (the actual fluorescent source). */}
       {positions.map(([x, z], i) => (
         <group key={i} position={[x, ROOM_H, z]}>
+          {/* pale pyramid facets with apex→opening vertex gradient */}
           <mesh>
             <primitive object={cofferGeo} attach="geometry" />
-            <meshStandardMaterial color="#D2DBD0" roughness={0.9} side={THREE.DoubleSide} />
+            <meshStandardMaterial color="#E2E8E0" vertexColors roughness={0.9} side={THREE.DoubleSide} />
           </mesh>
-          <mesh position={[0, COFFER_DEPTH - 0.005, 0]}>
-            <primitive object={panelGeo} attach="geometry" />
+          {/* bright flat square light panel at the apex */}
+          <mesh position={[0, COFFER_DEPTH - 0.005, 0]} rotation-x={Math.PI / 2}>
+            <planeGeometry args={[PANEL_HALF * 2, PANEL_HALF * 2]} />
             <meshStandardMaterial
               color="#FFFFFF"
               emissive="#FFFFFF"
-              emissiveIntensity={2.2}
+              emissiveIntensity={2.0}
               side={THREE.DoubleSide}
               toneMapped={false}
             />
@@ -539,7 +536,7 @@ function CameraRig({ phase, onArrived, onEntryDone }: {
   useEffect(() => {
     if (!(camera instanceof THREE.PerspectiveCamera)) return;
     const aspect = size.width / Math.max(1, size.height);
-    camera.fov = aspect < 0.75 ? 48 : aspect < 1.2 ? 52 : 54;
+    camera.fov = aspect < 0.75 ? 50 : aspect < 1.2 ? 54 : 56;
     camera.updateProjectionMatrix();
   }, [size, camera]);
 
@@ -1478,8 +1475,9 @@ function StationLite({ active = false, variant = 0 }: { active?: boolean; varian
   ][variant % 4];
   return (
     <>
-      {/* Desk surface — bevelled, subtle wood-grain normal */}
-      <RoundedBox args={[1.55, 0.06, 1.30]} radius={0.015} smoothness={3} position={[0, 0.74, DESK_DZ]} castShadow receiveShadow>
+      {/* Desk surface — bevelled, subtle wood-grain normal.
+          N2: lengthened 1.55→1.95 (wider than deep, like the real MDR desks). */}
+      <RoundedBox args={[1.95, 0.06, 1.25]} radius={0.015} smoothness={3} position={[0, 0.74, DESK_DZ]} castShadow receiveShadow>
         <meshStandardMaterial
           {...(deskNormals as any)}
           color={C.desk}
@@ -1497,7 +1495,7 @@ function StationLite({ active = false, variant = 0 }: { active?: boolean; varian
         <meshStandardMaterial {...(deskNormals as any)} color={C.deskLeg} roughness={0.55} normalScale={[0.15, 0.15] as any} />
       </mesh>
       {/* LEFT pedestal — bevelled, subtle normal */}
-      <RoundedBox args={[0.66, 0.72, 1.20]} radius={0.015} smoothness={3} position={[-0.50, 0.36, DESK_DZ]} castShadow receiveShadow>
+      <RoundedBox args={[0.66, 0.72, 1.20]} radius={0.015} smoothness={3} position={[-0.66, 0.36, DESK_DZ]} castShadow receiveShadow>
         <meshStandardMaterial {...(deskNormals as any)} color={C.deskLeg} roughness={0.5} normalScale={[0.20, 0.20] as any} />
       </RoundedBox>
       {/* LEFT pedestal — 2-DRAWER Lumon layout per the reference:
@@ -1505,37 +1503,37 @@ function StationLite({ active = false, variant = 0 }: { active?: boolean; varian
           and one DEEP file drawer below (y range 0.02→0.48, height 0.46).
           Single divider seam between them; bigger pull on the file drawer. */}
       {/* divider seam between the two drawers */}
-      <mesh position={[-0.50, 0.49, DESK_DZ + 0.602]}>
+      <mesh position={[-0.66, 0.49, DESK_DZ + 0.602]}>
         <boxGeometry args={[0.62, 0.006, 0.004]} />
         <meshStandardMaterial color="#6E6E6A" />
       </mesh>
       {/* TOP shallow-drawer pull — slim horizontal bar centred on the
           top drawer face. */}
-      <mesh position={[-0.50, 0.60, DESK_DZ + 0.605]}>
+      <mesh position={[-0.66, 0.60, DESK_DZ + 0.605]}>
         <boxGeometry args={[0.22, 0.020, 0.010]} />
         <meshStandardMaterial color="#3F3F3F" roughness={0.45} metalness={0.45} />
       </mesh>
       {/* BOTTOM file-drawer pull — wider + thicker (file drawers
           need a chunkier handle), centred on the file drawer face. */}
-      <mesh position={[-0.50, 0.25, DESK_DZ + 0.605]}>
+      <mesh position={[-0.66, 0.25, DESK_DZ + 0.605]}>
         <boxGeometry args={[0.32, 0.028, 0.012]} />
         <meshStandardMaterial color="#3F3F3F" roughness={0.45} metalness={0.45} />
       </mesh>
 
       {/* RIGHT pedestal — bevelled, mirror of left */}
-      <RoundedBox args={[0.66, 0.72, 1.20]} radius={0.015} smoothness={3} position={[0.50, 0.36, DESK_DZ]} castShadow receiveShadow>
+      <RoundedBox args={[0.66, 0.72, 1.20]} radius={0.015} smoothness={3} position={[0.66, 0.36, DESK_DZ]} castShadow receiveShadow>
         <meshStandardMaterial {...(deskNormals as any)} color={C.deskLeg} roughness={0.5} normalScale={[0.20, 0.20] as any} />
       </RoundedBox>
       {/* RIGHT pedestal — same 2-drawer Lumon layout */}
-      <mesh position={[0.50, 0.49, DESK_DZ + 0.602]}>
+      <mesh position={[0.66, 0.49, DESK_DZ + 0.602]}>
         <boxGeometry args={[0.62, 0.006, 0.004]} />
         <meshStandardMaterial color="#6E6E6A" />
       </mesh>
-      <mesh position={[0.50, 0.60, DESK_DZ + 0.605]}>
+      <mesh position={[0.66, 0.60, DESK_DZ + 0.605]}>
         <boxGeometry args={[0.22, 0.020, 0.010]} />
         <meshStandardMaterial color="#3F3F3F" roughness={0.45} metalness={0.45} />
       </mesh>
-      <mesh position={[0.50, 0.25, DESK_DZ + 0.605]}>
+      <mesh position={[0.66, 0.25, DESK_DZ + 0.605]}>
         <boxGeometry args={[0.32, 0.028, 0.012]} />
         <meshStandardMaterial color="#3F3F3F" roughness={0.45} metalness={0.45} />
       </mesh>
@@ -2311,10 +2309,14 @@ function OfficeScene({ phase, onMonitorClick }: {
           A divider wall rides the inner/back edge of each desk, so the 4
           dividers pinwheel too and tuck against a central white column. */}
       {(() => {
-        const POD_CX = 0.55;                 // tangential offset → windmill
-        const POD_CZ = DESK_Z - 1.02;         // radial: centre is north of active desk
+        // N3: stronger spiral — tangential offset 0.55→0.95 makes the
+        // windmill obvious; wider radial 1.02→1.18 spreads the desks so
+        // they don't cluster (pairs with the pulled-back camera). The
+        // active desk stays at (0,DESK_Z) since ARM_DX = 0 − POD_CX.
+        const POD_CX = 0.95;                 // tangential offset → windmill
+        const POD_CZ = DESK_Z - 1.18;         // radial: centre is north of active desk
         const ARM_DX = 0 - POD_CX;            // active desk pos minus centre
-        const ARM_DZ = DESK_Z - POD_CZ;       // = 1.02
+        const ARM_DZ = DESK_Z - POD_CZ;       // = 1.18
         return (
           <group position={[POD_CX, 0, POD_CZ]}>
             {/* central white column + dark sensor crown (the junction post) */}
@@ -2330,15 +2332,22 @@ function OfficeScene({ phase, onMonitorClick }: {
               <sphereGeometry args={[0.008, 8, 6]} />
               <meshStandardMaterial color="#FF3030" emissive="#FF1010" emissiveIntensity={2.0} />
             </mesh>
+            {/* N4: four divider walls RADIATE from the column in a windmill —
+                each wall's inner edge butts a column face (x≈0.17) and a
+                tangential z-offset (≈ column half-width) makes them pinwheel
+                cleanly around the post instead of forming a + or floating. */}
+            {[0, 1, 2, 3].map((k) => (
+              <group key={`div-${k}`} rotation-y={k * Math.PI / 2}>
+                <group position={[0.17 + 1.10 / 2, 0.52, 0.155]}>
+                  <MdrPanel w={1.10} h={1.05} fabric={partitionFabric as any} />
+                </group>
+              </group>
+            ))}
+            {/* the 4 desks (dividers handled centrally above) */}
             {[0, 1, 2, 3].map((k) => (
               <group key={k} rotation-y={k * Math.PI / 2}>
                 <group position={[ARM_DX, 0, ARM_DZ]}>
                   <StationLite active={k === 0} variant={k} />
-                  {/* low divider wall along this desk's back edge (toward
-                      the centre). 4 of these windmill around the column. */}
-                  <group position={[0, 0.52, -0.06 - 0.70]}>
-                    <MdrPanel w={1.46} h={1.05} fabric={partitionFabric as any} />
-                  </group>
                 </group>
               </group>
             ))}
