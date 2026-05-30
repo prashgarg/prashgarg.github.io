@@ -365,9 +365,11 @@ function CofferedCeiling() {
        PA, D,  PA,   // 6
       -PA, D,  PA,   // 7
     ]);
-    // opening verts darker, apex verts lighter → gradient toward the light
-    const cOpen = [0.78, 0.82, 0.78];
-    const cApex = [0.92, 0.94, 0.92];
+    // opening verts darker, apex verts lighter → gradient toward the light.
+    // F1: lifted toward white so the ceiling reads luminous (not grey) even
+    // at grazing angles in the wide idle shot.
+    const cOpen = [0.88, 0.90, 0.88];
+    const cApex = [0.98, 0.99, 0.98];
     const col = new Float32Array([
       ...cOpen, ...cOpen, ...cOpen, ...cOpen,
       ...cApex, ...cApex, ...cApex, ...cApex,
@@ -390,14 +392,14 @@ function CofferedCeiling() {
       {/* Slab + grid webbing — near-white pale green (the crisp grid lines). */}
       <mesh rotation-x={Math.PI / 2} position={[0, ROOM_H, 0]}>
         <primitive object={slabGeo} attach="geometry" />
-        <meshStandardMaterial color="#E8ECE6" roughness={0.9} side={THREE.DoubleSide} />
+        <meshStandardMaterial color="#EEF2EC" roughness={0.9} side={THREE.DoubleSide} />
       </mesh>
       {positions.map(([x, z], i) => (
         <group key={i} position={[x, ROOM_H, z]}>
           {/* pale pyramid facets with apex→opening vertex gradient */}
           <mesh>
             <primitive object={cofferGeo} attach="geometry" />
-            <meshStandardMaterial color="#E2E8E0" vertexColors roughness={0.9} side={THREE.DoubleSide} />
+            <meshStandardMaterial color="#EAEFEA" vertexColors roughness={0.9} side={THREE.DoubleSide} />
           </mesh>
           {/* bright flat square light panel at the apex */}
           <mesh position={[0, COFFER_DEPTH - 0.005, 0]} rotation-x={Math.PI / 2}>
@@ -405,7 +407,7 @@ function CofferedCeiling() {
             <meshStandardMaterial
               color="#FFFFFF"
               emissive="#FFFFFF"
-              emissiveIntensity={2.0}
+              emissiveIntensity={2.6}
               side={THREE.DoubleSide}
               toneMapped={false}
             />
@@ -1595,42 +1597,25 @@ function StationLite({ active = false, variant = 0 }: { active?: boolean; varian
       <group position={[0.05, 0, CHAIR_Z]} rotation-y={Math.PI}>
         <OfficeChair pos={[0, 0, 0]} />
       </group>
-      {/* Chair mat — CLEAR PLASTIC office chair mat per the reference.
-          Replaces the dark green tinted disc with a thin transmissive
-          PHYSICAL material so you actually see the carpet through it
-          with a faint glass cast, and a bevelled CHROME RIM that
-          catches the ceiling-panel reflections.
-          Offset per `variant` so each booth's mat sits in a slightly
-          different spot. */}
-      {/* main mat — thin cylinder so the rim has visible side */}
+      {/* Chair mat — F3: TRANSLUCENT GREY, IRREGULAR PENTAGON per the show
+          (was a clear circular disc + chrome ring). A 5-sided cylinder gives
+          the pentagon; a non-uniform scale makes it irregular; a grey tint
+          with partial opacity shows the carpet through faintly with a grey
+          cast. Offset + rotated per `variant` so the booths differ. */}
       <mesh
-        position={[0.05 + PROPS.matDx, 0.018, CHAIR_Z + PROPS.matDz]}
+        position={[0.05 + PROPS.matDx, 0.016, CHAIR_Z + PROPS.matDz]}
+        rotation-y={0.35 + variant * 0.4}
+        scale={[1.12, 1, 0.9]}
         renderOrder={2}
       >
-        <cylinderGeometry args={[0.65, 0.65, 0.012, 64]} />
-        <meshPhysicalMaterial
-          color="#F2F4F0"
-          roughness={0.05}
+        <cylinderGeometry args={[0.74, 0.74, 0.012, 5]} />
+        <meshStandardMaterial
+          color="#C6CBC6"
+          roughness={0.25}
           metalness={0.0}
-          transmission={0.92}
-          thickness={0.012}
-          ior={1.48}
-          attenuationColor="#E8EEEA"
-          attenuationDistance={1.2}
           transparent
-          opacity={1.0}
+          opacity={0.55}
         />
-      </mesh>
-      {/* slim chrome / shiny BEVEL RING around the perimeter — catches
-          the bright ceiling panel reflections, gives the mat a clear
-          "glass edge" silhouette like the reference photo. */}
-      <mesh
-        rotation-x={-Math.PI / 2}
-        position={[0.05 + PROPS.matDx, 0.0245, CHAIR_Z + PROPS.matDz]}
-        renderOrder={3}
-      >
-        <ringGeometry args={[0.62, 0.665, 64]} />
-        <meshStandardMaterial color="#D8DCDA" roughness={0.20} metalness={0.85} />
       </mesh>
     </>
   );
