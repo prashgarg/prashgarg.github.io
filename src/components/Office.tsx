@@ -2299,9 +2299,11 @@ function OfficeScene({ phase, onMonitorClick }: {
         // they don't cluster (pairs with the pulled-back camera). The
         // active desk stays at (0,DESK_Z) since ARM_DX = 0 − POD_CX.
         const POD_CX = 0.95;                 // tangential offset → windmill
-        const POD_CZ = DESK_Z - 1.18;         // radial: centre is north of active desk
+        const POD_CZ = DESK_Z - 1.52;         // radial spread — widened 1.18→1.52 so
+                                              // the longer (N2) desks have an even gap
+                                              // instead of clumping/overlapping at centre.
         const ARM_DX = 0 - POD_CX;            // active desk pos minus centre
-        const ARM_DZ = DESK_Z - POD_CZ;       // = 1.18
+        const ARM_DZ = DESK_Z - POD_CZ;       // = 1.52
         return (
           <group position={[POD_CX, 0, POD_CZ]}>
             {/* central white column + dark sensor crown (the junction post) */}
@@ -2323,8 +2325,8 @@ function OfficeScene({ phase, onMonitorClick }: {
                 cleanly around the post instead of forming a + or floating. */}
             {[0, 1, 2, 3].map((k) => (
               <group key={`div-${k}`} rotation-y={k * Math.PI / 2}>
-                <group position={[0.17 + 1.10 / 2, 0.52, 0.155]}>
-                  <MdrPanel w={1.10} h={1.05} fabric={partitionFabric as any} />
+                <group position={[0.17 + 1.45 / 2, 0.52, 0.155]}>
+                  <MdrPanel w={1.45} h={1.05} fabric={partitionFabric as any} />
                 </group>
               </group>
             ))}
