@@ -2294,47 +2294,30 @@ function OfficeScene({ phase, onMonitorClick }: {
           A divider wall rides the inner/back edge of each desk, so the 4
           dividers pinwheel too and tuck against a central white column. */}
       {(() => {
-        // N3: stronger spiral — tangential offset 0.55→0.95 makes the
-        // windmill obvious; wider radial 1.02→1.18 spreads the desks so
-        // they don't cluster (pairs with the pulled-back camera). The
-        // active desk stays at (0,DESK_Z) since ARM_DX = 0 − POD_CX.
-        const POD_CX = 0.95;                 // tangential offset → windmill
-        const POD_CZ = DESK_Z - 1.52;         // radial spread — widened 1.18→1.52 so
-                                              // the longer (N2) desks have an even gap
-                                              // instead of clumping/overlapping at centre.
-        const ARM_DX = 0 - POD_CX;            // active desk pos minus centre
-        const ARM_DZ = DESK_Z - POD_CZ;       // = 1.52
+        // REBUILD to match the real MDR reference (shots/ref-severance-1.png):
+        // the 4 desks INTERLOCK around the centre and each desk carries its
+        // own low divider on its BACK edge (toward centre) — so back-to-back
+        // desks share a green spine and the 4 dividers form the central
+        // windmill. NO central post (the show has none). Tighter radius so
+        // the desks tile/touch instead of floating apart. Active (k=0) desk
+        // stays pinned at (0,DESK_Z) via ARM_DX = 0 − POD_CX.
+        const POD_CX = 0.62;                 // tangential offset → windmill
+        const POD_CZ = DESK_Z - 1.10;         // radial — tight so desks interlock
+        const ARM_DX = 0 - POD_CX;
+        const ARM_DZ = DESK_Z - POD_CZ;       // = 1.10
         return (
           <group position={[POD_CX, 0, POD_CZ]}>
-            {/* central white column + dark sensor crown (the junction post) */}
-            <mesh position={[0, 0.85, 0]} castShadow receiveShadow>
-              <boxGeometry args={[0.34, 1.70, 0.34]} />
-              <meshStandardMaterial color={C.desk} roughness={0.5} metalness={0.02} />
-            </mesh>
-            <mesh position={[0, 1.77, 0]} castShadow>
-              <boxGeometry args={[0.18, 0.14, 0.18]} />
-              <meshStandardMaterial color="#2A2A2A" roughness={0.55} metalness={0.3} />
-            </mesh>
-            <mesh position={[0, 1.74, 0.092]}>
-              <sphereGeometry args={[0.008, 8, 6]} />
-              <meshStandardMaterial color="#FF3030" emissive="#FF1010" emissiveIntensity={2.0} />
-            </mesh>
-            {/* N4: four divider walls RADIATE from the column in a windmill —
-                each wall's inner edge butts a column face (x≈0.17) and a
-                tangential z-offset (≈ column half-width) makes them pinwheel
-                cleanly around the post instead of forming a + or floating. */}
-            {[0, 1, 2, 3].map((k) => (
-              <group key={`div-${k}`} rotation-y={k * Math.PI / 2}>
-                <group position={[0.17 + 1.45 / 2, 0.52, 0.155]}>
-                  <MdrPanel w={1.45} h={1.05} fabric={partitionFabric as any} />
-                </group>
-              </group>
-            ))}
-            {/* the 4 desks (dividers handled centrally above) */}
             {[0, 1, 2, 3].map((k) => (
               <group key={k} rotation-y={k * Math.PI / 2}>
                 <group position={[ARM_DX, 0, ARM_DZ]}>
                   <StationLite active={k === 0} variant={k} />
+                  {/* low divider mounted on this desk's BACK edge (faces the
+                      pod centre). Lower than before (top ≈1.33 m, was 1.57)
+                      to match the reference; white frame cap from G13. The 4
+                      windmill toward the centre with no separate post. */}
+                  <group position={[0, 0.48, -0.06 - 0.70]}>
+                    <MdrPanel w={1.62} h={0.85} fabric={partitionFabric as any} />
+                  </group>
                 </group>
               </group>
             ))}
