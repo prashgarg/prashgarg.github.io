@@ -97,13 +97,18 @@ When a direction is done and the user is happy:
 
 ## Things that bit us once and should not bite again
 
-- **Use Node 22 — Node 23+ hangs the dev server.** Astro 6 + Vite 7
-  hang silently on Node 23/24/25 (`npm run dev` prints the banner then
-  never binds :4321). `.nvmrc` pins `22`; run `nvm use` first. A
-  `predev` guard (`scripts/check-node.mjs`) errors clearly on bad
-  versions. If you're stuck on a newer Node, review against the built
-  site instead: `npm run build && npm run serve` (serves `dist/` on
-  http://localhost:4321 — what the screenshot/Playwright harness needs).
+- **Use Node 22 — Node 23+ hangs BOTH the dev server AND the build.**
+  Astro 6 + Vite 7 hang silently on Node 23/24/25 (`npm run dev` prints
+  the banner then never binds :4321; `astro build` sits at ~0 % CPU
+  forever — verified 2026-06-09 on v25.8.0). There is NO nvm on this
+  machine; Node 22 is installed keg-only via Homebrew. Prefix PATH
+  before any npm command:
+  `export PATH="/opt/homebrew/opt/node@22/bin:$PATH"` (→ v22.22.3).
+  The `predev` guard (`scripts/check-node.mjs`) errors clearly on bad
+  versions, but there is no `prebuild` guard — don't forget the PATH.
+  Review against the built site: `npm run build && npm run serve`
+  (serves `dist/` on http://localhost:4321 — what the screenshot/
+  Playwright harness needs).
 - **Quaternius `.glb` files ship with high-res textures.** We override
   every material colour at runtime, so the textures are pure bloat.
   `scripts/strip-textures.mjs` strips them — total assets ~140 MB →

@@ -931,6 +931,7 @@ const NAV_LINKS: { label: string; href: string }[] = [
   { label: 'TALKS',    href: '/talks'    },
   { label: 'LIBRARY',  href: '/library'  },
   { label: 'NOW',      href: '/now'      },
+  { label: 'CV',       href: '/cv'       },
 ];
 
 /* ---------- App registry (multi-window) -------------------------------- */

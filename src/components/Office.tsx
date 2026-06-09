@@ -74,12 +74,12 @@ const ROOM_H = 4.5;
 
 /* ---------- palette --------------------------------------------------- */
 const C = {
-  carpet:    '#6E9457',   // saturated putting-green (Severance MDR), not grey-sage
-  wall:      '#F2F0EC',
+  carpet:    '#57904B',   // bright clean green — show carpet samples #67A36F (G1)
+  wall:      '#B2C4CA',   // cool white, held under the ACES knee — show walls sample #B2C6CF (G1)
   ceiling:   '#D2D4D6',
   desk:      '#E4E2DC',
   deskLeg:   '#DDDBD6',
-  partition: '#2F4D3A',   // darker, more saturated sage — matches the Severance MDR fabric
+  partition: '#27443A',   // deep forest green — show divider samples #1F3F34 (G3)
   chair:     '#1C1C1C',
   chairMetal:'#3A3A3A',
   monitor:   '#E2DED6',   // Lumon terminal off-white (cleaner, brighter than beige)
@@ -131,7 +131,9 @@ const CAM_ENTRY_POS  = new THREE.Vector3(2.20, 1.92, 5.20);
 const CAM_ENTRY_TGT  = new THREE.Vector3(0.10, 1.05, -5.00);
 // N1: pulled back + a touch higher + more head-on so the pod reads small
 // in a cavernous green room (was (1.40,1.50,4.10) → close/half-frame).
-const CAM_IDLE_POS   = new THREE.Vector3(0.70, 1.62, 6.60);
+// G7: z 6.60 → 4.90 — pod read only ~15% of frame width at idle; ref-1 is
+// ~50% and the older notes say 30–35%. Still cavernous, just less lonely.
+const CAM_IDLE_POS   = new THREE.Vector3(0.70, 1.62, 4.90);
 const CAM_IDLE_TGT   = new THREE.Vector3(0.25, 1.05, -5.00);
 // Monitor close-up — camera ends ~0.20 m from the screen face (was
 // 0.34). At FOV 54° this makes the screen fill ~92% of the viewport
@@ -310,8 +312,12 @@ function CofferedCeiling() {
   // luminous, orderly Severance MDR ceiling (ref-severance-1/5).
   const SPACING      = 3.0;     // grid spacing of coffer centres
   const HALF_OPEN    = 1.30;    // square opening half-size (gap 0.40 → grid lines)
-  const PANEL_HALF   = 0.62;    // square recessed light-panel half-size
-  const COFFER_DEPTH = 0.80;    // recess depth
+  // G2 (goal_09jun26): the panels were 0.80 m up inside the pyramids, so the
+  // low idle camera never SAW them at grazing angles — the whole ceiling read
+  // as dark facet walls (#7B796A vs the show's #B1C9CD+). Shallower recess +
+  // much bigger panel ≈ the show's big near-flush glowing rectangles.
+  const PANEL_HALF   = 0.95;    // square recessed light-panel half-size (was 0.62)
+  const COFFER_DEPTH = 0.32;    // recess depth (was 0.80)
 
   // 1) coffer positions on a regular grid (inset half-spacing from walls)
   const positions = useMemo(() => {
@@ -392,14 +398,14 @@ function CofferedCeiling() {
       {/* Slab + grid webbing — near-white pale green (the crisp grid lines). */}
       <mesh rotation-x={Math.PI / 2} position={[0, ROOM_H, 0]}>
         <primitive object={slabGeo} attach="geometry" />
-        <meshStandardMaterial color="#EEF2EC" roughness={0.9} side={THREE.DoubleSide} />
+        <meshStandardMaterial color="#E8EEE8" roughness={0.9} side={THREE.DoubleSide} />
       </mesh>
       {positions.map(([x, z], i) => (
         <group key={i} position={[x, ROOM_H, z]}>
           {/* pale pyramid facets with apex→opening vertex gradient */}
           <mesh>
             <primitive object={cofferGeo} attach="geometry" />
-            <meshStandardMaterial color="#EAEFEA" vertexColors roughness={0.9} side={THREE.DoubleSide} />
+            <meshStandardMaterial color="#E2E9E2" vertexColors roughness={0.9} side={THREE.DoubleSide} />
           </mesh>
           {/* bright flat square light panel at the apex */}
           <mesh position={[0, COFFER_DEPTH - 0.005, 0]} rotation-x={Math.PI / 2}>
@@ -407,7 +413,7 @@ function CofferedCeiling() {
             <meshStandardMaterial
               color="#FFFFFF"
               emissive="#FFFFFF"
-              emissiveIntensity={2.6}
+              emissiveIntensity={1.6}
               side={THREE.DoubleSide}
               toneMapped={false}
             />
@@ -1590,6 +1596,14 @@ function StationLite({ active = false, variant = 0 }: { active?: boolean; varian
             <cylinderGeometry args={[0.005, 0.005, 0.13, 8]} />
             <meshStandardMaterial color={PROPS.penColor} roughness={0.5} />
           </mesh>
+          {/* G6: brown leather folder/box accent — ref-severance-1 has one
+              warm brown object on a desk; one station only. */}
+          {variant === 2 && (
+            <mesh position={[-0.72, 0.805, DESK_DZ + 0.18]} rotation-y={0.18} castShadow>
+              <boxGeometry args={[0.28, 0.07, 0.20]} />
+              <meshStandardMaterial color="#6B4A2F" roughness={0.55} />
+            </mesh>
+          )}
         </>
       )}
       {/* Office chair — rotated 180° so the seated USER faces the desk
@@ -1609,12 +1623,15 @@ function StationLite({ active = false, variant = 0 }: { active?: boolean; varian
         renderOrder={2}
       >
         <cylinderGeometry args={[0.74, 0.74, 0.012, 5]} />
+        {/* G4: the show mat samples SLIGHTLY DARKER than its carpet
+            (#5F8E72 vs #67A36F) — ours rendered #A6AB97, a bright blob.
+            Dark grey tint + matte + lower opacity = subtle grey veil. */}
         <meshStandardMaterial
-          color="#C6CBC6"
-          roughness={0.25}
+          color="#55665C"
+          roughness={0.55}
           metalness={0.0}
           transparent
-          opacity={0.55}
+          opacity={0.45}
         />
       </mesh>
     </>
@@ -1869,7 +1886,7 @@ function TexturedCarpet({ width, depth }: { width: number; depth: number }) {
         color={C.carpet}
         roughness={0.92}
         normalScale={[0.7, 0.7] as any}
-        aoMapIntensity={1.0}
+        aoMapIntensity={0.55}
       />
     </mesh>
   );
@@ -1902,6 +1919,7 @@ function TexturedWallPlane({
         {...(props as any)}
         color={C.wall}
         roughness={0.78}
+        envMapIntensity={0.45}
         normalScale={[0.30, 0.30] as any}
       />
     </mesh>
@@ -1982,7 +2000,7 @@ function MdrPanel({ w, h, fabric }: { w: number; h: number; fabric: any }) {
       {/* fabric panel — main green field */}
       <mesh position={[0, yMid, 0]} castShadow receiveShadow>
         <boxGeometry args={[w - FRAME_THICK * 2, h - FRAME_THICK * 2, PANEL_DEPTH]} />
-        <meshStandardMaterial {...fabric} color={C.partition} roughness={0.92} normalScale={[0.55, 0.55] as any} />
+        <meshStandardMaterial {...fabric} color={C.partition} roughness={0.92} envMapIntensity={0.3} normalScale={[0.55, 0.55] as any} />
       </mesh>
       {/* G13: WHITE frame caps (was chrome) — the real MDR dividers have
           a white frame edge over the dark-green fabric, not shiny chrome.
@@ -2149,7 +2167,7 @@ function OfficeScene({ phase, onMonitorClick }: {
       {/* Image-based ambient lighting + reflections — soft "lobby" preset
           gives the scene proper environmental cues so metallic + glossy
           surfaces feel grounded. background={false} keeps our 3D walls. */}
-      <Environment preset="lobby" background={false} environmentIntensity={0.50} />
+      <Environment preset="lobby" background={false} environmentIntensity={0.62} />
 
       {/* Single dominant SHADOW caster — angled "sun"-style directional.
           All nine ceiling pointLights provide flat fluorescent flood
@@ -2184,8 +2202,12 @@ function OfficeScene({ phase, onMonitorClick }: {
       {/* G2: raised ambient + hemisphere for the bright, even, clinical
           fluorescent flood of the reference (was 0.85 / 0.28 — too dim &
           dramatic). Higher fill softens shadows toward the show's look. */}
-      <ambientLight intensity={1.55} color="#EAF2EC" />
-      <hemisphereLight args={['#F6FAF4', '#B6CCB2', 0.6]} />
+      {/* G1 (goal_09jun26): raised + cooled — scene sampled ~1.6× darker than
+          the show with a warm cast (carpet #435338 vs ref #67A36F). The show
+          is bright clinical fluorescent with a faint cool-cyan cast (B ≥ R
+          on whites). */}
+      <ambientLight intensity={1.7} color="#E5F2EC" />
+      <hemisphereLight args={['#F2FAFA', '#B6CCB2', 0.75]} />
 
       {/* DESK POOL spotlight — a focused down-light right above the
           active SW station's desk surface. Penumbra creates a soft
@@ -2212,7 +2234,7 @@ function OfficeScene({ phase, onMonitorClick }: {
         <pointLight
           key={i}
           position={[x, ROOM_H - 0.25, z]}
-          intensity={5.5}
+          intensity={6.0}
           distance={26}
           decay={2}
           color="#F5F8FF"
@@ -2234,11 +2256,14 @@ function OfficeScene({ phase, onMonitorClick }: {
           0.75) to read as a proper grounding shadow now that ambient
           + hemisphere are turned down. Wider scale + slightly sharper
           blur so the desk silhouette shows on the carpet underneath. */}
+      {/* G1: opacity 0.75→0.45, blur 2.4→3.2 — the dense shadow plane
+          blended into the OLD dark carpet but read as a hard dark
+          rectangle on the new bright green. */}
       <ContactShadows
         position={[0.3, 0.012, DESK_Z + 0.7]}
-        opacity={0.75}
+        opacity={0.45}
         scale={7.0}
-        blur={2.4}
+        blur={3.2}
         far={2.2}
         resolution={1024}
         color="#091812"
@@ -2315,8 +2340,10 @@ function OfficeScene({ phase, onMonitorClick }: {
                       pod centre). Lower than before (top ≈1.33 m, was 1.57)
                       to match the reference; white frame cap from G13. The 4
                       windmill toward the centre with no separate post. */}
+                  {/* G3: lengthened 1.62→1.90 — ref-1 panels run past the
+                      desk edges, reading as long green spines. */}
                   <group position={[0, 0.48, -0.06 - 0.70]}>
-                    <MdrPanel w={1.62} h={0.85} fabric={partitionFabric as any} />
+                    <MdrPanel w={1.90} h={0.85} fabric={partitionFabric as any} />
                   </group>
                 </group>
               </group>
@@ -2545,7 +2572,9 @@ function OfficeScene({ phase, onMonitorClick }: {
       ] as const).map(([p, s], i) => (
         <mesh key={`vent-${i}`} position={p}>
           <boxGeometry args={s} />
-          <meshStandardMaterial color="#1F2123" roughness={0.6} metalness={0.2} />
+          {/* G6: faded near-wall-tone (was #1F2123) — the show's walls are
+              clean; dark vents read as clutter from the idle camera. */}
+          <meshStandardMaterial color="#B9BDB9" roughness={0.6} metalness={0.05} />
         </mesh>
       ))}
 
@@ -2910,7 +2939,9 @@ function VignetteOverlay() {
         pointerEvents: 'none',
         zIndex: 5,
         background:
-          'radial-gradient(ellipse 115% 115% at 50% 50%, transparent 40%, rgba(0,0,0,0.10) 70%, rgba(0,0,0,0.32) 100%)',
+          // G1: softened — the show is FLAT clinical light; the old 0.32-corner
+          // vignette darkened the carpet/walls we're trying to brighten.
+          'radial-gradient(ellipse 115% 115% at 50% 50%, transparent 55%, rgba(0,0,0,0.06) 80%, rgba(0,0,0,0.18) 100%)',
       }}
     />
   );
@@ -3295,7 +3326,7 @@ export default function Office() {
           gl={{
             antialias: true,
             toneMapping: THREE.ACESFilmicToneMapping,
-            toneMappingExposure: 1.35,
+            toneMappingExposure: 1.45,
           }}
         >
           <PerspectiveCamera makeDefault position={[CAM_ENTRY_POS.x, CAM_ENTRY_POS.y, CAM_ENTRY_POS.z]} fov={54} />
@@ -3309,7 +3340,10 @@ export default function Office() {
             <N8AO aoRadius={0.5} intensity={1.4} aoSamples={16} denoiseSamples={4} color="black" />
             {/* Stronger bloom — Severance MDR is shot bright/overexposed,
                 ceiling panels glow into the surrounding cells. */}
-            <Bloom intensity={0.65} luminanceThreshold={0.75} luminanceSmoothing={0.5} mipmapBlur />
+            {/* G2 pass-2: with the big shallow panels the old threshold
+                bloomed the whole upper frame into fog — tighter threshold +
+                lower intensity keeps the glow ON the panels. */}
+            <Bloom intensity={0.35} luminanceThreshold={0.92} luminanceSmoothing={0.5} mipmapBlur />
           </EffectComposer>
         </Canvas>
       </div>
