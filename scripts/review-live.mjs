@@ -1,8 +1,11 @@
 // Live-site review after deploy: idle + lean + /cv/ + /now/ + overlay check.
-// Usage: node scripts/review-live.mjs [base-url]   (default https://www.prashantgarg.org)
+// Usage: node scripts/review-live.mjs [base-url]   (default https://prashgarg.github.io)
+// NOTE: www.prashantgarg.org still points at the old Google Sites — the DNS
+// cutover hasn't happened yet. Until it does, the deployed site lives ONLY
+// at prashgarg.github.io. Update the default after the cutover.
 import { chromium } from 'playwright';
 import { mkdirSync } from 'fs';
-const BASE = process.argv[2] || 'https://www.prashantgarg.org';
+const BASE = process.argv[2] || 'https://prashgarg.github.io';
 const DIR = 'shots/live0610';
 mkdirSync(DIR, { recursive: true });
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
