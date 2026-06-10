@@ -2858,10 +2858,12 @@ function BootOverlay({ onDone }: { onDone: () => void }) {
         // Use the live CRT screen projection (set by CrtScreenProjector
         // every frame). Fallbacks keep the overlay sensible if the
         // projector hasn't written the vars yet.
-        top:    'var(--crt-top,  50%)' as any,
-        left:   'var(--crt-left, 50%)' as any,
-        width:  'var(--crt-w,    min(66vw, 880px))' as any,
-        height: 'var(--crt-h,    min(78vh, 670px))' as any,
+        // clamped to the viewport — on portrait phones the CRT projection
+        // is wider than the screen and the un-clamped box ran off-edge.
+        top:    'max(var(--crt-top,  50%), 0px)' as any,
+        left:   'max(var(--crt-left, 50%), 0px)' as any,
+        width:  'min(var(--crt-w,    min(66vw, 880px)), calc(100vw - max(var(--crt-left, 0px), 0px)))' as any,
+        height: 'min(var(--crt-h,    min(78vh, 670px)), calc(100dvh - max(var(--crt-top, 0px), 0px)))' as any,
         zIndex: 9999,
         background: '#0E0D0B', color: '#A4D9C5',
         // subtle CRT scanlines for the boot terminal background
@@ -3229,10 +3231,10 @@ function FirstVisitWelcome() {
         WELCOME
       </div>
       <div style={{ marginBottom: 6 }}>
-        Welcome to the workstation. Click the monitor to step inside and open the desktop. The objects on the desk respond to you.
+        Welcome to the workstation. {typeof window !== 'undefined' && window.matchMedia('(hover: none)').matches ? 'Tap' : 'Click'} the monitor to step inside and open the desktop. The objects on the desk respond to you.
       </div>
       <div style={{ fontSize: 10, opacity: 0.55, marginTop: 8, textAlign: 'right' }}>
-        click to dismiss
+        {typeof window !== 'undefined' && window.matchMedia('(hover: none)').matches ? 'tap' : 'click'} to dismiss
       </div>
       <style>{`@keyframes pg-welcome-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }`}</style>
     </div>
@@ -3285,6 +3287,17 @@ export default function Office() {
   const [isTouch, setIsTouch] = useState(false);
   useEffect(() => { setIsTouch(window.matchMedia('(hover: none) and (pointer: coarse)').matches); }, []);
 
+  // WebGL probe — without it the 3D room can never render and the user
+  // would be stranded at "click the monitor" with no monitor. Render a
+  // plain-links fallback instead. (SSR assumes true; probed on mount.)
+  const [webglOk, setWebglOk] = useState(true);
+  useEffect(() => {
+    try {
+      const c = document.createElement('canvas');
+      setWebglOk(!!(c.getContext('webgl2') || c.getContext('webgl')));
+    } catch { setWebglOk(false); }
+  }, []);
+
   const handleEntryDone    = () => setPhase('idle');
   const handleClick        = () => { if (phase === 'idle') setPhase('dollying'); };
   const handleArrived      = () => setPhase('booting');
@@ -3304,6 +3317,33 @@ export default function Office() {
   // audio plays during every visible phase — the 3D room stays on screen
   // even when the embedded InnerDesktop is open, so music continues
   const audioActive = phase !== 'splash';
+
+  // No WebGL → terminal-styled fallback with direct links. Same register
+  // as the BIOS so it doesn't feel like an error page.
+  if (!webglOk) {
+    return (
+      <div style={{
+        position: 'fixed', inset: 0, background: '#0E0D0B', color: '#A4D9C5',
+        fontFamily: "ui-monospace,'SF Mono',Menlo,Monaco,Consolas,monospace",
+        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
+      }}>
+        <div style={{ maxWidth: 560 }}>
+          <div style={{ fontSize: 13, lineHeight: 1.7 }}>
+            <div style={{ opacity: 0.55, marginBottom: 12 }}>prashantgarg.org</div>
+            <div style={{ marginBottom: 16 }}>
+              &gt; 3D workstation unavailable on this device (no WebGL).<br />
+              &gt; Browse directly:
+            </div>
+            {[['Research', '/research'], ['Talks', '/talks'], ['Library', '/library'], ['Now', '/now'], ['CV', '/cv']].map(([label, href]) => (
+              <div key={href} style={{ marginBottom: 6 }}>
+                &gt;&nbsp;<a href={href} style={{ color: '#E8EEDF', textDecoration: 'underline' }}>{label}</a>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: '#C8CAC4' }}>

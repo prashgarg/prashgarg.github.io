@@ -66,6 +66,18 @@ const WIN95_STYLE = `
   /* fade-in when boot completes and InnerDesktop mounts */
   animation: w95-fadein 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
+/* PHONES: the CRT projection is wider than a portrait viewport (the
+   monitor camera frames landscape), which clipped the desktop on both
+   edges. Below 700px the embedded desktop goes FULL-SCREEN — windows
+   already open maximized there, so this is the native phone UX. */
+@media (max-width: 700px) {
+  .win95-desktop.embedded {
+    top: 0; left: 0;
+    width: 100vw;
+    height: 100dvh;
+    box-shadow: none;
+  }
+}
 @keyframes w95-fadein {
   0%   { opacity: 0; }
   100% { opacity: 1; }
@@ -635,6 +647,11 @@ const WIN95_STYLE = `
 }
 @media (max-width: 700px) {
   .win95-desktop-home { left: 104px; right: 8px; }
+  /* collapse the two-card grid + shrink the masthead so the panel reads
+     cleanly in the ~280px column beside the icons */
+  .win95-desktop-home .win95-home { padding: 16px 14px 14px; }
+  .win95-desktop-home .win95-home-name { font-size: 34px; }
+  .win95-desktop-home .win95-home-grid { grid-template-columns: 1fr; }
 }
 .win95-icon {
   display: flex;
@@ -2068,7 +2085,7 @@ function HomeContent({ openApp }: { openApp: (id: AppId, fp?: { x: number; y: nu
         <div className="win95-card">
           <div className="win95-card-label">Now</div>
           <div className="win95-card-text">
-            Cambridge, May 2026. Working on the <strong>Global Automation Atlas</strong> — mapping where automation arrives across global production networks and what it displaces.
+            Cambridge, June 2026. Working on the <strong>Global Automation Atlas</strong> — mapping where automation arrives across global production networks and what it displaces.
           </div>
           <a
             className="win95-card-link"
