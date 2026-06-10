@@ -610,6 +610,32 @@ const WIN95_STYLE = `
   z-index: 1;       /* below windows but above background */
 }
 .win95-desktop.embedded .win95-icons { top: 8px; left: 8px; }
+/* ── HOME ON THE DESKTOP ────────────────────────────────────────────
+   The Home content lives directly on the desktop (no Home window) —
+   visible on boot and whenever windows are minimized. A cream Win95
+   panel right of the icon column, centred, scrollable if cramped. */
+.win95-desktop-home {
+  position: absolute;
+  left: 118px; right: 16px; top: 8px; bottom: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;     /* clicks outside the panel reach the desktop */
+  z-index: 1;               /* below windows (z 100+), beside icons */
+}
+.win95-desktop-home-inner {
+  pointer-events: auto;
+  width: min(860px, 100%);
+  max-height: 100%;
+  overflow-y: auto;
+  background: var(--color-cream, #F4EFE2);
+  box-shadow: inset -1px -1px #86898d, inset 1px 1px #fff,
+              inset -2px -2px #c3c6ca, inset 2px 2px #f4efe2,
+              2px 3px 0 rgba(0,0,0,0.28);
+}
+@media (max-width: 700px) {
+  .win95-desktop-home { left: 104px; right: 8px; }
+}
 .win95-icon {
   display: flex;
   flex-direction: column;
@@ -1018,13 +1044,16 @@ interface AppDef {
   // offset for default placement (so windows cascade)
   cascadeIdx: number;
 }
+// Default window sizes are LARGE (clamped to the desktop by defaultGeo) —
+// a window should show its page's actual content on open, with no
+// resizing or scrolling needed to see what the section is about.
 const APPS: AppDef[] = [
-  { id: 'home',     label: 'Home',     title: 'Prashant Garg — Home',     path: '/',         Icon: HomeIconLg,     defW: 720, defH: 540, cascadeIdx: 0 },
-  { id: 'research', label: 'Research', title: 'Research — Prashant Garg', path: '/research', Icon: ResearchIconLg, defW: 760, defH: 560, cascadeIdx: 1 },
-  { id: 'talks',    label: 'Talks',    title: 'Talks — Prashant Garg',    path: '/talks',    Icon: TalksIconLg,    defW: 700, defH: 540, cascadeIdx: 2 },
-  { id: 'library',  label: 'Library',  title: 'Library — Prashant Garg',  path: '/library',  Icon: LibraryIconLg,  defW: 720, defH: 540, cascadeIdx: 3 },
-  { id: 'now',      label: 'Now',      title: 'Now — Prashant Garg',      path: '/now',      Icon: NowIconLg,      defW: 660, defH: 520, cascadeIdx: 4 },
-  { id: 'cv',       label: 'CV',       title: 'CV — Prashant Garg',       path: '/cv',       Icon: CvIconLg,       defW: 780, defH: 580, cascadeIdx: 5 },
+  { id: 'home',     label: 'Home',     title: 'Prashant Garg — Home',     path: '/',         Icon: HomeIconLg,     defW: 720,  defH: 540, cascadeIdx: 0 },
+  { id: 'research', label: 'Research', title: 'Research — Prashant Garg', path: '/research', Icon: ResearchIconLg, defW: 1120, defH: 780, cascadeIdx: 1 },
+  { id: 'talks',    label: 'Talks',    title: 'Talks — Prashant Garg',    path: '/talks',    Icon: TalksIconLg,    defW: 1060, defH: 740, cascadeIdx: 2 },
+  { id: 'library',  label: 'Library',  title: 'Library — Prashant Garg',  path: '/library',  Icon: LibraryIconLg,  defW: 1080, defH: 760, cascadeIdx: 3 },
+  { id: 'now',      label: 'Now',      title: 'Now — Prashant Garg',      path: '/now',      Icon: NowIconLg,      defW: 980,  defH: 700, cascadeIdx: 4 },
+  { id: 'cv',       label: 'CV',       title: 'CV — Prashant Garg',       path: '/cv',       Icon: CvIconLg,       defW: 1140, defH: 800, cascadeIdx: 5 },
 ];
 const APP_BY_ID: Record<AppId, AppDef> = APPS.reduce((acc, a) => { acc[a.id] = a; return acc; }, {} as any);
 const APP_BY_PATH: Record<string, AppDef> = APPS.reduce((acc, a) => { acc[a.path] = a; return acc; }, {} as any);
@@ -1304,6 +1333,14 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
   // zoom-in animation's transform-origin.
   const openApp = useCallback((id: AppId, fromPoint?: { x: number; y: number }, pathOverride?: string) => {
     const app = APP_BY_ID[id]; if (!app) return;
+    // HOME = the desktop itself. The home content lives ON the desktop
+    // (win95-desktop-home), so "opening" Home just clears the view:
+    // minimize every window to reveal it. No Home window exists.
+    if (id === 'home') {
+      setWins(ws => ws.map(w => ({ ...w, minimized: true })));
+      try { window.history.pushState({}, '', '/'); } catch { /* */ }
+      return;
+    }
     let wasOpen = false;
     setWins(ws => {
       const existing = ws.find(w => w.id === id);
@@ -1714,6 +1751,13 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
         ))}
       </div>
 
+      {/* ───────────── home content ON the desktop ───────────── */}
+      <div className="win95-desktop-home">
+        <div className="win95-desktop-home-inner" onMouseDown={e => e.stopPropagation()}>
+          <HomeContent openApp={openApp} />
+        </div>
+      </div>
+
       {/* ───────────── open windows ───────────── */}
       {wins.map(w => {
         const app = APP_BY_ID[w.id];
@@ -1917,6 +1961,22 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
             <rect x="9" y="9" width="7" height="7" fill="#ffb900"/>
           </svg>
           Start
+        </button>
+
+        {/* HOME — always-visible one-click "show the desktop" (the home
+            content lives on the desktop). Windows can cover the desktop
+            icons, so this is the guaranteed way back. */}
+        <button
+          className="win95-start-btn win95-home-btn"
+          title="Home — show the desktop"
+          onMouseDown={() => playUiClick('down')}
+          onMouseUp={() => playUiClick('up')}
+          onClick={() => openApp('home')}
+        >
+          <svg width="14" height="14" viewBox="0 0 16 16">
+            <path d="M8 1 L15 8 H13 V14 H10 V10 H6 V14 H3 V8 H1 Z" fill="#2b2b2b"/>
+          </svg>
+          Home
         </button>
 
         {/* one taskbar chip per open window */}
