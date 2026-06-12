@@ -15,7 +15,7 @@ const sorted = [...papers].sort((a, b) => {
   return (STATUS_RANK[b.status] || 0) - (STATUS_RANK[a.status] || 0);
 });
 
-const SITE_URL = 'https://prashantgarg.org';
+const SITE_URL = site.origin;
 const FEED_URL = `${SITE_URL}/papers.xml`;
 // Use the most-recent paper's year as the feed's updated stamp.
 // Atom 1.0 requires ISO-8601 datetime; fall back to first of January.

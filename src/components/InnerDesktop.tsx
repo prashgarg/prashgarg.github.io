@@ -278,6 +278,26 @@ const WIN95_STYLE = `
   text-align: center;
   margin-bottom: 22px;
 }
+/* portrait — white-matted print taped to the cream panel (G16) */
+.win95-home-photo {
+  width: 92px;
+  height: auto;
+  display: block;
+  margin: 0 auto 12px;
+  padding: 4px;
+  background: #fff;
+  box-shadow: inset 0 0 0 1px #c3c6ca, 1px 2px 0 rgba(0,0,0,0.25);
+}
+/* prose bio under the masthead (G17 — mirrors the old site's bio) */
+.win95-home-bio {
+  font-family: Millennium, 'Times New Roman', serif;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: #333;
+  text-align: center;
+  max-width: 620px;
+  margin: 14px auto 0;
+}
 .win95-home-name {
   font-family: 'Cormorant Garamond', Georgia, serif;
   font-size: 56px;
@@ -2128,6 +2148,7 @@ function HomeContent({ openApp }: { openApp: (id: AppId, fp?: { x: number; y: nu
   return (
     <div className="win95-home">
       <div className="win95-home-header">
+        <img className="win95-home-photo" src="/photo.jpg" alt="Prashant Garg" />
         <div className="win95-home-name">Prashant<br/>Garg</div>
         <div className="win95-home-subtitle">
           Economist · Research Associate at Cambridge
@@ -2143,6 +2164,7 @@ function HomeContent({ openApp }: { openApp: (id: AppId, fp?: { x: number; y: nu
             </>
           )}
         </div>
+        <p className="win95-home-bio">{site.bio}</p>
       </div>
       <div className="win95-home-grid">
         {LATEST_PAPER && (

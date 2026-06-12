@@ -2,7 +2,16 @@ export const site = {
   name: 'Prashant Garg',
   tagline:
     'Economist working on science, innovation, production, and media using machine learning, causal inference, and network science.',
-  email: 'prashant.garg@imperial.ac.uk',
+  // Short bio for the home/desktop surfaces (mirrors the old site's
+  // prose bio; facts: Cambridge current, Imperial PhD completed,
+  // Bocconi from Sept 2026 — all consistent with `affiliations`).
+  bio: "Hi, I'm Prashant Garg, an economist working on science, innovation, production, and media using machine learning, causal inference, and network science. I am currently a Research Associate at the University of Cambridge and an Associate Fellow at INET Oxford. I recently completed my PhD in Economics at Imperial College London, and I will join Bocconi University as a Postdoctoral Researcher in September 2026.",
+  email: 'prashantgargib@gmail.com',
+  // Canonical origin for share/canonical/BibTeX URLs. prashantgarg.org
+  // still serves the old Google Site — until the DNS cutover happens
+  // (user-side), every absolute URL we print must use the host that
+  // actually serves THIS site. Flip this one constant at cutover.
+  origin: 'https://prashgarg.github.io',
   cv: 'https://drive.google.com/file/d/1loWtmOeOwDtSSJ2WHKf7n_PzpQiP6rgF/view?usp=drive_link',
   scholar: 'https://scholar.google.com/citations?hl=en&user=C3o_l0IAAAAJ',
   twitter: 'https://x.com/Prashant_Garg_',
@@ -44,6 +53,8 @@ export type PaperStatus = 'published' | 'accepted' | 'working' | 'rr' | 'other';
 export interface PaperLink { label: string; url: string }
 export interface Coverage { outlet: string; url: string }
 
+export interface PaperFigure { src: string; caption: string }
+
 export interface Paper {
   slug: string;
   title: string;
@@ -55,6 +66,8 @@ export interface Paper {
   links: PaperLink[];
   coverage?: Coverage[];
   tools?: string[];
+  award?: { label: string; url?: string };
+  figures?: PaperFigure[];
 }
 
 export const papers: Paper[] = [
@@ -79,7 +92,8 @@ export const papers: Paper[] = [
       { outlet: 'Noahpinion', url: 'https://www.noahpinion.blog/p/at-least-five-interesting-things-554' },
       { outlet: 'VoxEU', url: 'https://cepr.org/voxeu/columns/political-expression-academics-social-media' },
       { outlet: 'Times Higher Education', url: 'https://www.timeshighereducation.com/news/political-social-media-posts-harm-academics-credibility' },
-      { outlet: 'The American Saga', url: 'https://www.theamericansaga.com/' },
+      { outlet: 'THE op-ed', url: 'https://www.timeshighereducation.com/campus/how-preserve-academic-credibility-when-engaging-social-media' },
+      { outlet: 'The American Saga', url: 'https://www.theamericansaga.com/p/scientists-getting-political-on-social' },
     ],
     tools: ['academicexpression'],
   },
@@ -97,22 +111,27 @@ export const papers: Paper[] = [
       { label: 'Twitter thread', url: 'https://twitter.com/edenhofer_jacob/status/1816157318255644977' },
     ],
     coverage: [
-      { outlet: 'The Guardian', url: 'https://www.theguardian.com/' },
-      { outlet: 'FAZ', url: 'https://www.faz.net/' },
-      { outlet: 'LSE Business Review', url: 'https://blogs.lse.ac.uk/businessreview/' },
-      { outlet: 'The Conversation', url: 'https://theconversation.com/' },
-      { outlet: 'VoxEU', url: 'https://cepr.org/voxeu' },
-      { outlet: 'CAGE', url: 'https://warwick.ac.uk/fac/soc/economics/research/centres/cage/' },
+      // NOTE: the old site's "Guardian" chip points at this Bluesky post
+      // (which quotes the Guardian piece) — kept old-site-faithful; swap
+      // in the direct Guardian URL when the user supplies it.
+      { outlet: 'The Guardian', url: 'https://bsky.app/profile/jacobedenhofer.bsky.social/post/3mdna4xq4yc2y' },
+      { outlet: 'FAZ', url: 'https://zeitung.faz.net/faz/wirtschaft/2025-04-07/naehrboden-fuer-populisten/1151252.html' },
+      { outlet: 'LSE Business Review', url: 'https://blogs.lse.ac.uk/businessreview/2026/05/11/how-empty-high-streets-contribute-to-support-for-populist-parties-in-england/' },
+      { outlet: 'The Conversation', url: 'https://theconversation.com/to-fend-off-reform-mainstream-parties-must-address-the-tangible-decline-of-british-towns-256249' },
+      { outlet: 'VoxEU', url: 'https://cepr.org/voxeu/columns/local-decline-and-populism' },
+      { outlet: 'University of Warwick', url: 'https://warwick.ac.uk/fac/soc/economics/news/2025/5/the_visual_politics_of_decline_how_empty_high_streets_fuel_populism/' },
+      { outlet: 'CAGE', url: 'https://warwick.ac.uk/fac/soc/economics/research/centres/cage/news/08-04-25-nurturing_grounds_for_populists' },
+      { outlet: 'CAGE (2)', url: 'https://warwick.ac.uk/fac/soc/economics/research/centres/cage/news/08-05-25-how_empty_high_streets_increase_support_for_populist_candidates/' },
     ],
   },
   {
     slug: 'cross-border-media-disasters',
-    title: 'Network Determinants of Cross-Border Media Coverage of Natural Disasters',
+    title: 'Uneven Patterns of Cross-Border Media Coverage Following Natural Disasters',
     status: 'accepted',
-    venue: 'Nature Human Behaviour (Acceptance-in-Principle)',
+    venue: 'Nature Human Behaviour (Forthcoming)',
     coauthors: ['Thiemo Fetzer'],
     blurb:
-      "Climate change is increasing the frequency and severity of natural disasters worldwide. Media coverage of these events may be vital to generate empathy and mobilize global populations to address the common threat posed by climate change. Using a dataset of 466 news sources from 123 countries, covering 135 million news articles since 2016, we apply an event study framework to measure cross-border media activity following natural disasters. Our results shows that while media attention rises after disasters, it is heavily skewed towards certain events, notably earthquakes, accidents, and wildfires. In contrast, climatologically salient events such as floods, droughts, or extreme temperatures receive less coverage. This cross-border disaster reporting is strongly related to the number of deaths associated with the event, especially when the affected populations share strong social ties or genetic similarities with those in the reporting country. Achieving more balanced media coverage across different types of natural disasters may be essential to counteract skewed perceptions. Further, fostering closer social connections between countries may enhance empathy and mobilize the resources necessary to confront the global threat of climate change.",
+      "Many natural disasters central to climate-policy debates are hydro-meteorological hazards, yet it remains unclear how global media attention is distributed across disaster types. Using a dataset of 466 news sources from 123 countries, covering 135 million news articles since 2016, we apply an event study framework to measure cross-border reporting following natural disasters. Cross-border attention rises after disasters but is highly uneven across hazards, with the largest short-run increases following earthquakes (b = 0.0785, 95% CI [0.0758, 0.0812]), dry-mass movements (b = 0.0531, 95% CI [0.0349, 0.0713]), and volcanic eruptions (b = 0.0425, 95% CI [0.0359, 0.0490]). In contrast, climatologically salient hazards such as floods (b = 0.0069, 95% CI [0.0062, 0.0076]) and droughts (b = 0.0001, 95% CI [−0.0036, 0.0039]) receive substantially less coverage. Conditional on severity and duration, hydro-meteorological (“climate-linked”) disasters receive less cross-border attention than geophysical disasters (θ = −0.0065, 95% CI [−0.0115, −0.0015]). Attention also increases with fatalities: disasters with 100+ deaths receive more coverage than those with 0–9 deaths (b = 0.0360, 95% CI [0.0231, 0.0490]), and this fatality gradient is stronger for country pairs with tighter social ties and deeper ancestral links. These patterns highlight systematic cross-border differences in attention to disaster risks.",
     links: [
       { label: 'Preprint', url: 'https://www.researchsquare.com/article/rs-6057848/v1' },
     ],
@@ -144,17 +163,18 @@ export const papers: Paper[] = [
       { label: 'GitHub', url: 'https://github.com/prashgarg/CausalClaimsInEconomics' },
       { label: 'VoxEU summary', url: 'https://cepr.org/voxeu/columns/causal-claims-economics' },
       { label: 'Methods guide', url: 'https://cepr.org/voxeu/columns/leveraging-large-language-models-large-scale-information-retrieval-economics' },
-      { label: 'Twitter thread', url: 'https://x.com/Prashant_Garg_/status/1853392260257182152' },
+      { label: 'Twitter thread (v1)', url: 'https://x.com/Prashant_Garg_/status/1853392260257182152' },
+      { label: 'Twitter thread (v2)', url: 'https://x.com/Prashant_Garg_/status/1879101708174864562' },
     ],
     coverage: [
-      { outlet: 'The Economist', url: 'https://www.economist.com/' },
-      { outlet: 'Marginal Revolution', url: 'https://marginalrevolution.com/' },
-      { outlet: 'Noahpinion', url: 'https://www.noahpinion.blog/' },
-      { outlet: 'World Bank', url: 'https://www.worldbank.org/' },
-      { outlet: 'VoxEU', url: 'https://cepr.org/voxeu' },
-      { outlet: 'VoxDev', url: 'https://voxdev.org/' },
-      { outlet: 'Australian Treasury', url: 'https://treasury.gov.au/' },
-      { outlet: 'Nada es Gratis', url: 'https://nadaesgratis.es/' },
+      { outlet: 'The Economist', url: 'https://www.economist.com/finance-and-economics/2025/05/22/what-the-failure-of-a-superstar-student-reveals-about-economics' },
+      { outlet: 'Marginal Revolution', url: 'https://marginalrevolution.com/marginalrevolution/2024/11/causal-claims-in-economics.html' },
+      { outlet: 'Marginal Revolution (2)', url: 'https://marginalrevolution.com/marginalrevolution/2025/05/sunday-assorted-links-518.html' },
+      { outlet: 'Noahpinion', url: 'https://www.noahpinion.blog/i/167476849/macroeconomics-is-falling-microeconomics-is-rising' },
+      { outlet: 'World Bank', url: 'https://blogs.worldbank.org/en/impactevaluations/weekly-links-june-13--causal-claims--work-is-not-just-disutility' },
+      { outlet: 'VoxDev', url: 'https://voxdev.org/topic/week-development-economics-voxdev-08112024' },
+      { outlet: 'Australian Treasury', url: 'https://evaluation.treasury.gov.au/learn-and-connect/impact-evaluation-practitioners-network/iepn-newsletter-3' },
+      { outlet: 'Nada es Gratis', url: 'https://nadaesgratis.es/andreu-arenas/los-costes-visibles-y-los-beneficios-invisibles-del-comercio-con-china' },
     ],
     tools: ['causalclaims'],
   },
@@ -170,7 +190,7 @@ export const papers: Paper[] = [
       { label: 'Frontier Graph', url: 'https://frontiergraph.com/' },
     ],
     coverage: [
-      { outlet: 'Marginal Revolution', url: 'https://marginalrevolution.com/' },
+      { outlet: 'Marginal Revolution', url: 'https://marginalrevolution.com/marginalrevolution/2026/03/thursday-assorted-links-544.html' },
     ],
     tools: ['frontiergraph'],
   },
@@ -187,9 +207,13 @@ export const papers: Paper[] = [
       { label: 'Twitter thread', url: 'https://twitter.com/EleAla/status/1821124625616474165' },
     ],
     coverage: [
-      { outlet: 'Times Higher Education', url: 'https://www.timeshighereducation.com/' },
+      { outlet: 'Times Higher Education', url: 'https://www.timeshighereducation.com/news/political-social-media-posts-harm-academics-credibility' },
+      { outlet: 'THE op-ed', url: 'https://www.timeshighereducation.com/campus/how-preserve-academic-credibility-when-engaging-social-media' },
       { outlet: 'University of Bath', url: 'https://www.bath.ac.uk/announcements/political-posts-on-x-could-harm-academics-credibility-new-study-finds/' },
-      { outlet: 'The American Saga', url: 'https://www.theamericansaga.com/' },
+      { outlet: 'The American Saga', url: 'https://www.theamericansaga.com/p/scientists-getting-political-on-social' },
+      { outlet: 'Nada es Gratis', url: 'https://nadaesgratis.es/admin/el-impacto-de-que-los-cientificos-opinen-sobre-politica-en-redes-sociales' },
+      { outlet: 'A Fuoco', url: 'https://www.a-fuoco.it/p/parlare-di-politica-sui-social-media' },
+      { outlet: 'iL Post', url: 'https://www.ilpost.it/2024/12/20/politica-scienza/' },
     ],
     tools: ['academicexpression'],
   },
@@ -206,9 +230,9 @@ export const papers: Paper[] = [
       { label: 'Twitter thread', url: 'https://twitter.com/Prashant_Garg_/status/1858799879557890189' },
     ],
     coverage: [
-      { outlet: 'VoxEU', url: 'https://cepr.org/voxeu' },
-      { outlet: 'SCMP interview', url: 'https://www.scmp.com/' },
-      { outlet: 'The Ecologist', url: 'https://theecologist.org/' },
+      { outlet: 'VoxEU', url: 'https://cepr.org/voxeu/columns/leveraging-ai-navigate-deglobalisation' },
+      { outlet: 'SCMP interview', url: 'https://www.scmp.com/news/china/diplomacy/article/3289237/us-silent-china-decision-ban-export-rare-dual-use-materials-gallium-and-germanium' },
+      { outlet: 'The Ecologist', url: 'https://theecologist.org/2024/dec/23/china-syndrome' },
     ],
     tools: ['aipnet'],
   },
@@ -222,10 +246,13 @@ export const papers: Paper[] = [
     links: [
       { label: 'Paper', url: 'https://arxiv.org/abs/2505.24801' },
     ],
+    award: { label: 'Best Student Paper, NetSciSci2025', url: 'https://netscisci.github.io/' },
     coverage: [
-      { outlet: 'Clarivate', url: 'https://clarivate.com/' },
-      { outlet: 'Cybernews', url: 'https://cybernews.com/' },
-      { outlet: 'Aporia Magazine', url: 'https://www.aporiamagazine.com/' },
+      // the old site labelled this "Clarivate" but the link is a
+      // Research Professional News piece — use the real outlet name
+      { outlet: 'Research Professional News', url: 'https://www.researchprofessionalnews.com/rr-news-uk-universities-2026-4-will-the-academic-exodus-from-x-silence-research/' },
+      { outlet: 'Cybernews', url: 'https://cybernews.com/tech/social-platform-w-users/' },
+      { outlet: 'Aporia Magazine', url: 'https://www.aporiamagazine.com/p/round-up-kinship-and-honour-in-china' },
     ],
   },
   {
@@ -264,9 +291,17 @@ export const papers: Paper[] = [
       { label: 'Technical paper', url: 'https://arxiv.org/abs/2502.01772' },
       { label: 'Twitter thread', url: 'https://x.com/Prashant_Garg_/status/1887097154696564917' },
       { label: 'Bluesky thread', url: 'https://bsky.app/profile/prashantgarg.bsky.social/post/3lhggu2tcas2e' },
+      { label: "Listen: 'Jokerman'", url: 'https://www.youtube.com/watch?v=1XSvsFgvWr0' },
     ],
     coverage: [
-      { outlet: 'Financial Times', url: 'https://www.ft.com/' },
+      { outlet: 'Financial Times', url: 'https://www.ft.com/content/8bf3e57a-e196-495b-b7b0-8d3b2ef142d5' },
+    ],
+    figures: [
+      { src: '/library/dylan/jokerman-graph.webp', caption: 'Knowledge graph extracted from "Jokerman" — concepts in Dylan\'s lyrics and the stated relationships between them.' },
+      { src: '/library/dylan/theme-evolution.webp', caption: 'Evolution of key themes (1962–2012): protest/political gives way to mythic/biblical and movement/travel, tracking pivotal career moments.' },
+      { src: '/library/dylan/alluvial-sentiment.webp', caption: 'Transitions between concept types (person → abstract, …), colour-coded by sentiment — the emotional dynamics of Dylan\'s lyrical connections.' },
+      { src: '/library/dylan/metaphor-trend.webp', caption: 'Literal vs. metaphorical expression by decade: an increasingly symbolic style, strongest in his 70s.' },
+      { src: '/library/dylan/dishabituation.webp', caption: '"Dishabituation" — variance in eigenvector centrality, mixing mainstream and peripheral concepts. The mid-career peak is Dylan\'s most eclectic phase (relative to the 60s).' },
     ],
     tools: ['dylan'],
   },
@@ -274,7 +309,9 @@ export const papers: Paper[] = [
 
 export const statusMeta: Record<PaperStatus, { label: string; badge: string }> = {
   published: { label: 'Published', badge: 'badge-red' },
-  accepted:  { label: 'Accepted',  badge: 'badge-blue' },
+  // 'accepted' renders as Forthcoming — matches how the old site (and
+  // the discipline) frames accepted-but-unpublished journal papers.
+  accepted:  { label: 'Forthcoming', badge: 'badge-blue' },
   rr:        { label: 'R&R',       badge: 'badge-yellow' },
   working:   { label: 'Working',   badge: 'badge-cream' },
   other:     { label: 'Essay',     badge: 'badge-teal' },
@@ -354,6 +391,8 @@ export interface Talk {
 
 export const talks: Talk[] = [
   // 2026
+  { year: 2026, title: 'TBC', venue: 'Universitat de València Seminar', location: 'València', date: '4 Dec 2026', url: 'https://www.uv.es/uvweb/economic-analysis-department/en/department-economic-analysis-1285854461277.html' },
+  { year: 2026, title: 'Panel: AI as a Scientific Instrument for Economics', venue: 'Oxford INET Meeting', location: 'Oxford', date: '11 Jun 2026', url: 'https://www.inet.ox.ac.uk/' },
   { year: 2026, title: 'What Should Economics Ask Next?', venue: 'MPWZ–CEPR Text-as-Data', location: 'Virtual', date: '13–14 Apr 2026', url: 'https://cepr.org' },
   { year: 2026, title: 'Causal Claims in Economics', venue: 'MIT FutureTech Seminar', location: 'Virtual', date: '12 Mar 2026', url: 'https://futuretech.mit.edu/' },
   { year: 2026, title: 'AI-Generated Production Networks', venue: 'CMA Seminar', location: 'London', date: '20 Jan 2026', url: 'https://www.gov.uk/government/collections/microeconomics-unit-research' },
@@ -371,18 +410,18 @@ export const talks: Talk[] = [
   { year: 2025, title: 'Cross-Border Enforcement and Product Innovation', venue: 'Imperial Economics Seminar', location: 'London', date: '9 Oct 2025', url: 'https://www.imperial.ac.uk/business-school/faculty-research/academic-areas/economics-public-policy/' },
   { year: 2025, title: 'Chatting About Innovation', venue: 'LSE POID/PRINZ Seminar', location: 'London', date: '30 Sep 2025', url: 'https://poid.lse.ac.uk/events/prinz-seminars.asp' },
   { year: 2025, title: 'Conspiratorial Thinking', venue: 'MPWZ–CEPR Text-as-Data', location: 'Virtual', date: '15–16 Sep 2025', url: 'https://cepr.org/events/10th-monash-paris-warwick-zurich-cepr-text-data-workshop' },
-  { year: 2025, title: 'Geography of Medical Knowledge', venue: 'LSE QueerConf', location: 'London', date: '15 Aug 2025' },
+  { year: 2025, title: 'Geography of Medical Knowledge', venue: 'LSE QueerConf', location: 'London', date: '15 Aug 2025', url: 'https://www.lsequeerconf.com/home' },
   { year: 2025, title: 'Retrieving and Generating Data using LLMs', venue: 'Public Governance Workshop, PSL', location: 'Virtual', date: '7 Jul 2025', url: 'https://acss-dig.psl.eu/fr/seminaires/public-governance' },
   { year: 2025, title: 'AI-Generated Production Networks', venue: 'RES Annual Conference', location: 'Birmingham', date: '1–2 Jul 2025', url: 'https://res.org.uk/event-listing/res-2025-annual-conference/' },
   { year: 2025, title: 'Causal Claims in Economics', venue: 'Metascience 2025', location: 'London', date: '30 Jun 2025', url: 'https://metascience.info/' },
   { year: 2025, title: 'Cross-Border Enforcement and Product Innovation', venue: 'Imperial Economics Seminar', location: 'London', date: '19 Jun 2025', url: 'https://www.imperial.ac.uk/business-school/faculty-research/academic-areas/economics-public-policy/' },
   { year: 2025, title: 'Political Expression of Academics on Twitter', venue: 'Text as Data in Behavioural Economics', location: 'Potsdam', date: '10–11 Jun 2025', url: 'https://sites.google.com/view/text-as-data-workshop/home' },
   { year: 2025, title: 'Causal Claims in Economics', venue: 'Networks in Science of Science', location: 'Maastricht', date: '2–6 Jun 2025', url: 'https://netscisci.github.io/papers' },
-  { year: 2025, title: 'Causal Claims in Economics', venue: 'EAYE Annual Meeting', location: 'London', date: '29–31 May 2025' },
+  { year: 2025, title: 'Causal Claims in Economics', venue: 'EAYE Annual Meeting', location: 'London', date: '29–31 May 2025', url: 'https://www.eaye.info/eayeam/2025-edition' },
   { year: 2025, title: 'AI-Generated Production Networks · LLMs Workshop', venue: 'University of Groningen', location: 'Groningen', date: '27 May 2025', url: 'https://www.rug.nl/bachelors/economics-and-business-economics/?lang=en' },
   { year: 2025, title: 'Causal ML & Text-as-Data Roundtable', venue: 'AYEW', location: 'Virtual', date: '21 May 2025', url: 'https://www.monash.edu/business/impact-labs/soda-labs/our-events/applied-young-economists' },
   { year: 2025, title: 'Causal Claims in Economics', venue: 'ZBW Seminar', location: 'Hamburg', date: '20 May 2025', url: 'https://www.zbw.eu/en/' },
-  { year: 2025, title: 'Network Determinants of Cross-Border Media Coverage of Natural Disasters', venue: 'LSE–IGC Environmental Populism Conference', location: 'London', date: '15–16 May 2025' },
+  { year: 2025, title: 'Uneven Patterns of Cross-Border Media Coverage Following Natural Disasters', venue: 'LSE–IGC Environmental Populism Conference', location: 'London', date: '15–16 May 2025', url: 'https://www.lse-environment-week.com/env-pop-conf' },
   { year: 2025, title: 'Network Determinants of Cross-Border Media Coverage of Natural Disasters', venue: 'Economics of Media Bias Workshop', location: 'Frankfurt', date: '8–9 May 2025', url: 'https://mediabiasworkshop.org/event/8th-economics-of-media-bias-workshop/' },
   { year: 2025, title: 'Retrieving and Generating Data using LLMs in Python', venue: 'Workshop for Ukraine (charity)', location: 'Virtual', date: '8 May 2025', url: 'https://sites.google.com/view/dariia-mykhailyshyna/main/r-workshops-for-ukraine' },
   { year: 2025, title: 'Causal Claims in Economics', venue: 'MPWZ–CEPR Text-as-Data', location: 'Virtual', date: '28–29 Apr 2025', url: 'https://cepr.org/events/9th-monash-paris-warwick-zurich-cepr-text-data-workshop' },
@@ -415,8 +454,8 @@ export const talks: Talk[] = [
   { year: 2023, title: 'Who Influences Whom About What?', venue: '2nd Digital Economy Network', location: 'Cambridge', date: '24 Nov 2023', url: 'https://www.bennettinstitute.cam.ac.uk/events/digecon-workshop/' },
   { year: 2023, title: 'Who Influences Whom About What?', venue: 'AYEW AI/Text-as-Data Workshop', location: 'Virtual', date: '1 Nov 2023', url: 'https://bsky.app/profile/ayew.bsky.social/post/3kczysthmod2v' },
   { year: 2023, title: 'Who Influences Whom About What?', venue: '6th MWZ Text-as-Data Workshop', location: 'Virtual', date: '18–19 Sep 2023' },
-  { year: 2023, title: 'Who Influences Whom About What?', venue: 'XII IBEO Workshop in Complexity Economics', location: 'Ibeo', date: '21–23 Jun 2023', url: 'https://crenoslef.wixsite.com/ibeo/corte-program-1' },
-  { year: 2023, title: 'Who Influences Whom About What?', venue: '5th QMUL Economics and Finance Workshop', location: 'London', date: '25 May 2023' },
+  { year: 2023, title: 'Who Influences Whom About What?', venue: 'XII IBEO Workshop in Complexity Economics', location: 'Corte, Corsica', date: '21–23 Jun 2023', url: 'https://crenoslef.wixsite.com/ibeo/corte-program-1' },
+  { year: 2023, title: 'Who Influences Whom About What?', venue: '5th QMUL Economics and Finance Workshop', location: 'London', date: '25 May 2023', url: 'https://www.qmul.ac.uk/sef/events/conferences/items/call-for-papers---5th-qmul-economics-and-finance-workshop-for-phd--post-doctoral-students.html' },
   { year: 2023, title: 'Who Influences Whom About What?', venue: 'RES Easter Training School', location: 'Bristol', date: '27–29 Mar 2023', url: 'https://res.org.uk/events/easter-training-school/' },
   { year: 2023, title: 'Who Influences Whom About What?', venue: 'Warwick PhD Conference', location: 'Warwick', date: '13 Jan 2023', url: 'https://warwick.ac.uk/fac/soc/economics/events/2022/6/economics_phd_conference/' },
 ];
@@ -530,6 +569,82 @@ export const library: LibraryItem[] = [
     links: [
       { label: 'Aeon essay', url: 'https://aeon.co/essays/can-ai-tell-us-anything-meaningful-about-bob-dylans-songs' },
       { label: 'Technical paper', url: 'https://arxiv.org/abs/2502.01772' },
+      { label: "Listen: 'Jokerman'", url: 'https://www.youtube.com/watch?v=1XSvsFgvWr0' },
     ],
   },
+];
+
+/* ── Open data / public goods ──────────────────────────────────────
+   Mirrors the old site's "Public Goods → Data" section: the three
+   datasets released alongside papers, presented as first-class,
+   downloadable public goods (not just companion-tool chips). */
+export interface Dataset {
+  name: string;
+  with: string[];
+  blurb: string;
+  links: PaperLink[];
+  paperSlug?: string;
+}
+
+export const datasets: Dataset[] = [
+  {
+    name: 'Causal Claims in Economics — claim graphs',
+    with: ['Thiemo Fetzer'],
+    blurb: 'Evidence-annotated knowledge graph of ~45,000 economics papers (1980–2023): standardized concepts as nodes, stated causal and non-causal relationships as edges.',
+    links: [
+      { label: 'causal.claims', url: 'https://www.causal.claims' },
+      { label: 'Data & code (GitHub)', url: 'https://github.com/prashgarg/CausalClaimsInEconomics' },
+    ],
+    paperSlug: 'causal-claims-economics',
+  },
+  {
+    name: 'AIPNET — product-level input–output data',
+    with: ['Thiemo Fetzer', 'Peter John Lambert', 'Bennet Feld'],
+    blurb: 'AI-generated production network over 5,000 HS products: directed input–output edges plus measures of product importance, with full data download.',
+    links: [
+      { label: 'aipnet.io', url: 'https://aipnet.io/' },
+    ],
+    paperSlug: 'ai-production-networks',
+  },
+  {
+    name: 'Academic Expression — academics on social media',
+    with: ['Thiemo Fetzer'],
+    blurb: 'Data on the political stance and expression of 100,000+ academics (2016–2022), linking social media content to academic records.',
+    links: [
+      { label: 'academicexpression.online', url: 'https://www.academicexpression.online' },
+    ],
+    paperSlug: 'political-expression-academics',
+  },
+];
+
+/* ── CV sections (education / awards / teaching / experience) ──────
+   Extracted from the Drive CV PDF + the old-site bio. The PhD entry
+   has no month-precise dates in any source — flagged for review. */
+export interface CvEntry {
+  period: string;
+  title: string;
+  org?: string;
+  detail?: string;
+  url?: string;
+}
+
+export const education: CvEntry[] = [
+  { period: '2022–2026', title: 'PhD in Economics (incl. MRes, Distinction)', org: 'Imperial College London' },
+  { period: '2018', title: 'BSc Economics', org: 'Cardiff University', detail: 'First-class honours; Helen Robinson Memorial Prize for the highest score in microeconomic theory.' },
+  { period: '2015', title: 'International Baccalaureate', org: 'GD Goenka World School, Gurgaon', detail: "Chairman's Award for the highest overall score in the school (43/45), 99th percentile globally." },
+];
+
+export const awards: CvEntry[] = [
+  { period: '2025', title: 'Best Student Paper', org: 'NetSciSci2025', detail: 'For "Simple Contagion Drives Population-Scale Platform Migration".', url: 'https://netscisci.github.io/' },
+  { period: '2018', title: 'Helen Robinson Memorial Prize', org: 'Cardiff University', detail: 'Highest score in microeconomic theory.' },
+];
+
+export const teaching: CvEntry[] = [
+  { period: '2025', title: 'Mini-course: Retrieving and Generating Data using LLMs', org: 'C-SEB / ECONtribute, University of Cologne', url: 'https://econtribute.de/event/econtribute-c-seb-mini-course-with-prashant-garg-imperial-college-business-school-london/' },
+  { period: '2019–2021', title: 'Research & Teaching Assistant', org: 'Imperial College London', detail: 'Executive MBA managerial economics; MSc Economics & Strategy for Business (digital economics & strategy); BPES managerial and business economics.' },
+];
+
+export const experience: CvEntry[] = [
+  { period: '2025–', title: 'Visiting Researcher', org: 'University of Cambridge, Computer Science Department', detail: 'Hosted by Neil Lawrence.' },
+  { period: '2024–2025', title: 'Visiting Researcher', org: 'International Finance Corporation (IFC), Paris / Washington DC', detail: 'Economics Research Unit; hosted by Ralf Martin.' },
 ];

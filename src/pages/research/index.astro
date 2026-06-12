@@ -1,15 +1,41 @@
 ---
 import Layout from '../../layouts/Win95Layout.astro';
-import { papers, statusMeta, tools, TOPIC_TAGS, topicsForPaper, type PaperStatus } from '../../data/site';
+import { site, papers, statusMeta, tools, TOPIC_TAGS, topicsForPaper, type Paper, type PaperStatus } from '../../data/site';
 
 const order: PaperStatus[] = ['published', 'accepted', 'rr', 'working', 'other'];
 const sectionTitles: Record<PaperStatus, string> = {
   published: 'Publications',
-  accepted:  'Accepted',
+  accepted:  'Forthcoming',
   rr:        'Revise & Resubmit',
   working:   'Working papers',
   other:     'Essays & other writing',
 };
+
+// Canonical BibTeX, computed server-side (same logic as [slug].astro):
+// "Lastname, Firstname" authors, DOI when derivable, publisher/preprint
+// URL preferred over this site's URL.
+function bibName(full: string): string {
+  const parts = full.trim().split(/\s+/);
+  return parts.length < 2 ? full : `${parts[parts.length - 1]}, ${parts.slice(0, -1).join(' ')}`;
+}
+function buildBibTeX(p: Paper): string {
+  const key = `garg${p.year || ''}${p.slug.split('-')[0]}`;
+  const entryType = p.venue && /journal|review|economics|nature|science|letters/i.test(p.venue) ? 'article' : 'misc';
+  const author = ['Prashant Garg', ...p.coauthors].map(bibName).join(' and ');
+  const natureId = p.links.map(l => l.url.match(/nature\.com\/articles\/([a-z0-9.-]+)/i)?.[1]).find(Boolean);
+  const doi = natureId ? `10.1038/${natureId}` : undefined;
+  const url = p.links[0]?.url || `${site.origin}/research/${p.slug}`;
+  return [
+    `@${entryType}{${key},`,
+    `  author = {${author}},`,
+    `  title  = {${p.title}},`,
+    ...(p.venue ? [`  journal = {${p.venue.replace(/\s*\((Forthcoming|R&R)\)\s*$/i, '')}},`] : []),
+    ...(p.year ? [`  year   = {${p.year}},`] : []),
+    ...(doi ? [`  doi    = {${doi}},`] : []),
+    `  url    = {${url}}`,
+    '}',
+  ].join('\n');
+}
 
 const grouped = order.map(s => ({ status: s, items: papers.filter(p => p.status === s) }))
                      .filter(g => g.items.length > 0);
@@ -107,6 +133,7 @@ const visibleTopics = TOPIC_TAGS.filter(t => topicCounts[t.slug]);
                   <div class="flex items-center gap-2 flex-wrap">
                     <span class={`badge ${statusMeta[p.status].badge}`}>{statusMeta[p.status].label}</span>
                     {p.venue && <span class="text-xs font-medium text-ink/60 dark:text-cream/60">{p.venue}{p.year ? ` · ${p.year}` : ''}</span>}
+                    {p.award && <span class="badge badge-yellow" title={p.award.label}>★ {p.award.label}</span>}
                   </div>
                   <h3 class="font-display font-bold text-lg md:text-xl mt-2">{p.title}</h3>
                   {p.coauthors.length > 0 && (
@@ -169,11 +196,7 @@ const visibleTopics = TOPIC_TAGS.filter(t => topicCounts[t.slug]);
                   <button
                     type="button"
                     class="cite-btn inline-flex items-center gap-2 text-sm font-semibold px-2 py-1 border border-ink/30 dark:border-cream/30 rounded hover:bg-brand-yellow/40"
-                    data-slug={p.slug}
-                    data-title={p.title}
-                    data-venue={p.venue || ''}
-                    data-year={p.year || ''}
-                    data-coauthors={p.coauthors.join(' and ')}
+                    data-bibtex={buildBibTeX(p)}
                   >
                     <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                     Copy BibTeX
@@ -274,29 +297,12 @@ const visibleTopics = TOPIC_TAGS.filter(t => topicCounts[t.slug]);
       });
     }
 
-    // BibTeX copy buttons
-    function buildBibTeX(el) {
-      const slug      = el.getAttribute('data-slug');
-      const title     = el.getAttribute('data-title');
-      const venue     = el.getAttribute('data-venue');
-      const year      = el.getAttribute('data-year');
-      const coauthors = el.getAttribute('data-coauthors');
-      const author    = coauthors ? `Garg, Prashant and ${coauthors}` : 'Garg, Prashant';
-      const key       = `garg${year || ''}${slug.split('-')[0]}`;
-      const entryType = venue && /journal|review|economics|nature|science|review/i.test(venue) ? 'article' : 'misc';
-      const lines = [`@${entryType}{${key},`];
-      lines.push(`  author = {${author}},`);
-      lines.push(`  title  = {${title}},`);
-      if (venue) lines.push(`  journal = {${venue}},`);
-      if (year)  lines.push(`  year   = {${year}},`);
-      lines.push(`  url    = {https://prashantgarg.org/research/${slug}}`);
-      lines.push('}');
-      return lines.join('\n');
-    }
+    // BibTeX copy buttons — entries are pre-rendered server-side into
+    // data-bibtex (single source of truth, shared with the detail page)
     document.querySelectorAll('.cite-btn').forEach(btn => {
       btn.addEventListener('click', async (ev) => {
         ev.stopPropagation();
-        const bib = buildBibTeX(btn);
+        const bib = btn.getAttribute('data-bibtex') || '';
         try {
           await navigator.clipboard.writeText(bib);
           const orig = btn.innerHTML;

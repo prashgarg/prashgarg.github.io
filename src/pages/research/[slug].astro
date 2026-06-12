@@ -1,6 +1,6 @@
 ---
 import Layout from '../../layouts/Win95Layout.astro';
-import { papers, statusMeta, tools, talks, topicForTalk, type Paper, type Talk } from '../../data/site';
+import { site, papers, statusMeta, tools, talks, topicForTalk, type Paper, type Talk } from '../../data/site';
 
 export async function getStaticPaths() {
   return papers.map(p => ({ params: { slug: p.slug }, props: { paper: p } }));
@@ -27,6 +27,10 @@ const myTalks: Talk[] = talks
   .filter(t => topicForTalk(t.title).paperSlug === paper.slug)
   .sort((a, b) => sortValue(b) - sortValue(a));
 
+// Absolute URLs use site.origin — prashantgarg.org still serves the
+// old Google Site until the DNS cutover (see site.ts).
+const pageUrl = `${site.origin}/research/${paper.slug}`;
+
 // JSON-LD ScholarlyArticle for academic indexing (Google Scholar, etc.)
 const scholarlyJsonLd = {
   '@context': 'https://schema.org',
@@ -34,25 +38,36 @@ const scholarlyJsonLd = {
   headline: paper.title,
   abstract: paper.blurb.slice(0, 600),
   author: [
-    { '@type': 'Person', name: 'Prashant Garg', url: 'https://prashantgarg.org' },
+    { '@type': 'Person', name: 'Prashant Garg', url: site.origin },
     ...paper.coauthors.map(c => ({ '@type': 'Person', name: c })),
   ],
   ...(paper.year ? { datePublished: String(paper.year) } : {}),
   ...(paper.venue ? { publisher: { '@type': 'Organization', name: paper.venue } } : {}),
-  url: `https://prashantgarg.org/research/${paper.slug}`,
+  url: pageUrl,
 };
 
-// BibTeX entry (server-rendered into a data attribute for the copy button)
+// BibTeX entry (server-rendered into a data attribute for the copy
+// button). Authors in consistent "Lastname, Firstname" form; DOI when
+// derivable (Nature article ids map 1:1 to 10.1038/<id>); url prefers
+// the canonical publisher/preprint link over this site.
+function bibName(full: string): string {
+  const parts = full.trim().split(/\s+/);
+  return parts.length < 2 ? full : `${parts[parts.length - 1]}, ${parts.slice(0, -1).join(' ')}`;
+}
 const bibKey = `garg${paper.year || ''}${paper.slug.split('-')[0]}`;
 const bibEntryType = paper.venue && /journal|review|economics|nature|science|letters/i.test(paper.venue) ? 'article' : 'misc';
-const bibAuthor = paper.coauthors.length ? `Garg, Prashant and ${paper.coauthors.join(' and ')}` : 'Garg, Prashant';
+const bibAuthor = ['Prashant Garg', ...paper.coauthors].map(bibName).join(' and ');
+const natureId = paper.links.map(l => l.url.match(/nature\.com\/articles\/([a-z0-9.-]+)/i)?.[1]).find(Boolean);
+const doi = natureId ? `10.1038/${natureId}` : undefined;
+const bibUrl = paper.links[0]?.url || pageUrl;
 const bibTeX = [
   `@${bibEntryType}{${bibKey},`,
   `  author = {${bibAuthor}},`,
   `  title  = {${paper.title}},`,
-  ...(paper.venue ? [`  journal = {${paper.venue}},`] : []),
+  ...(paper.venue ? [`  journal = {${paper.venue.replace(/\s*\((Forthcoming|R&R)\)\s*$/i, '')}},`] : []),
   ...(paper.year ? [`  year   = {${paper.year}},`] : []),
-  `  url    = {https://prashantgarg.org/research/${paper.slug}}`,
+  ...(doi ? [`  doi    = {${doi}},`] : []),
+  `  url    = {${bibUrl}}`,
   '}',
 ].join('\n');
 ---
@@ -85,7 +100,7 @@ const bibTeX = [
           Copy link
         </button>
         <a
-          href={`https://x.com/intent/tweet?text=${encodeURIComponent(paper.title)}&url=${encodeURIComponent(`https://prashantgarg.org/research/${paper.slug}`)}`}
+          href={`https://x.com/intent/tweet?text=${encodeURIComponent(paper.title)}&url=${encodeURIComponent(pageUrl)}`}
           target="_blank"
           rel="noopener"
           class="inline-flex items-center justify-center w-9 h-9 border-2 border-ink dark:border-cream rounded-md bg-white dark:bg-ink-2 hover:bg-brand-yellow"
@@ -95,7 +110,7 @@ const bibTeX = [
           <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
         </a>
         <a
-          href={`https://bsky.app/intent/compose?text=${encodeURIComponent(paper.title + ' https://prashantgarg.org/research/' + paper.slug)}`}
+          href={`https://bsky.app/intent/compose?text=${encodeURIComponent(paper.title + ' ' + pageUrl)}`}
           target="_blank"
           rel="noopener"
           class="inline-flex items-center justify-center w-9 h-9 border-2 border-ink dark:border-cream rounded-md bg-white dark:bg-ink-2 hover:bg-brand-yellow"
@@ -105,7 +120,7 @@ const bibTeX = [
           <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M6.335 5.066c2.797 2.092 5.81 6.34 6.916 8.614v6.166c0-.146-.056.061-.179.494-.667 2.34-2.835 7.51-6.832 3.376-2.105-2.176-1.13-4.353 2.701-5.001-2.193.37-4.658-.245-5.337-2.65-.196-.694-.559-5.864-.559-6.518 0-2.952 2.581-4.706 3.29-4.481zm11.33 0c-2.797 2.092-5.81 6.34-6.916 8.614v6.166c0-.146.056.061.179.494.667 2.34 2.835 7.51 6.832 3.376 2.105-2.176 1.13-4.353-2.701-5.001 2.193.37 4.658-.245 5.337-2.65.196-.694.559-5.864.559-6.518 0-2.952-2.581-4.706-3.29-4.481z"/></svg>
         </a>
         <a
-          href={`mailto:?subject=${encodeURIComponent(paper.title)}&body=${encodeURIComponent(paper.title + '\n\nhttps://prashantgarg.org/research/' + paper.slug)}`}
+          href={`mailto:?subject=${encodeURIComponent(paper.title)}&body=${encodeURIComponent(paper.title + '\n\n' + pageUrl)}`}
           class="inline-flex items-center justify-center w-9 h-9 border-2 border-ink dark:border-cream rounded-md bg-white dark:bg-ink-2 hover:bg-brand-yellow"
           aria-label="Share via email"
           title="Share via email"
@@ -118,6 +133,11 @@ const bibTeX = [
     <div class="flex items-center gap-2 flex-wrap mb-3">
       <span class={`badge ${statusMeta[paper.status].badge}`}>{statusMeta[paper.status].label}</span>
       {paper.venue && <span class="text-sm font-medium text-ink/60 dark:text-cream/60">{paper.venue}{paper.year ? ` · ${paper.year}` : ''}</span>}
+      {paper.award && (
+        <a href={paper.award.url} target="_blank" rel="noopener" class="badge badge-yellow hover:bg-brand-yellow" title={paper.award.label}>
+          ★ {paper.award.label}
+        </a>
+      )}
     </div>
 
     <h1 class="font-display text-3xl md:text-5xl font-bold leading-tight tracking-tight">{paper.title}</h1>
@@ -165,6 +185,20 @@ const bibTeX = [
           </div>
           <svg class="w-6 h-6 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M7 7h10v10"/></svg>
         </a>
+      </section>
+    )}
+
+    {paper.figures && paper.figures.length > 0 && (
+      <section class="mt-10">
+        <div class="text-xs font-bold uppercase tracking-wider text-ink/50 dark:text-cream/50 mb-3">Figures</div>
+        <div class="space-y-6">
+          {paper.figures.map(f => (
+            <figure class="card p-3">
+              <img src={f.src} alt={f.caption} loading="lazy" class="w-full h-auto bg-white" />
+              <figcaption class="mt-2 text-sm leading-relaxed text-ink/70 dark:text-cream/70">{f.caption}</figcaption>
+            </figure>
+          ))}
+        </div>
       </section>
     )}
 
