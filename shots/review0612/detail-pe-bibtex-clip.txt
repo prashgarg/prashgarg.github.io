@@ -1,0 +1,7 @@
+@article{garg2025political,
+  author = {Garg, Prashant and Thiemo Fetzer},
+  title  = {Political Expression of Academics on Twitter},
+  journal = {Nature Human Behaviour},
+  year   = {2025},
+  url    = {https://prashantgarg.org/research/political-expression-academics}
+}
