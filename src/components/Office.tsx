@@ -2787,7 +2787,7 @@ function BiosScreen({ onDone }: { onDone: () => void }) {
             prashantgarg.org&nbsp;&nbsp;·&nbsp;&nbsp;{new Date().getFullYear()}
           </div>
           <div style={{ color: '#fff', fontSize: 18, lineHeight: 1.4, letterSpacing: '0.05em', marginBottom: 36, display: 'flex', alignItems: 'center', gap: 9 }}>
-            Click START to enter
+            {typeof window !== 'undefined' && window.matchMedia('(hover: none)').matches ? 'Tap' : 'Click'} START to enter
             <span style={{ display: 'inline-block', width: '0.55em', height: '1.05em', background: '#fff', verticalAlign: 'middle', animation: 'bios-blink 0.65s step-end infinite' }} />
           </div>
           <button
@@ -2877,7 +2877,9 @@ function BootOverlay({ onDone }: { onDone: () => void }) {
     >
       <div style={{ width: 'min(92%, 560px)', padding: 24 }}>
         <pre style={{ margin: 0, fontSize: 13, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{text}<span style={{ color: '#F9BD2B' }}>▋</span></pre>
-        <div style={{ marginTop: 36, fontSize: 11, color: 'rgba(164,217,197,0.45)' }}>press any key · click to skip</div>
+        <div style={{ marginTop: 36, fontSize: 11, color: 'rgba(164,217,197,0.45)' }}>
+          {typeof window !== 'undefined' && window.matchMedia('(hover: none)').matches ? 'tap to skip' : 'press any key · click to skip'}
+        </div>
       </div>
     </div>
   );
@@ -3284,8 +3286,11 @@ export default function Office() {
     try { if (sessionStorage.getItem(SS_PHASE) === 'desktop') return 'desktop'; } catch { /* */ }
     return 'splash';
   });
-  const [isTouch, setIsTouch] = useState(false);
-  useEffect(() => { setIsTouch(window.matchMedia('(hover: none) and (pointer: coarse)').matches); }, []);
+  // Lazy init is safe — this component renders client:only (no SSR
+  // hydration to mismatch), and G7 needs the value on FIRST render to
+  // decide whether the 3D canvas mounts at all.
+  const [isTouch] = useState(() =>
+    typeof window !== 'undefined' && window.matchMedia('(hover: none) and (pointer: coarse)').matches);
 
   // WebGL probe — without it the 3D room can never render and the user
   // would be stranded at "click the monitor" with no monitor. Render a
@@ -3302,10 +3307,27 @@ export default function Office() {
   const handleClick        = () => { if (phase === 'idle') setPhase('dollying'); };
   const handleArrived      = () => setPhase('booting');
   const handleBootDone     = () => setPhase('desktop');
+  // G7: on touch devices the 3D room was a mandatory ~5 MB download
+  // whose only purpose was one ~25 px tap target. After the BIOS START
+  // tap, go straight to the fullscreen desktop; the room stays
+  // reachable via the Start menu's "View office (3D)" (= shut down,
+  // which lands on 'idle' and mounts the canvas).
+  const handleBiosDone = () => {
+    if (isTouch) {
+      try { sessionStorage.setItem(SS_PHASE, 'desktop'); } catch { /* */ }
+      setPhase('desktop');
+    } else {
+      setPhase('entering');
+    }
+  };
   const handleDesktopClose = () => {
     try { sessionStorage.removeItem(SS_PHASE); } catch { /* */ }
     setPhase('idle');
   };
+  // Mount the 3D scene only when it can be seen: on touch, skip it
+  // during BIOS (so the models never download unless asked for) and
+  // while the fullscreen desktop covers everything.
+  const mount3d = !isTouch || !(phase === 'splash' || phase === 'desktop');
 
   const [muted, setMuted] = useState<boolean>(() => {
     try { return sessionStorage.getItem(SS_MUTED) === '1'; } catch { return false; }
@@ -3353,7 +3375,7 @@ export default function Office() {
           DIM the 3D scene to ~30 % brightness so the bright teal/cream
           desktop window doesn't fight the green carpet/cubicle bezel
           showing around its edges — keeps the eye on the inner site. */}
-      <div style={{
+      {mount3d && <div style={{
         position: 'absolute', inset: 0,
         filter: (phase === 'desktop' || phase === 'booting')
           ? 'contrast(1.03) saturate(0.98) hue-rotate(-2deg) brightness(0.32)'
@@ -3386,9 +3408,9 @@ export default function Office() {
             <Bloom intensity={0.35} luminanceThreshold={0.92} luminanceSmoothing={0.5} mipmapBlur />
           </EffectComposer>
         </Canvas>
-      </div>
-      {phase !== 'splash' && <VignetteOverlay />}
-      {phase !== 'splash' && <GrainOverlay />}
+      </div>}
+      {phase !== 'splash' && mount3d && <VignetteOverlay />}
+      {phase !== 'splash' && mount3d && <GrainOverlay />}
       <PhaseFlash phase={phase} />
       <StudyAudio
         active={audioActive}
@@ -3400,7 +3422,7 @@ export default function Office() {
       )}
       {(phase === 'idle' || phase === 'entering') && <TapHint isTouch={isTouch} />}
       {phase === 'idle' && <FirstVisitWelcome />}
-      {phase === 'splash'  && <BiosScreen onDone={() => setPhase('entering')} />}
+      {phase === 'splash'  && <BiosScreen onDone={handleBiosDone} />}
       {phase === 'booting' && <BootOverlay onDone={handleBootDone} />}
       {phase === 'desktop' && <InnerDesktop onClose={handleDesktopClose} embedded />}
     </div>

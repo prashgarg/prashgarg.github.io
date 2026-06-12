@@ -327,7 +327,12 @@ const paletteIndex = [
         owns the chrome. */}
     <style>
       body.w95-embed-body { height: auto !important; overflow: auto !important; background: var(--color-cream) !important; font-family: MSSerif, Arial, sans-serif; }
-      body.w95-embed-body .w95-shell { padding: 0 !important; padding-bottom: 0 !important; }
+      /* G1 (goal_12jun26): the shell keeps 100vh flex-centering in embed
+         mode, so content taller than the window gets vertically centered
+         and the overflow above the viewport is clipped UNREACHABLY (the
+         Research window opened mid-page with title/search invisible).
+         Block flow + auto height restores normal top-anchored scrolling. */
+      body.w95-embed-body .w95-shell { display: block !important; height: auto !important; padding: 0 !important; padding-bottom: 0 !important; }
       body.w95-embed-body .w95-taskbar,
       body.w95-embed-body .w95-titlebar,
       body.w95-embed-body .w95-menubar,

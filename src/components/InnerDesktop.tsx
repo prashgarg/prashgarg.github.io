@@ -66,11 +66,12 @@ const WIN95_STYLE = `
   /* fade-in when boot completes and InnerDesktop mounts */
   animation: w95-fadein 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
-/* PHONES: the CRT projection is wider than a portrait viewport (the
-   monitor camera frames landscape), which clipped the desktop on both
-   edges. Below 700px the embedded desktop goes FULL-SCREEN — windows
-   already open maximized there, so this is the native phone UX. */
-@media (max-width: 700px) {
+/* PHONES + ALL TOUCH DEVICES: the CRT projection is wider than a
+   portrait viewport (the monitor camera frames landscape), which
+   clipped the desktop on both edges. Below 700px — and on ANY touch
+   device, where G7 skips the 3D room entirely so there is no CRT to
+   project into — the embedded desktop goes FULL-SCREEN. */
+@media (max-width: 700px), (hover: none) and (pointer: coarse) {
   .win95-desktop.embedded {
     top: 0; left: 0;
     width: 100vw;
@@ -173,6 +174,15 @@ const WIN95_STYLE = `
   box-shadow: inset 1px 1px var(--win-fr), inset -1px -1px #fff;
 }
 .win95-titlebtn-close { margin-left: 2px; }
+/* G8: 16×14px buttons are untappable on touch — grow the hit areas.
+   (The taskbar keeps its 30px height: maximized-window geometry and
+   the Start-menu anchor are computed from that constant.) */
+@media (hover: none) and (pointer: coarse) {
+  .win95-titlebtn { width: 34px; height: 28px; font-size: 12px; }
+  .win95-nav-link { padding: 8px 0; }
+  .win95-startmenu-item { padding: 10px 8px 10px 6px; }
+  .win95-context-item { padding: 8px 16px 8px 22px; }
+}
 
 /* ---------- body (nav + content) ---------------------------------- */
 .win95-body {
@@ -396,6 +406,15 @@ const WIN95_STYLE = `
   background: #c3c6ca;
   color: #2b2b2b;
   margin-left: auto;
+  /* don't let flex squeeze the tag into "CURREN…" on narrow viewports (G8) */
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+@media (max-width: 700px) {
+  .win95-affil-row { flex-wrap: wrap; }
+  /* long roles ("Postdoctoral Researcher (from Sept 2026)") must be
+     allowed to shrink + wrap on phones or they clip at the row edge */
+  .win95-affil-role { flex-shrink: 1; }
 }
 .win95-affil-tag.current  { background: #d8e8c8; color: #2a4a18; }
 .win95-affil-tag.incoming { background: #ffe4b8; color: #6a3500; }
@@ -533,7 +552,9 @@ const WIN95_STYLE = `
   align-items: center;
   padding: 2px 4px;
   box-shadow: inset 0 1px #fff;
-  z-index: 10;
+  /* must sit above the window z-stack (windows bump an unbounded
+     counter from ~100) but below the Start menu (9000) — G3 */
+  z-index: 8000;
   gap: 3px;
 }
 .win95-start-btn {
@@ -543,6 +564,9 @@ const WIN95_STYLE = `
   padding: 2px 8px;
   font-family: MillenniumBold, serif;
   font-size: 13px;
+  /* explicit black — otherwise inherits the site's cream text color,
+     near-invisible on the light-grey taskbar chrome (G2) */
+  color: #000;
   background: #c3c6ca;
   border: none;
   cursor: pointer;
@@ -565,6 +589,7 @@ const WIN95_STYLE = `
   padding: 2px 6px;
   font-family: MSSerif;
   font-size: 12px;
+  color: #000;
   text-align: left;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -585,6 +610,7 @@ const WIN95_STYLE = `
 .win95-clock {
   font-family: MSSerif;
   font-size: 12px;
+  color: #000;
   padding: 2px 8px;
   box-shadow: var(--sunken);
   white-space: nowrap;
@@ -592,6 +618,7 @@ const WIN95_STYLE = `
 /* system-tray mute button */
 .win95-tray-btn {
   width: 26px; height: 22px;
+  color: #000;
   background: #c3c6ca;
   border: none; cursor: pointer; padding: 0;
   display: flex; align-items: center; justify-content: center;
@@ -601,6 +628,45 @@ const WIN95_STYLE = `
 .win95-tray-btn:active {
   box-shadow: inset -1px -1px #fff, inset 1px 1px #2b2b2b,
               inset -2px -2px #c3c6ca, inset 2px 2px #86898d;
+}
+/* volume slider — Win95 styling instead of the modern blue native
+   range control, which broke the period illusion (G6) */
+.win95-vol-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 70px;
+  height: 18px;
+  background: transparent;
+  cursor: pointer;
+}
+.win95-vol-slider::-webkit-slider-runnable-track {
+  height: 4px;
+  background: #86898d;
+  box-shadow: inset 1px 1px #2b2b2b, inset -1px -1px #fff;
+}
+.win95-vol-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 11px;
+  height: 18px;
+  margin-top: -7px;
+  border-radius: 0;
+  background: #c3c6ca;
+  box-shadow: inset -1px -1px #2b2b2b, inset 1px 1px #fff,
+              inset -2px -2px #86898d,  inset 2px 2px #c3c6ca;
+}
+.win95-vol-slider::-moz-range-track {
+  height: 4px;
+  background: #86898d;
+  box-shadow: inset 1px 1px #2b2b2b, inset -1px -1px #fff;
+}
+.win95-vol-slider::-moz-range-thumb {
+  width: 11px;
+  height: 18px;
+  border: none;
+  border-radius: 0;
+  background: #c3c6ca;
+  box-shadow: inset -1px -1px #2b2b2b, inset 1px 1px #fff,
+              inset -2px -2px #86898d,  inset 2px 2px #c3c6ca;
 }
 
 /* scrollbar */
@@ -1243,16 +1309,10 @@ function VolumeTray() {
       </button>
       <input
         type="range"
+        className="win95-vol-slider"
         min={0} max={1} step={0.02} value={vol}
         onChange={e => apply(parseFloat(e.target.value))}
         title="Volume"
-        style={{
-          width: 70,
-          height: 14,
-          cursor: 'pointer',
-          accentColor: '#0000a3',
-          background: 'transparent',
-        }}
       />
     </div>
   );
@@ -1597,12 +1657,16 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
     if (inertiaRafRef.current[id]) cancelAnimationFrame(inertiaRafRef.current[id]);
     const sx = e.clientX, sy = e.clientY;
     const ox = w.x, oy = w.y;
+    // G5: the right clamp must account for window WIDTH — otherwise a
+    // wide window dragged right keeps its ✕ (at the right edge of the
+    // titlebar) unreachable off-viewport.
+    const maxX = Math.max(0, containerSize.w - w.w);
     // velocity samples: ring buffer of recent (t, x, y)
     const samples: { t: number; x: number; y: number }[] = [];
     samples.push({ t: performance.now(), x: ox, y: oy });
     const onMove = (ev: MouseEvent) => {
       const dx = ev.clientX - sx, dy = ev.clientY - sy;
-      const nx = Math.max(-200, Math.min(containerSize.w - 80, ox + dx));
+      const nx = Math.max(-200, Math.min(maxX, ox + dx));
       const ny = Math.max(0,    Math.min(containerSize.h - 60, oy + dy));
       samples.push({ t: performance.now(), x: nx, y: ny });
       if (samples.length > 6) samples.shift();
@@ -1634,7 +1698,7 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
         lastFrame = now;
         cx += vx * dt2;
         cy += vy * dt2;
-        const nx = Math.max(-200, Math.min(containerSize.w - 80, cx));
+        const nx = Math.max(-200, Math.min(maxX, cx));
         const ny = Math.max(0,    Math.min(containerSize.h - 60, cy));
         setWins(ws => ws.map(s => s.id === id ? { ...s, x: nx, y: ny } : s));
         vx *= Math.pow(decay, dt2 * 60);
@@ -1901,6 +1965,22 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
               </div>
             ))}
             <div className="win95-startmenu-sep" />
+            {/* G7: touch devices boot straight to this desktop, so the
+                3D office needs an explicit way in. Shutting down lands
+                on the idle room — same exit, friendlier label. */}
+            {typeof window !== 'undefined' && window.matchMedia('(hover: none) and (pointer: coarse)').matches && (
+              <div
+                className="win95-startmenu-item"
+                onMouseDown={() => playUiClick('down', 'menu')}
+                onMouseUp={() => playUiClick('up', 'menu')}
+                onClick={shutDown}
+              >
+                <div className="win95-startmenu-icon">
+                  <svg width="20" height="20" viewBox="0 0 20 20"><rect x="2" y="3" width="16" height="11" fill="none" stroke="#2b2b2b" strokeWidth="2"/><rect x="7" y="16" width="6" height="2" fill="#2b2b2b"/></svg>
+                </div>
+                View office (3D)
+              </div>
+            )}
             <div
               className="win95-startmenu-item"
               onMouseDown={() => playUiClick('down', 'menu')}
@@ -2044,7 +2124,7 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
 }
 
 /* ---------- HOME content — the inline React view for app=home -------- */
-function HomeContent({ openApp }: { openApp: (id: AppId, fp?: { x: number; y: number }) => void }) {
+function HomeContent({ openApp }: { openApp: (id: AppId, fp?: { x: number; y: number }, pathOverride?: string) => void }) {
   return (
     <div className="win95-home">
       <div className="win95-home-header">
@@ -2078,7 +2158,7 @@ function HomeContent({ openApp }: { openApp: (id: AppId, fp?: { x: number; y: nu
               href={`/research/${LATEST_PAPER.slug}`}
               onMouseDown={() => playUiClick('down')}
               onMouseUp={() => playUiClick('up')}
-              onClick={(e) => { e.preventDefault(); openApp('research'); }}
+              onClick={(e) => { e.preventDefault(); openApp('research', undefined, `/research/${LATEST_PAPER.slug}`); }}
             >Open paper →</a>
           </div>
         )}
