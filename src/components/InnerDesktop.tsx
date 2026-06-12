@@ -889,6 +889,80 @@ const WIN95_STYLE = `
   0%   { transform: scale(1);    opacity: 1; }
   100% { transform: scale(0.06); opacity: 0; }
 }
+
+/* ---------- dialogs: Run…, System Properties, Wellness (G30/34/35) -- */
+.win95-dialog {
+  position: absolute;
+  left: 50%; top: 38%;
+  transform: translate(-50%, -50%);
+  width: min(360px, calc(100vw - 24px));
+  background: #c3c6ca;
+  z-index: 9600;
+  box-shadow: inset -1px -1px #2b2b2b, inset 1px 1px #fff,
+              inset -2px -2px #86898d, inset 2px 2px #c3c6ca,
+              3px 3px 14px rgba(0,0,0,0.45);
+  font-family: MSSerif, Arial, sans-serif;
+  font-size: 12px;
+  color: #000;
+  animation: w95-startmenu-in 0.12s ease-out;
+}
+.win95-dialog.wide { width: min(440px, calc(100vw - 24px)); }
+.win95-dialog-titlebar {
+  display: flex; align-items: center; justify-content: space-between;
+  background: #0000a3; color: #fff;
+  padding: 3px 4px 3px 8px;
+  font-weight: bold;
+}
+.win95-dialog-body { padding: 12px; }
+.win95-dialog-input {
+  flex: 1;
+  font-family: MSSerif, Arial, sans-serif;
+  font-size: 16px;          /* >=16px: no iOS zoom */
+  padding: 3px 5px;
+  background: #fff;
+  border: none;
+  color: #000;
+  box-shadow: inset 1px 1px #2b2b2b, inset -1px -1px #fff;
+  min-width: 0;
+}
+.win95-dialog-error { margin-top: 8px; color: #a00000; }
+.win95-dialog-buttons { display: flex; justify-content: flex-end; gap: 6px; margin-top: 12px; align-items: center; }
+.win95-dialog-section { margin-bottom: 10px; line-height: 1.55; }
+.win95-wellness-line { margin: 4px 0 10px; font-size: 13px; line-height: 1.6; }
+
+/* ---------- G33: CRT flicker (Overtime Contingency) ----------------- */
+.win95-crt-flicker {
+  position: absolute; inset: 0;
+  z-index: 9990;
+  pointer-events: none;
+  background: #fff;
+  animation: w95-flicker 0.5s steps(2) both;
+}
+@keyframes w95-flicker {
+  0% { opacity: 0; } 12% { opacity: 0.85; } 22% { opacity: 0.05; }
+  38% { opacity: 0.6; } 52% { opacity: 0; } 68% { opacity: 0.4; } 100% { opacity: 0; }
+}
+
+/* ---------- G32: screensaver ---------------------------------------- */
+.win95-screensaver {
+  position: absolute; inset: 0;
+  z-index: 9985;
+  background: rgba(4, 6, 5, 0.93);
+  cursor: none;
+}
+.win95-screensaver-logo {
+  position: absolute; left: 0; top: 0;
+  width: 230px;
+  padding: 14px 18px;
+  background: #0E1B16;
+  border: 1px solid #2C4434;
+  color: #A4D9C5;
+  font-family: ui-monospace, 'SF Mono', Menlo, Monaco, monospace;
+  will-change: transform;
+}
+.win95-screensaver-mark { font-size: 17px; letter-spacing: 0.04em; }
+.win95-screensaver-mark b { color: #E8EEDF; }
+.win95-screensaver-sub { font-size: 10px; opacity: 0.6; margin-top: 4px; }
 `;
 
 /* ---------- synthesised UI click sounds (Henry Heffernan pattern, MIT) ---
@@ -998,6 +1072,75 @@ function playWindowOpenDing() {
     osc.connect(g); g.connect(ac.destination);
     osc.start(now + t.delay);
     osc.stop(now + t.delay + t.dur + 0.01);
+  }
+}
+
+// G29: the rest of the Win95 sound scheme — all synthesised (zero
+// audio assets), all gated by the shared volume.
+// Close/minimize: the open-ding's two tones in reverse (downward).
+function playWindowCloseSound(kind: 'close' | 'minimize' = 'close') {
+  const ac = getUiAc();
+  if (!ac) return;
+  const vol = getUiVolume();
+  if (vol <= 0.001) return;
+  const now = ac.currentTime;
+  const tones = kind === 'close'
+    ? [{ freq: 1318, delay: 0.00, dur: 0.20, gain: 0.06 }, { freq: 880, delay: 0.05, dur: 0.26, gain: 0.07 }]
+    : [{ freq: 988,  delay: 0.00, dur: 0.14, gain: 0.05 }, { freq: 740, delay: 0.04, dur: 0.18, gain: 0.05 }];
+  for (const t of tones) {
+    const osc = ac.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.value = t.freq;
+    const g = ac.createGain();
+    g.gain.setValueAtTime(0.0001, now + t.delay);
+    g.gain.exponentialRampToValueAtTime(t.gain * vol, now + t.delay + 0.005);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + t.delay + t.dur);
+    osc.connect(g); g.connect(ac.destination);
+    osc.start(now + t.delay);
+    osc.stop(now + t.delay + t.dur + 0.01);
+  }
+}
+// Error ding — short low 'donk', the polite Win95 complaint.
+function playErrorDing() {
+  const ac = getUiAc();
+  if (!ac) return;
+  const vol = getUiVolume();
+  if (vol <= 0.001) return;
+  const now = ac.currentTime;
+  const osc = ac.createOscillator();
+  osc.type = 'triangle';
+  osc.frequency.setValueAtTime(311, now);          // D#4
+  osc.frequency.exponentialRampToValueAtTime(233, now + 0.16);
+  const g = ac.createGain();
+  g.gain.setValueAtTime(0.0001, now);
+  g.gain.exponentialRampToValueAtTime(0.10 * vol, now + 0.006);
+  g.gain.exponentialRampToValueAtTime(0.0001, now + 0.28);
+  osc.connect(g); g.connect(ac.destination);
+  osc.start(now); osc.stop(now + 0.3);
+}
+// Startup chime — soft rising triad, once per session after boot.
+function playStartupChime() {
+  const ac = getUiAc();
+  if (!ac) return;
+  const vol = getUiVolume();
+  if (vol <= 0.001) return;
+  const now = ac.currentTime;
+  const notes = [
+    { freq: 523.25, delay: 0.00, dur: 0.55, gain: 0.050 },  // C5
+    { freq: 659.25, delay: 0.12, dur: 0.55, gain: 0.045 },  // E5
+    { freq: 783.99, delay: 0.24, dur: 0.70, gain: 0.045 },  // G5
+  ];
+  for (const n of notes) {
+    const osc = ac.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.value = n.freq;
+    const g = ac.createGain();
+    g.gain.setValueAtTime(0.0001, now + n.delay);
+    g.gain.exponentialRampToValueAtTime(n.gain * vol, now + n.delay + 0.04);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + n.delay + n.dur);
+    osc.connect(g); g.connect(ac.destination);
+    osc.start(now + n.delay);
+    osc.stop(now + n.delay + n.dur + 0.02);
   }
 }
 
@@ -1394,6 +1537,16 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
   // Right-click context menu state — {x,y} of the menu top-left in
   // container-relative coords, or null if hidden.
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
+  // G30/G33/G34/G35: Run… dialog, Overtime Contingency, System
+  // Properties, Wellness Session
+  const [dialog, setDialog] = useState<null | 'run' | 'sysprops' | 'wellness'>(null);
+  const [runError, setRunError] = useState('');
+  const [flicker, setFlicker] = useState(false);
+  const runInputRef = useRef<HTMLInputElement | null>(null);
+  useEffect(() => {
+    if (dialog === 'run') setTimeout(() => runInputRef.current?.focus(), 60);
+    if (dialog !== 'run') setRunError('');
+  }, [dialog]);
   const [refreshFlash, setRefreshFlash] = useState(false);   // flash anim on "Refresh"
 
   // ── Multi-window management ──────────────────────────────────────
@@ -1478,6 +1631,7 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
   // Close an app — play closing animation, then remove from array
   // and update URL to whatever is now the topmost open window (or '/').
   const closeApp = useCallback((id: AppId) => {
+    playWindowCloseSound('close');
     setWins(ws => ws.map(w => w.id === id ? { ...w, state: 'closing' as const } : w));
     setTimeout(() => {
       setWins(ws => {
@@ -1493,6 +1647,7 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
 
   // Minimize / restore / maximize toggle
   const minimizeApp = useCallback((id: AppId) => {
+    playWindowCloseSound('minimize');
     setWins(ws => ws.map(w => w.id === id ? { ...w, state: 'minimizing' as const } : w));
     setTimeout(() => {
       setWins(ws => ws.map(w => w.id === id ? { ...w, minimized: true, state: 'open' as const } : w));
@@ -1525,8 +1680,18 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
   // Initial-load app: only auto-open if the URL points to a specific
   // app (not '/'). '/' shows the empty desktop with icons so the user
   // can pick a section — like a real Windows desktop.
+  // G30: '?app=research&paper=<slug>' query params work as a shareable
+  // alias for the path form (handy when the path is owned by the boot
+  // flow, e.g. linking someone straight into a windowed paper).
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    const q = new URLSearchParams(window.location.search);
+    const qApp = q.get('app');
+    if (qApp && APP_BY_ID[qApp as AppId]) {
+      const paper = q.get('paper');
+      openApp(qApp as AppId, undefined, paper ? `/research/${paper}` : undefined);
+      return;
+    }
     const path = window.location.pathname || '/';
     if (path === '/') return;     // empty desktop on home url
     const app = findAppForPath(path);
@@ -1534,6 +1699,18 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
       const overridePath = path !== app.path ? path : undefined;
       openApp(app.id, undefined, overridePath);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // G29: startup chime — once per browser session, right after the
+  // desktop first mounts (the boot sequence's payoff note).
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem('pg_chimed') === '1') return;
+      sessionStorage.setItem('pg_chimed', '1');
+    } catch { /* */ }
+    const t = setTimeout(() => playStartupChime(), 600);
+    return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -1551,6 +1728,43 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
   }, [openApp]);
+
+  // ── G33: Overtime Contingency — CRT flicker, then innie/outie swap.
+  // The themes are the site's existing light/dark pair (pg_theme +
+  // html.dark); live same-origin iframes flip along with the shell.
+  const overtime = useCallback(() => {
+    const apply = () => {
+      const dark = !document.documentElement.classList.contains('dark');
+      document.documentElement.classList.toggle('dark', dark);
+      try { localStorage.setItem('pg_theme', dark ? 'dark' : 'light'); } catch { /* */ }
+      document.querySelectorAll('iframe.win95-iframe').forEach(f => {
+        try { (f as HTMLIFrameElement).contentDocument?.documentElement.classList.toggle('dark', dark); } catch { /* */ }
+      });
+    };
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { apply(); return; }
+    setFlicker(true);
+    setTimeout(apply, 260);
+    setTimeout(() => setFlicker(false), 520);
+  }, []);
+
+  // ── G30: Run… command parsing — app names, paper slugs/titles, and
+  // the hidden directives.
+  const runCommand = useCallback((raw: string) => {
+    const cmd = raw.trim().toLowerCase();
+    if (!cmd) return;
+    if (cmd === 'overtime') { setDialog(null); overtime(); return; }
+    if (cmd === 'standard' || cmd === 'standard issue') { window.location.href = '/standard'; return; }
+    if (cmd === 'wellness') { setDialog('wellness'); return; }
+    if (cmd === 'properties' || cmd === 'sysprops' || cmd === 'system properties') { setDialog('sysprops'); return; }
+    const appHit = APPS.find(a => a.id === cmd || a.label.toLowerCase() === cmd);
+    if (appHit) { setDialog(null); openApp(appHit.id); return; }
+    if (cmd.length >= 3) {
+      const paperHit = papers.find(p => p.slug === cmd || p.slug.includes(cmd) || p.title.toLowerCase().includes(cmd));
+      if (paperHit) { setDialog(null); openApp('research', undefined, `/research/${paperHit.slug}`); return; }
+    }
+    playErrorDing();
+    setRunError(`Cannot find '${raw.trim()}'. Try an app (research, talks, cv…) or a paper title.`);
+  }, [openApp, overtime]);
 
   // ── KEYBOARD SHORTCUTS ────────────────────────────────────────────
   // Alt+Tab  — cycle focus through open windows
@@ -1578,12 +1792,19 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
         focusApp(visible[idx].id);
         return;
       }
-      // Escape — close start/ctx menu first, then close focused window
+      // Escape — close dialog/start/ctx menu first, then focused window
       if (e.key === 'Escape') {
+        if (dialog)    { setDialog(null);     e.preventDefault(); return; }
         if (startOpen) { setStartOpen(false); e.preventDefault(); return; }
         if (ctxMenu)   { setCtxMenu(null);    e.preventDefault(); return; }
         if (inText) return;
         if (focusedId) { closeApp(focusedId); e.preventDefault(); return; }
+      }
+      // G36: B — the boss key. Instant plain-HTML standard-issue view.
+      if ((e.key === 'b' || e.key === 'B') && !inText && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault();
+        window.location.href = '/standard';
+        return;
       }
       // F11 — toggle maximize on focused window
       if (e.key === 'F11' && focusedId) {
@@ -1606,7 +1827,7 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [wins, startOpen, ctxMenu, focusApp, closeApp, toggleMaximize, onClose]);
+  }, [wins, startOpen, ctxMenu, dialog, focusApp, closeApp, toggleMaximize, onClose]);
 
   // ---------- ambient audio (continues from the study) ----------
   const [muted, setMuted] = useState<boolean>(() => {
@@ -1967,6 +2188,70 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
         );
       })}
 
+      {/* ───────────── G32/G33: screensaver + CRT flicker ───────────── */}
+      <Screensaver />
+      {flicker && <div className="win95-crt-flicker" />}
+
+      {/* ───────────── G30: Run… dialog ───────────── */}
+      {dialog === 'run' && (
+        <div className="win95-dialog" role="dialog" aria-label="Run">
+          <div className="win95-dialog-titlebar">
+            <span>Run</span>
+            <button className="win95-titlebtn" onClick={() => setDialog(null)} aria-label="Close">✕</button>
+          </div>
+          <div className="win95-dialog-body">
+            <p style={{ margin: '0 0 10px' }}>Type the name of a program or paper, and prashantgarg.os will open it for you.</p>
+            <form onSubmit={e => { e.preventDefault(); runCommand(runInputRef.current?.value || ''); }}>
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                <span>Open:</span>
+                <input ref={runInputRef} className="win95-dialog-input" spellCheck={false} aria-label="Run command" />
+              </div>
+              {runError && <div className="win95-dialog-error">{runError}</div>}
+              <div className="win95-dialog-buttons">
+                <button type="submit" className="win95-btn">OK</button>
+                <button type="button" className="win95-btn" onClick={() => setDialog(null)}>Cancel</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ───────────── G34: System Properties ───────────── */}
+      {dialog === 'sysprops' && (
+        <div className="win95-dialog wide" role="dialog" aria-label="System Properties">
+          <div className="win95-dialog-titlebar">
+            <span>System Properties</span>
+            <button className="win95-titlebtn" onClick={() => setDialog(null)} aria-label="Close">✕</button>
+          </div>
+          <div className="win95-dialog-body">
+            <div className="win95-dialog-section">
+              <b>System:</b>
+              <div>prashantgarg.os</div>
+              <div>Astro static build · React Three Fiber + drei (the 3D office)</div>
+              <div>Hand-rolled React window manager (this desktop)</div>
+              <div>Deployed from GitHub Pages on every push to main</div>
+            </div>
+            <div className="win95-dialog-section">
+              <b>Equipment:</b>
+              <div>3D models: CC0 Quaternius packs, texture-stripped ~140 MB → ~1 MB</div>
+              <div>Set: Severance-style MDR office — pinwheel pod, coffered ceiling</div>
+              <div>Sound scheme: synthesised WebAudio, zero audio assets</div>
+            </div>
+            <div className="win95-dialog-section">
+              <b>Registered to:</b>
+              <div>Prashant Garg · Economist</div>
+              <div>Research toolchain: Python + LLM pipelines (retrieval &amp; generation), causal inference, network science</div>
+            </div>
+            <div className="win95-dialog-buttons">
+              <button className="win95-btn" onClick={() => setDialog(null)}>OK</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ───────────── G35: Wellness Session ───────────── */}
+      {dialog === 'wellness' && <WellnessDialog onClose={() => setDialog(null)} />}
+
       {/* ───────────── Start menu ───────────── */}
       {startOpen && (
         <div className="win95-startmenu" onMouseDown={e => e.stopPropagation()}>
@@ -1984,6 +2269,53 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
                 {app.label}
               </div>
             ))}
+            <div className="win95-startmenu-sep" />
+            {/* G30/G34/G35/G36: system items */}
+            <div
+              className="win95-startmenu-item"
+              onMouseDown={() => playUiClick('down', 'menu')}
+              onMouseUp={() => playUiClick('up', 'menu')}
+              onClick={() => { setStartOpen(false); setDialog('run'); }}
+            >
+              <div className="win95-startmenu-icon">
+                <svg width="20" height="20" viewBox="0 0 20 20"><rect x="2" y="5" width="16" height="10" fill="#fff" stroke="#2b2b2b" strokeWidth="1.5"/><path d="M5 9l3 2-3 2" fill="none" stroke="#2b2b2b" strokeWidth="1.5"/></svg>
+              </div>
+              Run…
+            </div>
+            <div
+              className="win95-startmenu-item"
+              onMouseDown={() => playUiClick('down', 'menu')}
+              onMouseUp={() => playUiClick('up', 'menu')}
+              onClick={() => { setStartOpen(false); setDialog('wellness'); }}
+            >
+              <div className="win95-startmenu-icon">
+                <svg width="20" height="20" viewBox="0 0 20 20"><path d="M10 16s-6-3.6-6-8a3.4 3.4 0 016-2.2A3.4 3.4 0 0116 8c0 4.4-6 8-6 8z" fill="none" stroke="#2b6b4f" strokeWidth="1.6"/></svg>
+              </div>
+              Wellness Session
+            </div>
+            <div
+              className="win95-startmenu-item"
+              onMouseDown={() => playUiClick('down', 'menu')}
+              onMouseUp={() => playUiClick('up', 'menu')}
+              onClick={() => { setStartOpen(false); setDialog('sysprops'); }}
+            >
+              <div className="win95-startmenu-icon">
+                <svg width="20" height="20" viewBox="0 0 20 20"><rect x="3" y="3" width="14" height="11" fill="#9CB0D8" stroke="#2b2b2b" strokeWidth="1.5"/><rect x="7" y="16" width="6" height="1.6" fill="#2b2b2b"/></svg>
+              </div>
+              System Properties
+            </div>
+            <div
+              className="win95-startmenu-item"
+              onMouseDown={() => playUiClick('down', 'menu')}
+              onMouseUp={() => playUiClick('up', 'menu')}
+              onClick={() => { window.location.href = '/standard'; }}
+              title="The plain, fast version of this site (or press B)"
+            >
+              <div className="win95-startmenu-icon">
+                <svg width="20" height="20" viewBox="0 0 20 20"><rect x="3" y="3" width="14" height="14" fill="#fff" stroke="#2b2b2b" strokeWidth="1.5"/><line x1="5.5" y1="7" x2="14.5" y2="7" stroke="#2b2b2b" strokeWidth="1.2"/><line x1="5.5" y1="10" x2="14.5" y2="10" stroke="#2b2b2b" strokeWidth="1.2"/><line x1="5.5" y1="13" x2="11" y2="13" stroke="#2b2b2b" strokeWidth="1.2"/></svg>
+              </div>
+              Standard Issue View
+            </div>
             <div className="win95-startmenu-sep" />
             {/* G7: touch devices boot straight to this desktop, so the
                 3D office needs an explicit way in. Shutting down lands
@@ -2144,6 +2476,103 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
 }
 
 /* ---------- HOME content — the inline React view for app=home -------- */
+/* ---------- G32: idle screensaver — "After Dark" ---------------------
+ * After ~90 s without input the desktop dims and the workstation badge
+ * bounces DVD-style. Any input dismisses. Disabled entirely under
+ * prefers-reduced-motion. Test hook: sessionStorage 'pg_ss_ms'. */
+function Screensaver() {
+  const [active, setActive] = useState(false);
+  const posRef = useRef({ x: 80, y: 80, vx: 0.12, vy: 0.09 });
+  const boxRef = useRef<HTMLDivElement | null>(null);
+  const rafRef = useRef(0);
+  useEffect(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    let ms = 90000;
+    try { const o = parseInt(sessionStorage.getItem('pg_ss_ms') || '', 10); if (o > 0) ms = o; } catch { /* */ }
+    let timeout: ReturnType<typeof setTimeout>;
+    const arm = () => { clearTimeout(timeout); timeout = setTimeout(() => setActive(true), ms); };
+    const wake = () => { setActive(false); arm(); };
+    const evs = ['pointermove', 'pointerdown', 'keydown', 'wheel', 'touchstart'];
+    evs.forEach(ev => window.addEventListener(ev, wake, { passive: true }));
+    arm();
+    return () => { clearTimeout(timeout); evs.forEach(ev => window.removeEventListener(ev, wake)); };
+  }, []);
+  useEffect(() => {
+    if (!active) { cancelAnimationFrame(rafRef.current); return; }
+    let last = performance.now();
+    const step = (now: number) => {
+      const dt = Math.min(50, now - last); last = now;
+      const p = posRef.current;
+      const W = window.innerWidth - 250, H = window.innerHeight - 100;
+      p.x += p.vx * dt; p.y += p.vy * dt;
+      if (p.x <= 0 || p.x >= W) p.vx *= -1;
+      if (p.y <= 0 || p.y >= H) p.vy *= -1;
+      p.x = Math.max(0, Math.min(W, p.x)); p.y = Math.max(0, Math.min(H, p.y));
+      if (boxRef.current) boxRef.current.style.transform = `translate(${p.x}px, ${p.y}px)`;
+      rafRef.current = requestAnimationFrame(step);
+    };
+    rafRef.current = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [active]);
+  if (!active) return null;
+  return (
+    <div className="win95-screensaver">
+      <div ref={boxRef} className="win95-screensaver-logo">
+        <div className="win95-screensaver-mark">prashantgarg<b>.os</b></div>
+        <div className="win95-screensaver-sub">please enjoy each section equally</div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- G35: Wellness Session — deadpan About/FAQ ----------------
+ * Ms.-Casey-flat statements that are actually the bio. Every factual
+ * claim traces to site.ts data (papers, affiliations, talks, email).
+ * DRAFT copy — flagged for user review. */
+const WELLNESS_LINES: { text: string; link?: { label: string; href: string } }[] = [
+  { text: 'Welcome to your wellness session. Please make yourself comfortable.' },
+  { text: 'Your outie is an economist.' },
+  { text: 'Your outie studies science, innovation, production, and media.' },
+  { text: 'Your outie has published in Nature Human Behaviour.' },
+  { text: 'Your outie has a second paper forthcoming there. About disasters.' },
+  { text: 'Your outie taught a machine to read 45,000 economics papers, and now knows who claims what causes what.' },
+  { text: 'Your outie recently completed a PhD at Imperial College London.' },
+  { text: 'Your outie is a Research Associate at the University of Cambridge.' },
+  { text: 'Your outie will join Bocconi University in September 2026. Milan is said to be agreeable.' },
+  { text: "Your outie mapped Bob Dylan's mind. Mr. Dylan has not been informed." },
+  { text: `Your outie has given ${talks.length} talks. People keep inviting your outie back.` },
+  { text: 'Your outie can be reached by electronic mail.', link: { label: site.email, href: `mailto:${site.email}` } },
+  { text: "Your outie's complete record is available for inspection.", link: { label: 'Curriculum vitae', href: '/cv' } },
+  { text: 'This concludes your wellness session. Please return to your desk.' },
+];
+
+function WellnessDialog({ onClose }: { onClose: () => void }) {
+  const [i, setI] = useState(0);
+  const last = i >= WELLNESS_LINES.length - 1;
+  const line = WELLNESS_LINES[Math.min(i, WELLNESS_LINES.length - 1)];
+  return (
+    <div className="win95-dialog" role="dialog" aria-label="Wellness Session">
+      <div className="win95-dialog-titlebar">
+        <span>Wellness Session</span>
+        <button className="win95-titlebtn" onClick={onClose} aria-label="Close">✕</button>
+      </div>
+      <div className="win95-dialog-body">
+        <p className="win95-wellness-line">{line.text}</p>
+        {line.link && (
+          <p className="win95-wellness-line">
+            <a href={line.link.href} target={line.link.href.startsWith('mailto') ? undefined : '_blank'} rel="noopener">{line.link.label}</a>
+          </p>
+        )}
+        <div className="win95-dialog-buttons">
+          <span style={{ marginRight: 'auto', color: '#666', fontSize: 11 }}>{Math.min(i + 1, WELLNESS_LINES.length)} / {WELLNESS_LINES.length}</span>
+          {!last && <button className="win95-btn" onClick={() => { playUiClick('down', 'soft'); setI(n => n + 1); }}>Continue</button>}
+          {last && <button className="win95-btn" onClick={onClose}>Return to desk</button>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function HomeContent({ openApp }: { openApp: (id: AppId, fp?: { x: number; y: number }, pathOverride?: string) => void }) {
   return (
     <div className="win95-home">

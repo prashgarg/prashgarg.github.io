@@ -1,0 +1,119 @@
+---
+// G36 — "Standard Issue mode": the one-click plain-HTML boss key.
+// A fast, boring, beautifully plain academic page — no 3D, no window
+// chrome, no client JS required. The insurance policy for hiring
+// committees in a hurry (and the accessibility/no-WebGL story).
+import { site, papers, talks, affiliations, statusMeta, education, awards, datasets, type PaperStatus } from '../data/site';
+
+const order: PaperStatus[] = ['published', 'accepted', 'rr', 'working', 'other'];
+const sectionTitles: Record<PaperStatus, string> = {
+  published: 'Publications',
+  accepted:  'Forthcoming',
+  rr:        'Revise & Resubmit',
+  working:   'Working papers',
+  other:     'Essays',
+};
+const grouped = order.map(s => ({ status: s, label: sectionTitles[s], items: papers.filter(p => p.status === s) }))
+                     .filter(g => g.items.length > 0);
+const current = affiliations.filter((a: any) => a.current);
+---
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Prashant Garg — Economist</title>
+  <meta name="description" content="Prashant Garg — economist. Papers, talks, CV, contact. Plain version." />
+  <link rel="canonical" href={`${site.origin}/standard`} />
+  <style>
+    body { font-family: Georgia, 'Times New Roman', serif; max-width: 44rem; margin: 0 auto; padding: 2.5rem 1.25rem 4rem; color: #1a1a1a; background: #fffdf8; line-height: 1.55; }
+    h1 { font-size: 1.9rem; margin: 0 0 0.25rem; }
+    h2 { font-size: 1.15rem; margin: 2.2rem 0 0.6rem; border-bottom: 1px solid #ccc; padding-bottom: 0.25rem; }
+    .sub { color: #555; margin: 0 0 1rem; }
+    ul { padding-left: 1.2rem; margin: 0.4rem 0; }
+    li { margin-bottom: 0.55rem; }
+    .meta { color: #555; font-size: 0.92rem; }
+    a { color: #103a8c; }
+    .links a { margin-right: 0.7rem; }
+    .note { font-size: 0.85rem; color: #777; margin-top: 3rem; border-top: 1px solid #ddd; padding-top: 0.8rem; }
+    @media (prefers-color-scheme: dark) {
+      body { background: #16150f; color: #e8e3d3; }
+      h2 { border-color: #555; }
+      .sub, .meta { color: #b5af9e; }
+      a { color: #9db8f0; }
+      .note { color: #8d8775; border-color: #444; }
+    }
+  </style>
+</head>
+<body>
+  <h1>Prashant Garg</h1>
+  <p class="sub">{site.tagline}</p>
+  <p>{site.bio}</p>
+  <p class="links">
+    <a href={`mailto:${site.email}`}>{site.email}</a>
+    <a href="/cv">CV</a>
+    <a href="/cv.pdf">CV (PDF)</a>
+    <a href={site.scholar}>Google Scholar</a>
+    <a href={site.github}>GitHub</a>
+  </p>
+
+  {grouped.map(g => (
+    <section>
+      <h2>{g.label}</h2>
+      <ul>
+        {g.items.map(p => (
+          <li>
+            <strong>{p.title}</strong>
+            {p.coauthors.length > 0 && <span> (with {p.coauthors.join(', ')})</span>}
+            {p.venue && <span class="meta"> — {p.venue}{p.year ? `, ${p.year}` : ''}</span>}
+            {p.award && <span class="meta"> — ★ {p.award.label}</span>}
+            <br />
+            <span class="links">
+              {p.links.slice(0, 3).map(l => <a href={l.url}>{l.label}</a>)}
+              <a href={`/research/${p.slug}`}>Details</a>
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  ))}
+
+  <section>
+    <h2>Open data</h2>
+    <ul>
+      {datasets.map(d => (
+        <li><strong>{d.name}</strong> — {d.blurb} <span class="links">{d.links.map(l => <a href={l.url}>{l.label}</a>)}</span></li>
+      ))}
+    </ul>
+  </section>
+
+  <section>
+    <h2>Education</h2>
+    <ul>
+      {education.map(e => <li>{e.title}, {e.org} <span class="meta">({e.period})</span></li>)}
+    </ul>
+  </section>
+
+  <section>
+    <h2>Awards</h2>
+    <ul>
+      {awards.map(a => <li>{a.title}, {a.org} <span class="meta">({a.period})</span></li>)}
+    </ul>
+  </section>
+
+  <section>
+    <h2>Affiliations</h2>
+    <ul>
+      {affiliations.map((a: any) => <li>{a.role}, <a href={a.url}>{a.org}</a>{a.incoming ? ' (incoming)' : a.current ? '' : ' (past)'}</li>)}
+    </ul>
+  </section>
+
+  <p class="meta">Talks: {talks.length} since 2023 — <a href="/talks">full list</a>.</p>
+
+  <p class="note">
+    This is the standard-issue view — the plain, fast version of this site.
+    The full experience (a 3D Severance-style office with a Windows 95 desktop)
+    lives at <a href="/">the front door</a>.
+  </p>
+</body>
+</html>

@@ -150,7 +150,16 @@ const visibleTopics = TOPIC_TAGS.filter(t => topicCounts[t.slug]);
               </summary>
 
               <div class="mt-5 pt-5 border-t border-ink/15 dark:border-cream/15">
-                <p class="text-ink/85 dark:text-cream/85 leading-relaxed">{p.blurb}</p>
+                {p.tldr && (
+                  <label class="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-ink/55 dark:text-cream/55 cursor-pointer select-none mb-3">
+                    <input type="checkbox" class="tldr-toggle" />
+                    Plain English
+                  </label>
+                )}
+                <p class="text-ink/85 dark:text-cream/85 leading-relaxed" data-abstract>{p.blurb}</p>
+                {p.tldr && (
+                  <p class="text-ink/85 dark:text-cream/85 leading-relaxed hidden bg-brand-yellow/15 px-3 py-2 rounded-md" data-tldr>{p.tldr}</p>
+                )}
 
                 <div class="mt-5">
                   <div class="text-xs font-bold uppercase tracking-wider text-ink/50 dark:text-cream/50 mb-2">Links</div>
@@ -313,6 +322,19 @@ const visibleTopics = TOPIC_TAGS.filter(t => topicCounts[t.slug]);
           window.prompt('Copy BibTeX:', bib);
         }
       });
+    });
+
+    // Plain-English (TL;DR) toggles — swap abstract <-> tldr per card
+    document.querySelectorAll('.tldr-toggle').forEach(cb => {
+      cb.addEventListener('change', () => {
+        const wrap = cb.closest('div');
+        const abs = wrap.querySelector('[data-abstract]');
+        const tl  = wrap.querySelector('[data-tldr]');
+        if (!abs || !tl) return;
+        abs.classList.toggle('hidden', cb.checked);
+        tl.classList.toggle('hidden', !cb.checked);
+      });
+      cb.addEventListener('click', e => e.stopPropagation());
     });
 
     // Open paper if URL hash matches

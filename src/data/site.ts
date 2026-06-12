@@ -63,6 +63,8 @@ export interface Paper {
   year?: number;
   coauthors: string[];
   blurb: string;
+  /** Plain-English 3-sentence summary (G31) — drafts pending user review */
+  tldr?: string;
   links: PaperLink[];
   coverage?: Coverage[];
   tools?: string[];
@@ -73,6 +75,8 @@ export interface Paper {
 export const papers: Paper[] = [
   {
     slug: 'political-expression-academics',
+    // DRAFT plain-English summary (G31) — flagged for user review
+    tldr: 'We linked the Twitter accounts of over 100,000 academics to their publication records to see how scholars actually talk online. Many engage heavily with politically charged topics — climate, culture, the economy — and their tone and focus often differ sharply from the general public\'s. That matters because the academics who tweet are the public face of academia, even though they aren\'t a representative sample of it.',
     title: 'Political Expression of Academics on Twitter',
     status: 'published',
     venue: 'Nature Human Behaviour',
@@ -99,6 +103,8 @@ export const papers: Paper[] = [
   },
   {
     slug: 'local-decline-populism',
+    // DRAFT plain-English summary (G31) — flagged for user review
+    tldr: 'Boarded-up shops are more than an eyesore: we tracked 83,000 vacant high-street premises in England and Wales and matched them to election results. Places with more empty shopfronts voted more heavily for UKIP between 2009 and 2019, even among people not directly hurt by the decline. Visible decay in the everyday environment appears to feed populist support on its own.',
     title: 'Local Decline and Populism',
     status: 'published',
     venue: 'Economics Letters',
@@ -126,6 +132,8 @@ export const papers: Paper[] = [
   },
   {
     slug: 'cross-border-media-disasters',
+    // DRAFT plain-English summary (G31) — flagged for user review
+    tldr: 'Foreign news coverage of disasters is wildly uneven: earthquakes and volcanic eruptions make headlines worldwide, while floods and droughts — the disasters most tied to climate change — barely register. We measured this with 135 million articles from 466 outlets in 123 countries. Coverage also rises with death tolls, especially between countries with close social or ancestral ties.',
     title: 'Uneven Patterns of Cross-Border Media Coverage Following Natural Disasters',
     status: 'accepted',
     venue: 'Nature Human Behaviour (Forthcoming)',
@@ -138,6 +146,8 @@ export const papers: Paper[] = [
   },
   {
     slug: 'global-automation-atlas',
+    // DRAFT plain-English summary (G31) — flagged for user review
+    tldr: 'Which tasks machines can take over varies country by country, so we built a world atlas of automation exposure covering 2.33 million task-country combinations in 124 countries. Exposure ranges from about 3% of tasks in South Sudan to over 60% in China, and poorer countries face more job-replacing (rather than job-assisting) automation. The atlas makes exposure, technology channels, and AI\'s role comparable across development stages.',
     title: 'Global Automation Atlas',
     status: 'working',
     coauthors: ['Tommaso Crosta', 'Jasmin Baier'],
@@ -151,6 +161,8 @@ export const papers: Paper[] = [
   },
   {
     slug: 'causal-claims-economics',
+    // DRAFT plain-English summary (G31) — flagged for user review
+    tldr: 'We taught an AI pipeline to read 45,000 economics papers and map exactly what each one claims causes what. The share of causal claims has roughly quadrupled since 1990 — about a third of claims in recent papers are causal. Papers making novel, well-identified causal claims are more likely to land in top journals and gather citations.',
     title: 'Causal Claims in Economics',
     status: 'working',
     coauthors: ['Thiemo Fetzer'],
@@ -180,6 +192,8 @@ export const papers: Paper[] = [
   },
   {
     slug: 'what-should-economics-ask-next',
+    // DRAFT plain-English summary (G31) — flagged for user review
+    tldr: 'Can the structure of past research tell us which open questions are worth pursuing next? I built a graph of 242,595 economics papers and ranked open questions using only what was known at each point in time. Graph-based screening beats ranking by popularity at predicting which questions later enter published work — and it shows economics more often deepens existing claims than closes obvious gaps.',
     title: 'What Should Economics Ask Next?',
     status: 'working',
     coauthors: [],
@@ -196,6 +210,8 @@ export const papers: Paper[] = [
   },
   {
     slug: 'politicized-scientists',
+    // DRAFT plain-English summary (G31) — flagged for user review
+    tldr: 'When scientists tweet about politics, does the public trust them less? In experiments where 6,000 Americans and 135 journalists rated realistic academic profiles, politically neutral scientists were judged most credible — and the stronger the political expression, the bigger the credibility penalty, for the scientist and their research alike. Surveys show scientists are well aware of the trade-off.',
     title: 'Politicized Scientists: Credibility Cost of Political Expression on Twitter',
     status: 'working',
     coauthors: ['Eleonora Alabrese', 'Francesco Capozza'],
@@ -219,6 +235,8 @@ export const papers: Paper[] = [
   },
   {
     slug: 'ai-production-networks',
+    // DRAFT plain-English summary (G31) — flagged for user review
+    tldr: 'We used generative AI to map which of 5,000 products feed into the production of which others — a level of supply-chain detail official statistics don\'t capture. The 2017 blockade of Qatar acts as a natural experiment: trade shocks rippled along exactly the links the network predicts. The full data is open at aipnet.io.',
     title: 'AI-Generated Production Networks: Measurement and Applications to Global Trade',
     status: 'working',
     coauthors: ['Thiemo Fetzer', 'Peter John Lambert', 'Bennet Feld'],
@@ -238,6 +256,8 @@ export const papers: Paper[] = [
   },
   {
     slug: 'platform-migration',
+    // DRAFT plain-English summary (G31) — flagged for user review
+    tldr: 'When academics fled Twitter/X for Bluesky, we tracked 276,431 scholars across both platforms to see what actually makes people abandon a social network. Adoption spreads through simple peer exposure — seeing a colleague move is enough, no complex social reinforcement needed — with Brazil\'s court-ordered Twitter suspension providing the causal evidence. Users who quickly rebuilt their old connections stayed active; the rest drifted back.',
     title: 'Simple Contagion Drives Population-Scale Platform Migration',
     status: 'working',
     coauthors: ['Dorian Quelle', 'Frederic Denker', 'Alexandre Bovet'],
@@ -257,6 +277,8 @@ export const papers: Paper[] = [
   },
   {
     slug: 'health-shocks-research',
+    // DRAFT plain-English summary (G31) — flagged for user review
+    tldr: 'Does medical research follow the diseases that actually burden people? Linking publication output to disease burden across 204 countries over three decades, we find research now responds faster to outbreaks than it used to — but responsiveness remains highly uneven across places, and philanthropic and government funding account for much of the improvement in lower-income settings.',
     title: '(How) Do Health Shocks Reallocate Research Direction?',
     status: 'working',
     coauthors: ['Hongyu Zhou', 'Thiemo Fetzer'],
@@ -268,6 +290,8 @@ export const papers: Paper[] = [
   },
   {
     slug: 'ai-health-advice',
+    // DRAFT plain-English summary (G31) — flagged for user review
+    tldr: 'We tested seven leading AI models on thousands of vetted health statements in 21 languages. They are accurate on English-language textbook material but slip in many non-European languages and on contested topics. Thorough multilingual validation should come before anyone relies on AI for health advice at global scale.',
     title: 'AI Health Advice Accuracy Varies Across Languages and Contexts',
     status: 'rr',
     venue: 'BMJ Health & Care Informatics (R&R)',
@@ -280,6 +304,8 @@ export const papers: Paper[] = [
   },
   {
     slug: 'mapping-dylans-mind',
+    // DRAFT plain-English summary (G31) — flagged for user review
+    tldr: 'I asked an AI to read every Bob Dylan lyric from 1962 to 2012 and map the concepts and connections inside them. The patterns track his career: protest gives way to myth and travel, metaphor steadily crowds out literal language, and his most disruptive, eclectic period shows up as a measurable mid-career peak.',
     title: 'Mapping Bob Dylan’s Mind',
     status: 'other',
     venue: 'Aeon · arXiv',

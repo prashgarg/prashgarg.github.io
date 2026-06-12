@@ -3341,6 +3341,8 @@ export default function Office() {
     // the background — they're "inside the monitor" from the start.
     const path = window.location.pathname || '/';
     if (path !== '/' && path !== '') return 'desktop';
+    // G30: ?app=… deep links open the desktop directly with that window
+    try { if (new URLSearchParams(window.location.search).get('app')) return 'desktop'; } catch { /* */ }
     try { if (sessionStorage.getItem(SS_PHASE) === 'desktop') return 'desktop'; } catch { /* */ }
     return 'splash';
   });
@@ -3414,7 +3416,7 @@ export default function Office() {
               &gt; 3D workstation unavailable on this device (no WebGL).<br />
               &gt; Browse directly:
             </div>
-            {[['Research', '/research'], ['Talks', '/talks'], ['Library', '/library'], ['Now', '/now'], ['CV', '/cv']].map(([label, href]) => (
+            {[['Everything on one page', '/standard'], ['Research', '/research'], ['Talks', '/talks'], ['Library', '/library'], ['Now', '/now'], ['CV', '/cv']].map(([label, href]) => (
               <div key={href} style={{ marginBottom: 6 }}>
                 &gt;&nbsp;<a href={href} style={{ color: '#E8EEDF', textDecoration: 'underline' }}>{label}</a>
               </div>
