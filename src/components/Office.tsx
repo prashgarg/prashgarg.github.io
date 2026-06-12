@@ -70,15 +70,17 @@ type Phase = 'splash' | 'entering' | 'idle' | 'dollying' | 'on-monitor' | 'booti
 /* ---------- room constants ------------------------------------------- */
 const ROOM_W = 36;
 const ROOM_D = 46;
-const ROOM_H = 4.5;
+// G26 (goal_12jun26): the show's MDR floor has a compressed ~3m ceiling —
+// "the compression is half the dread". Was 4.5.
+const ROOM_H = 3.4;
 
 /* ---------- palette --------------------------------------------------- */
 const C = {
-  carpet:    '#57904B',   // bright clean green — show carpet samples #67A36F (G1)
+  carpet:    '#64A76E',   // cool minty green — iterating toward ref #79B27D rendered (G27)
   wall:      '#B2C4CA',   // cool white, held under the ACES knee — show walls sample #B2C6CF (G1)
   ceiling:   '#D2D4D6',
-  desk:      '#E4E2DC',
-  deskLeg:   '#DDDBD6',
+  desk:      '#E3E4E3',   // neutral white — was warm cream #E4E2DC (G22: desks green/warm-washed)
+  deskLeg:   '#DBDCDB',
   partition: '#27443A',   // deep forest green — show divider samples #1F3F34 (G3)
   chair:     '#1C1C1C',
   chairMetal:'#3A3A3A',
@@ -133,8 +135,11 @@ const CAM_ENTRY_TGT  = new THREE.Vector3(0.10, 1.05, -5.00);
 // in a cavernous green room (was (1.40,1.50,4.10) → close/half-frame).
 // G7: z 6.60 → 4.90 — pod read only ~15% of frame width at idle; ref-1 is
 // ~50% and the older notes say 30–35%. Still cavernous, just less lonely.
-const CAM_IDLE_POS   = new THREE.Vector3(0.70, 1.62, 4.90);
-const CAM_IDLE_TGT   = new THREE.Vector3(0.25, 1.05, -5.00);
+// G24 (goal_12jun26): z 4.90 → 2.40 + raised target — pod was still only
+// ~16% of frame width vs ~46% in the ref hero; raising the target pulls
+// the (now lower, G26) ceiling into the top third of the frame.
+const CAM_IDLE_POS   = new THREE.Vector3(0.70, 1.48, 1.50);
+const CAM_IDLE_TGT   = new THREE.Vector3(0.25, 1.20, -5.00);
 // Monitor close-up — camera ends ~0.20 m from the screen face (was
 // 0.34). At FOV 54° this makes the screen fill ~92% of the viewport
 // vertically, so the InnerDesktop dominates the frame and the user
@@ -312,21 +317,27 @@ function CofferedCeiling() {
   // luminous, orderly Severance MDR ceiling (ref-severance-1/5).
   const SPACING      = 3.0;     // grid spacing of coffer centres
   const HALF_OPEN    = 1.30;    // square opening half-size (gap 0.40 → grid lines)
-  // G2 (goal_09jun26): the panels were 0.80 m up inside the pyramids, so the
-  // low idle camera never SAW them at grazing angles — the whole ceiling read
-  // as dark facet walls (#7B796A vs the show's #B1C9CD+). Shallower recess +
-  // much bigger panel ≈ the show's big near-flush glowing rectangles.
-  const PANEL_HALF   = 0.95;    // square recessed light-panel half-size (was 0.62)
-  const COFFER_DEPTH = 0.32;    // recess depth (was 0.80)
+  const PANEL_HALF   = 0.95;    // apex square half-size of the pyramid frustum
+  // G25 (goal_12jun26): the show's ceiling is mostly UNLIT pyramidal
+  // recesses with sparse rectangular fluorescents — not 192 lightboxes.
+  // Deeper recess + ~25% of cells lit on an aligned grid.
+  const COFFER_DEPTH = 0.5;     // recess depth (was 0.32)
+  const PANEL_W      = 1.8;     // lit fluorescent rectangle, long axis x
+  const PANEL_D      = 0.7;
 
-  // 1) coffer positions on a regular grid (inset half-spacing from walls)
+  // 1) coffer positions on a regular grid (inset half-spacing from
+  //    walls) + grid indices so the lit pattern stays aligned in rows.
   const positions = useMemo(() => {
-    const arr: [number, number][] = [];
+    const arr: [number, number, boolean][] = [];
     const halfW = ROOM_W / 2 - SPACING / 2;
     const halfD = ROOM_D / 2 - SPACING / 2;
-    for (let x = -halfW; x <= halfW + 0.001; x += SPACING) {
-      for (let z = -halfD; z <= halfD + 0.001; z += SPACING) {
-        arr.push([x, z]);
+    let ix = 0;
+    for (let x = -halfW; x <= halfW + 0.001; x += SPACING, ix++) {
+      let iz = 0;
+      for (let z = -halfD; z <= halfD + 0.001; z += SPACING, iz++) {
+        // every other row AND column lit → exactly 25% of cells, in
+        // clean aligned rows like the show's fluorescent layout
+        arr.push([x, z, ix % 2 === 0 && iz % 2 === 0]);
       }
     }
     return arr;
@@ -343,7 +354,7 @@ function CofferedCeiling() {
     shape.lineTo( w,  d);
     shape.lineTo(-w,  d);
     shape.lineTo(-w, -d);
-    for (const [x, z] of positions) {
+    for (const [x, z] of positions.map(p => [p[0], p[1]] as [number, number])) {
       const hole = new THREE.Path();
       hole.moveTo(x - HALF_OPEN, z - HALF_OPEN);
       hole.lineTo(x + HALF_OPEN, z - HALF_OPEN);
@@ -400,24 +411,32 @@ function CofferedCeiling() {
         <primitive object={slabGeo} attach="geometry" />
         <meshStandardMaterial color="#E8EEE8" roughness={0.9} side={THREE.DoubleSide} />
       </mesh>
-      {positions.map(([x, z], i) => (
+      {positions.map(([x, z, lit], i) => (
         <group key={i} position={[x, ROOM_H, z]}>
-          {/* pale pyramid facets with apex→opening vertex gradient */}
+          {/* pyramid facets — pale on lit cells, dimmer on unlit so the
+              recesses read as mostly-dark pyramids (G25) */}
           <mesh>
             <primitive object={cofferGeo} attach="geometry" />
-            <meshStandardMaterial color="#E2E9E2" vertexColors roughness={0.9} side={THREE.DoubleSide} />
+            <meshStandardMaterial color={lit ? '#E2E9E2' : '#B6C0B6'} vertexColors roughness={0.9} side={THREE.DoubleSide} />
           </mesh>
-          {/* bright flat square light panel at the apex */}
-          <mesh position={[0, COFFER_DEPTH - 0.005, 0]} rotation-x={Math.PI / 2}>
+          {/* apex cap closes the frustum (matte, never emissive) */}
+          <mesh position={[0, COFFER_DEPTH - 0.002, 0]} rotation-x={Math.PI / 2}>
             <planeGeometry args={[PANEL_HALF * 2, PANEL_HALF * 2]} />
-            <meshStandardMaterial
-              color="#FFFFFF"
-              emissive="#FFFFFF"
-              emissiveIntensity={1.6}
-              side={THREE.DoubleSide}
-              toneMapped={false}
-            />
+            <meshStandardMaterial color={lit ? '#DDE3DD' : '#A8B2A8'} side={THREE.DoubleSide} />
           </mesh>
+          {/* sparse fluorescent rectangle, only on lit cells */}
+          {lit && (
+            <mesh position={[0, COFFER_DEPTH - 0.02, 0]} rotation-x={Math.PI / 2}>
+              <planeGeometry args={[PANEL_W, PANEL_D]} />
+              <meshStandardMaterial
+                color="#FFFFFF"
+                emissive="#FFFFFF"
+                emissiveIntensity={1.6}
+                side={THREE.DoubleSide}
+                toneMapped={false}
+              />
+            </mesh>
+          )}
         </group>
       ))}
     </group>
@@ -1604,6 +1623,33 @@ function StationLite({ active = false, variant = 0 }: { active?: boolean; varian
               <meshStandardMaterial color="#6B4A2F" roughness={0.55} />
             </mesh>
           )}
+          {/* G28b: black rotary phone — a show-staple desk prop. Built
+              from primitives (no CC0 rotary model in the kit); one
+              station only so the pod doesn't read art-directed. */}
+          {variant === 1 && (
+            <group position={[0.62, 0.772, DESK_DZ + 0.16]} rotation-y={-0.35}>
+              <mesh castShadow position={[0, 0.045, 0]} rotation-x={-0.18}>
+                <boxGeometry args={[0.20, 0.09, 0.18]} />
+                <meshStandardMaterial color="#181818" roughness={0.35} />
+              </mesh>
+              <mesh position={[0, 0.085, 0.045]} rotation-x={Math.PI / 2 - 0.18}>
+                <cylinderGeometry args={[0.055, 0.055, 0.012, 20]} />
+                <meshStandardMaterial color="#2A2A2A" roughness={0.3} />
+              </mesh>
+              <mesh position={[0, 0.125, -0.045]} rotation-z={Math.PI / 2}>
+                <cylinderGeometry args={[0.018, 0.018, 0.16, 10]} />
+                <meshStandardMaterial color="#141414" roughness={0.4} />
+              </mesh>
+              <mesh position={[-0.085, 0.115, -0.045]}>
+                <cylinderGeometry args={[0.030, 0.024, 0.035, 12]} />
+                <meshStandardMaterial color="#141414" roughness={0.4} />
+              </mesh>
+              <mesh position={[0.085, 0.115, -0.045]}>
+                <cylinderGeometry args={[0.030, 0.024, 0.035, 12]} />
+                <meshStandardMaterial color="#141414" roughness={0.4} />
+              </mesh>
+            </group>
+          )}
         </>
       )}
       {/* Office chair — rotated 180° so the seated USER faces the desk
@@ -1800,13 +1846,14 @@ function CarpetVacuumTracks({ width, depth, cx, cz }: {
         float lineDist = abs(linePos - 0.5);
         // narrow brighter strip at each line
         float band = 1.0 - smoothstep(0.40, 0.48, lineDist);
-        // some lines brighter than others (uneven pressure)
-        float bright = mix(0.65, 1.30, hash1(lineIdx));
+        // some lines brighter than others (uneven pressure) — G28a:
+        // narrowed range, the old 0.65–1.30 read as mowed-lawn stripes
+        float bright = mix(0.75, 1.10, hash1(lineIdx));
         // POD AVOIDANCE — fade tracks away within ~2.6 m of pod centre
         float avoid = smoothstep(1.5, 2.8, r);
         // outer FALLOFF — fade toward room corners where vacuum doesn't reach
         float falloff = 1.0 - smoothstep(11.0, 18.0, r);
-        float a = band * bright * 0.16 * avoid * falloff;
+        float a = band * bright * 0.09 * avoid * falloff;
         gl_FragColor = vec4(uTint, a);
       }
     `,
@@ -2167,7 +2214,10 @@ function OfficeScene({ phase, onMonitorClick }: {
       {/* Image-based ambient lighting + reflections — soft "lobby" preset
           gives the scene proper environmental cues so metallic + glossy
           surfaces feel grounded. background={false} keeps our 3D walls. */}
-      <Environment preset="lobby" background={false} environmentIntensity={0.62} />
+      {/* G22 (goal_12jun26): the lobby preset is WARM — at 0.62 it pushed
+          every white surface cream (#E9E9D1 ceiling, B-channel ~24 under
+          R). Halved; the cooled ambient below compensates brightness. */}
+      <Environment preset="lobby" background={false} environmentIntensity={0.30} />
 
       {/* Single dominant SHADOW caster — angled "sun"-style directional.
           All nine ceiling pointLights provide flat fluorescent flood
@@ -2206,8 +2256,11 @@ function OfficeScene({ phase, onMonitorClick }: {
           the show with a warm cast (carpet #435338 vs ref #67A36F). The show
           is bright clinical fluorescent with a faint cool-cyan cast (B ≥ R
           on whites). */}
-      <ambientLight intensity={1.7} color="#E5F2EC" />
-      <hemisphereLight args={['#F2FAFA', '#B6CCB2', 0.75]} />
+      {/* G22: cooled + slightly raised (compensates the env cut). The old
+          hemisphere GROUND '#B6CCB2' bounced green onto walls/desks —
+          neutralized toward cool grey. */}
+      <ambientLight intensity={2.0} color="#E4F0FA" />
+      <hemisphereLight args={['#EFF7FD', '#A8B4AE', 0.8]} />
 
       {/* DESK POOL spotlight — a focused down-light right above the
           active SW station's desk surface. Penumbra creates a soft
@@ -2217,9 +2270,9 @@ function OfficeScene({ phase, onMonitorClick }: {
       <spotLight
         position={[SOUTH_DX + 0.10, ROOM_H - 0.30, DESK_Z - 0.30]}
         target-position={[SOUTH_DX + 0.10, 0.74, DESK_Z - 0.10]}
-        angle={0.45}
+        angle={0.40}
         penumbra={0.55}
-        intensity={11.0}
+        intensity={9.0}
         distance={8.0}
         decay={1.8}
         color="#FBFCFF"
@@ -2700,6 +2753,10 @@ function BiosScreen({ onDone }: { onDone: () => void }) {
   const [dismissed,   setDismissed]   = useState(false);
   const [startHover,  setStartHover]  = useState(false);
   const dismissedRef = useRef(false);
+  // G28c: a keypress in the first frames (held key, autorepeat, double
+  // Enter) could race the splash past before first paint — enforce a
+  // minimum on-screen time before any dismissal counts.
+  const mountedAtRef = useRef(typeof performance !== 'undefined' ? performance.now() : 0);
 
   const LINES = [
     { text: 'prashantgarg.org  v1.0',                                          type: 'header' },
@@ -2723,6 +2780,7 @@ function BiosScreen({ onDone }: { onDone: () => void }) {
 
   const dismiss = () => {
     if (dismissedRef.current) return;
+    if (performance.now() - mountedAtRef.current < 800) return;  // G28c
     dismissedRef.current = true;
     setDismissed(true);
     setTimeout(onDone, 220);
