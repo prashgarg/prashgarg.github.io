@@ -1,0 +1,550 @@
+{
+  "summary": "Review live site (scene + inner content), diff content vs prashantgarg.org, research creative feature ideas",
+  "agentCount": 9,
+  "logs": [],
+  "result": {
+    "parityGaps": {
+      "summary": "The new Astro site covers all 12 papers, all abstracts (verbatim), the LLM guide, the Dylan essay, and 59 of 61 talks, and is structurally far ahead of the Google Site (statuses, filters, BibTeX, CV page, Now page, RSS). The big parity gaps: (1) the forthcoming Nature Human Behaviour disasters paper is stale on three counts — old title 'Network Determinants…' instead of 'Uneven Patterns of Cross-Border Media Coverage Following Natural Disasters', the superseded climate/empathy abstract instead of the new quantitative one, and 'Acceptance-in-Principle' instead of 'Forthcoming'; (2) two 2026 talks are missing (Universitat de València 4 Dec; Oxford INET panel 11 June); (3) the Best Student Paper at NetSciSci2025 award is absent; (4) ~25 media-coverage chips link to outlet homepages where the old site links the specific articles; (5) the contact email is prashant.garg@imperial.ac.uk while the old site standardized on prashantgargib@gmail.com (PhD 'recently completed', so the Imperial address is a liability); (6) the 5 Dylan figures and the old 'Data' public-goods framing have no equivalent. Note also (known, in project memory): the new site stamps prashantgarg.org into CV/BibTeX/share URLs but that domain still serves the old Google Site.",
+      "missing_on_new": [
+        "Talk: Universitat de València - Seminar, 4 Dec 2026, València (paper TBC; link https://www.uv.es/uvweb/economic-analysis-department/en/department-economic-analysis-1285854461277.html) — old site lists 6 talks for 2026, site.ts has 4 (lines 357-360)",
+        "Talk: Oxford INET Meeting, 11 June 2026, Oxford — panel discussion 'AI as a Scientific Instrument for Economics' (link https://www.inet.ox.ac.uk/)",
+        "Award: 'Best Student Paper at NetSciSci2025' for 'Simple Contagion Drives Population-Scale Platform Migration' (link https://netscisci.github.io/) — no award field or mention anywhere in site.ts; it is the only award on the old site",
+        "Politicized Scientists — Italian media coverage missing: Nada es Gratis (https://nadaesgratis.es/admin/el-impacto-de-que-los-cientificos-opinen-sobre-politica-en-redes-sociales), A Fuoco (https://www.a-fuoco.it/p/parlare-di-politica-sui-social-media), iL Post (https://www.ilpost.it/2024/12/20/politica-scienza/); also the Times Higher Education op-ed link (timeshighereducation.com/campus/how-preserve-academic-credibility-when-engaging-social-media)",
+        "Local Decline and Populism — University of Warwick coverage item missing (https://warwick.ac.uk/fac/soc/economics/news/2025/5/the_visual_politics_of_decline_how_empty_high_streets_fuel_populism/) and the second CAGE link (08-05-25 'how empty high streets increase support')",
+        "Coverage deep links lost (chips point at outlet HOMEPAGES; old site has specific article URLs, all captured in the old-site inventory): Causal Claims — The Economist, Marginal Revolution (old has v1 AND v2 posts), Noahpinion, World Bank, VoxDev, Australian Treasury, Nada es Gratis; Local Decline — The Guardian, FAZ, LSE Business Review, The Conversation, VoxEU, CAGE; AIPNET — SCMP interview, The Ecologist; Platform Migration — Clarivate (old actually links a Research Professional News article), Cybernews, Aporia Magazine; Dylan — Financial Times (old: ft.com/content/8bf3e57a-e196-495b-b7b0-8d3b2ef142d5); Political Expression & Politicized Scientists — The American Saga deep link",
+        "Causal Claims in Economics — second Twitter thread (v2: https://x.com/Prashant_Garg_/status/1879101708174864562) missing; site.ts has only the v1 thread",
+        "Dylan library entry (slug 'dylan') is text-only — old /mapping-dylans-mind page has 5 figure images (Jokerman knowledge graph, theme-evolution chart, alluvial diagram, metaphor-trend chart, dishabituation chart) plus a YouTube link to 'Jokerman' (https://www.youtube.com/watch?v=1XSvsFgvWr0); images are Google-hosted and would need re-hosting",
+        "Talk URLs dropped that old site has: LSE QueerConf (https://www.lsequeerconf.com/home), EAYE Annual Meeting 2025 (https://www.eaye.info/eayeam/2025-edition), LSE-IGC Environmental Populism Conference (https://www.lse-environment-week.com/env-pop-conf), 5th QMUL Economics and Finance Workshop (qmul.ac.uk call-for-papers page). (The old EUR-CEPR mailchimp link and MWZ Google-Sheets link are junk and fine to drop)",
+        "Old 'Public Goods → Data' section has no library equivalent: three open datasets explicitly listed (Causal Claims knowledge graph of 45,000 papers; AIPNET product-level I/O data; Academic Expression data on political stance of academics 2016-2022). On the new site these surface only as companion-tool chips on paper detail pages — the Library page (2 items) never presents them as downloadable public goods",
+        "Old home-page prose bio not present anywhere ('Hi, I'm Prashant Garg…', 'I recently completed my PhD in Economics at Imperial College London', 'I will join Bocconi University as a Postdoctoral Researcher in September 2026') — new home has only the subtitle 'Economist · Research Associate at Cambridge' + affiliation rows; the tagline appears only on /cv",
+        "Portrait photo: old home has an 882x1061 portrait; new site has no photo of the user at all (public/ contains only photo.svg placeholder)"
+      ],
+      "stale_on_new": [
+        "Disasters paper (site.ts lines 109-119, slug 'cross-border-media-disasters') — THREE stale fields: (a) title is the superseded 'Network Determinants of Cross-Border Media Coverage of Natural Disasters'; old site now titles it 'Uneven Patterns of Cross-Border Media Coverage Following Natural Disasters'; (b) blurb is the old climate-empathy abstract; old site has the rewritten quantitative abstract (earthquake b=0.0785, floods b=0.0069, etc.); (c) status/venue 'Nature Human Behaviour (Acceptance-in-Principle)' under 'Accepted' — old site says 'Forthcoming at Nature Human Behaviour' and lists it under Publications. (Keep the old title inside the three 2025 talk entries — those talks genuinely used it)",
+        "Contact email prashant.garg@imperial.ac.uk (site.ts line 5; shown on home contact strip and /cv) — old site standardized everywhere on prashantgargib@gmail.com, and the bio says the Imperial PhD is 'recently completed', so the Imperial address is likely to lapse",
+        "Talks page subtitle hardcodes '2022–2026' (src/pages/talks.astro) — earliest talk in data is 13 Jan 2023"
+      ],
+      "better_on_new": [
+        "Coauthor 'Francesco Capozza' spelled correctly (old site has 'Franceso' typo on both /research and /scientists-on-twitter)",
+        "Politicized Scientists is coherent: one entry with BOTH the current Research Square v1 preprint and the CESifo WP, and the up-to-date abstract (6,000 respondents + 135 journalists) — old site points different pages at different versions and /scientists-on-twitter still shows a stale 1,700-respondent summary",
+        "Status taxonomy and research UX: Published/Accepted/R&R/Working/Essay badges, status+topic filters, per-paper detail pages with collapsible abstract, BibTeX copy, JSON-LD, share links, prev/next, and 'Presented at' cross-matching of talks to papers — none of this exists on the old site",
+        "CV page (/cv) generated from site data with print stylesheet, PLUS the Google Drive PDF link — old site has only the Drive link",
+        "Now page (/now) with recent-activity timeline and Atom/RSS feed (/papers.xml) — old site has nothing comparable",
+        "GitHub profile link (github.com/prashgarg) in the home contact strip — absent from the old site's button row",
+        "Companion tools as first-class data (causal.claims, frontiergraph.com, automationatlas.org, aipnet.io, academicexpression.online) with descriptive blurbs, surfaced on paper pages",
+        "Talks: consistent date formatting, topic grouping with counts, fixed the old site's unclosed-paren Potsdam entry, added Munich location to the 2024 CESifo Digitization workshop, and added a CEPR link to the Apr 2026 MPWZ talk that the old site leaves unlinked",
+        "Library LLM-guide entry adds the VoxEU methods-guide link alongside the GitHub repo (old Public Goods page has GitHub only)",
+        "All abstracts carried verbatim and current for the other 11 papers (Causal Claims has the latest claim-graphs/44,852-papers abstract; Political Expression matches the published NHB version)"
+      ],
+      "uncertain": [
+        "Canonical email: old site uses prashantgargib@gmail.com (no '2') everywhere; new site uses prashant.garg@imperial.ac.uk; your account email is prashantgargib2@gmail.com. Which should the site show?",
+        "Disasters paper final metadata: confirm the title is now 'Uneven Patterns of Cross-Border Media Coverage Following Natural Disasters' and whether to present it as 'Forthcoming, Nature Human Behaviour' under Publications (as the old site does) vs the current 'Accepted/Acceptance-in-Principle' section",
+        "Universitat de València talk (4 Dec 2026) lists its paper as 'TBC' on the old site — include it on the new site as-is, or wait until the paper is confirmed?",
+        "Portrait photo: is omitting it from the 3D/Win95 site deliberate, or should the old home portrait be re-hosted and placed somewhere (e.g. home card or CV)?",
+        "Old-site prose bio: should the three-sentence bio appear on the new home/desktop, or is the subtitle + affiliations strip the intended replacement?",
+        "Verbatim-vs-corrected abstracts: the AIPNET abstract contains 'in toe' (sic) and 'What Should Economics Ask Next?' ends mid-thought ('…characterize how economics more often moves.') — both reproduced verbatim from the old site. Fix or keep faithful to the published abstracts?",
+        "Dataset size discrepancy carried over: tools blurb says '100,000+ academics' while the old Public Goods data page claims '300,000 academics (2016-2022)' for the same dataset — which figure is right?",
+        "Clarivate coverage chip for the platform-migration paper: the old site's 'Clarivate' link actually points to a Research Professional News article (researchprofessionalnews.com) — confirm the intended outlet name and URL before deep-linking",
+        "Should the new Library gain a 'Data / public goods' section mirroring the old site's three open datasets, or are the companion-tool chips on paper pages considered sufficient?"
+      ]
+    },
+    "reviews": [
+      {
+        "lens": "scene-art-direction",
+        "verdict": "The set is built remarkably right — pinwheel pod, white desks with drawer pedestals, forest-green dividers with white caps at correct height, coffered ceiling grid, cavernous emptiness, and a BIOS→dolly→boot ritual that is pure Lumon — but the light is from the wrong show. Measured against ref-severance-1.png, the live scene (shots/review0612/) fails on grade and framing: the ceiling renders cream-yellow (#F0F1D7 vs the ref's #FEFEFE), every white surface is green-washed (desk fronts sample #A5C69A vs ref desks #BDCCD0), the dividers — whose painted colour #27443A exactly matches the ref's on-screen #274438 — get blasted ~3 stops lighter by ambient/spot to #697C71–#85B272, and the carpet drifts yellow (#73A35F, blue channel 95, vs ref #79B27D, blue 125). Compositionally the pod occupies ~16% of frame width at idle versus ~46% in the reference hero frame, with carpet filling 58% of the frame and ceiling only ~15%, so the show's oppressive low-ceiling psychology is lost in favour of a green airfield. These are all constant-level fixes in src/components/Office.tsx — no geometry rebuild needed. The transitions mostly work: BIOS popup and entry dolly captured live; the monitor-click dolly is unreachable via synthetic events (per harness), so it was judged from the repo's instrumented 0610 captures, which show a flat blank-grey beat at arrival before the boot text starts.",
+        "strengths": [
+          "Divider paint colour is forensically correct: C.partition #27443A vs the reference's on-screen #274438 (sampled from ref-severance-1.png) — the calibration work paid off; the white frame caps and pedestal feet also match the show's actual prop.",
+          "Pod geometry parity is strong: interlocked pinwheel desks, drawer pedestals with seam/pull details, divider spines running past desk edges with tops ~1.33 m (just above the CRT) — proportions sit very close to ref-1.",
+          "Wall colour direction is right: the reference walls really are pale blue-white (#D6E4ED–#DBE6F2) and the live left wall (#DDF0F1) lands on it.",
+          "The arrival ritual (CRT BIOS splash → START popup → entry dolly → boot type-out into the desktop) is a coherent, committed Severance-flavoured experience no normal academic site attempts.",
+          "The lean-in interaction (mouse near pod → camera glides to a steep over-desk close-up) works reliably in headless (04-lean.png) and is genuinely cinematic.",
+          "Set dressing density: per-desk prop variants (mugs, papers, pens), translucent chair mats, wall clock, smoke detectors with blinking LEDs, dust particles, CRT grain overlay — the texture-of-place ambition matches the show's."
+        ],
+        "issues": [
+          {
+            "title": "Scene grade is warm/green-contaminated — the clinical cold is gone",
+            "severity": "high",
+            "evidence": "Sampled shots/review0612/05-idle-1920.png: ceiling #F0F1D7 and coffers #EBECCE (cream-yellow) vs ref ceiling #FEFEFE; white desk front renders #A5C69A (green-washed) vs ref desks #BDCCD0; right wall #C7DAC5 (green) vs left wall #DDF0F1 — inconsistent white balance across the room. The show is icy fluorescent white with colour confined to the carpet and dividers.",
+            "fix": "In src/components/Office.tsx: replace <Environment preset=\"lobby\" environmentIntensity={0.62}> (~line 2170) with a cooler preset (e.g. 'city') or drop intensity to ~0.25; neutralise ambientLight color '#E5F2EC' toward '#EFF5F7' (~line 2209); desaturate hemisphereLight ground '#B6CCB2' toward '#C9D3CE'. Re-sample ceiling-mid after — target ≥ #F8F8F8 with B ≥ R."
+          },
+          {
+            "title": "Dividers render ~3 stops too light — the dark hunter green never reaches the screen",
+            "severity": "high",
+            "evidence": "Painted colour #27443A matches the ref sample #274438 exactly, but on-screen the divider samples #697C71 (05-idle-1920.png) and #85B272 under the lean spotlight (04-lean.png). In every reference frame the dividers are the darkest mass in the room — that anchor is missing.",
+            "fix": "In MdrPanel (Office.tsx ~line 2003): darken the fabric base to ~#1A332A and cut envMapIntensity 0.3 → 0.05; optionally exclude partitions from the desk-pool spotLight (intensity 11.0, ~line 2222) or tighten its angle 0.45 → 0.32 so it pools on the desk surface only. Target on-screen ≈ #2A463A."
+          },
+          {
+            "title": "Idle composition: pod too small, carpet floods the frame, ceiling barely present",
+            "severity": "high",
+            "evidence": "In 05-idle-1920.png the pod spans ~16% of frame width vs ~46% in ref-severance-1.png; wall/floor line sits at ~42% height so carpet fills ~58% of frame (ref ~30%) and ceiling only ~15% (ref ~30%). The show's oppressive ceiling-weight is inverted into an empty green field.",
+            "fix": "In Office.tsx camera rig (~line 137): CAM_IDLE_POS (0.70, 1.62, 4.90) → roughly (0.70, 1.55, 2.40), and raise CAM_IDLE_TGT y 1.05 → ~1.35 to pitch up and pull the coffered ceiling into the top third; alternatively narrow landscape FOV 56 → 48 (~line 547)."
+          },
+          {
+            "title": "Every ceiling coffer is a full-cell lightbox — ref has sparse rectangular fluorescents in mostly unlit pyramids",
+            "severity": "medium",
+            "evidence": "CofferedCeiling (Office.tsx ~line 307): PANEL_HALF 0.95 vs HALF_OPEN 1.30 means the emissive panel fills ~73% of every one of ~192 openings, all lit (toneMapped=false, intensity 1.6). In ref-1/ref-2 most coffers are unlit sculptural pyramids; bright flush rectangles appear in perhaps a third of cells, in a regular pattern.",
+            "fix": "Light only a subset of cells (e.g. (ix+iz)%3===0), shrink the panel to a rectangle ~1.2×0.6 m (PANEL_HALF asymmetric), and deepen COFFER_DEPTH 0.32 → ~0.5 so unlit cells read as shadowed pyramid geometry again."
+          },
+          {
+            "title": "Room scale fights the show: ceiling too high, footprint too vast",
+            "severity": "medium",
+            "evidence": "ROOM_W 36 × ROOM_D 46 × ROOM_H 4.5 (Office.tsx lines 71-73). The MDR set reads ~3 m ceiling — the compression is half the dread. In all live captures the walls are a thin remote band and the ceiling feels like an aircraft hangar, not a lid.",
+            "fix": "ROOM_H 4.5 → ~3.4 and coffer SPACING 3.0 → ~2.4 to keep cell count; optionally trim ROOM_W/D to ~28×36. Re-check CAM_LEAN_POS y 2.20 and the spotLight y (ROOM_H − 0.30) after."
+          },
+          {
+            "title": "Carpet hue drifts yellow vs the show's cooler green",
+            "severity": "medium",
+            "evidence": "Live carpet samples #73A35F/#7EAC6C (blue channel ~95) vs ref-1 carpet #79B27D/#7DAE87 (blue ~125, B≈R — a cool, slightly minty green). The live floor reads acid/spring lawn rather than institutional green.",
+            "fix": "C.carpet '#57904B' (Office.tsx line 77) → cooler, e.g. ~'#4E9663'; the grade fix (issue 1) will carry part of it — re-sample carpet-front targeting B within ~20 of R."
+          },
+          {
+            "title": "Diagonal vacuum-track striping reads as mowed-lawn bands",
+            "severity": "low",
+            "evidence": "In 05-idle-1920.png and crop-pod.png, light/dark diagonal bands sweep the entire floor. The reference carpet is uniform with only fiber mottle and furniture shadows.",
+            "fix": "In CarpetVacuumTracks (Office.tsx ~line 2247): cut track contrast ~60% and align the pass direction with the room's Z axis, or remove and add fine-grain mottle to the carpet shader instead."
+          },
+          {
+            "title": "BIOS typed sequence can finish before the first visible frame; arrival-at-monitor has a dead grey beat",
+            "severity": "low",
+            "evidence": "The BIOS line timers (DELAYS, mount-relative, lines gone at 1700 ms — Office.tsx ~line 2717) raced past before 'load' in headless: captures at 0.5–1.7 s post-load (01-burst-900.png) show pure black, with only the START popup ever visible (01c-bios-popup.png). Separately, the instrumented 0610 capture shots/flow0610/05-dolly-mid.png shows the arrival frame is a featureless grey screen-fill before boot text begins. (Mid-dolly itself is unreachable live — synthetic clicks on the 3D CRT don't register, per harness.)",
+            "fix": "Start the BIOS DELAYS on first requestAnimationFrame after hydration and hold the completed lines ~400 ms longer before biosGone; in the dolly→boot handoff, begin the BootOverlay type-out within ~300 ms of phase 'booting' so arrival never sits on a blank grey screen."
+          },
+          {
+            "title": "Missing the two hero desk props: rotary phone and trackball; chair mats under-read",
+            "severity": "low",
+            "evidence": "Ref-1/ref-3 desks carry the beige rotary handset phone and the show's signature trackball; ref mats are bold clear plastic with strong elliptical shadows. Live desks (crop-lean.png) have lamp/mugs/papers/keyboard only, and the pentagon mats are barely visible.",
+            "fix": "Add a simple beige handset phone (two boxes + torus cord) and a domed trackball next to the keyboard in StationLite (Office.tsx ~line 1480s props table); raise mat opacity/contact-shadow so the ellipse reads at idle distance."
+          }
+        ]
+      },
+      {
+        "lens": "desktop-ux",
+        "verdict": "The Win95 desktop shell itself is genuinely impressive — the home content sits on the desktop with name, latest paper, Now blurb, affiliations, contact strip and five launcher buttons all visible at zero clicks, and the window system (drag with inertia, 8-edge resize, minimize-to-chip animations, maximize, focus dimming, URL-synced iframe navigation, Start menu, keyboard shortcuts) works flawlessly with no console errors. But one CSS bug currently ruins the payoff of every single app: in embed mode the Win95Layout shell keeps `height:100vh` + flex centering while the window grows to content height, so every window opens showing the exact middle of its page with the top ~900px (page title, Research search bar, CV header with Print/PDF buttons) rendered in unreachable overflow above the viewport — verified by DOM probe (.w95-window rect.top = -891px at scrollTop 0; users cannot scroll up to it). A professor opening \"CV\" sees a talks list with no name on it. Add the washed-out cream-on-grey taskbar text (Start/Home/chips/clock at ~1.5:1 contrast) and the experience reads broken despite being one ~3-line CSS fix and one color rule away from excellent.",
+        "strengths": [
+          "Desktop-IS-home concept lands: identity, '12 papers · 59 talks · → Bocconi', latest paper card, Now card, affiliations with current/incoming tags, copyable email, and RESEARCH/TALKS/LIBRARY/NOW/CV launcher buttons are all visible with zero interaction (01-desktop-home.png).",
+          "CV is discoverable four ways: desktop icon, home-panel CV button, 'CV ↗' Drive-PDF link in the contact strip, and Start menu — a recruiter cannot miss the entry point.",
+          "Window ergonomics are unusually complete for a personal site: drag with inertia glide, 8-edge + corner resize, minimize/restore animated to/from the taskbar chip, maximize via button or titlebar double-click, active/inactive titlebar dimming, Esc/Alt+Tab/F11/Cmd+W shortcuts.",
+          "Navigation architecture is sound: in-iframe link clicks are intercepted and routed to the parent (pg-nav postMessage), so clicking a paper swaps the iframe to /research/<slug>?embed=1 while the real browser URL updates via pushState (18-paper-detail.png) — deep links and back/forward work.",
+          "In-page Research search and facet filters work inside the window: typing 'automation' live-filters to '1 paper matching' with status text (03-research-search.png).",
+          "Start menu is authentic and complete (spine logo, app list with icons, Shut Down…), Home taskbar button reliably minimizes all windows and restores the URL to '/', and the right-click context menu exists.",
+          "Zero console or page errors across all runs; iframes load fast; standalone pages with full Win95 chrome (menubar, ← Study, statusbar) are consistent and polished (14/15-standalone-*.png)."
+        ],
+        "issues": [
+          {
+            "title": "Every app window opens mid-page with the page top UNREACHABLE (flex-centering overflow)",
+            "severity": "high",
+            "evidence": "02-research-window.png (opens at 'Revise & Resubmit', H1+search invisible), 07-talks, 08-library, 09-now, 10-cv-window.png (CV opens at 'Talks (59)' — no name/header), 16-standalone-embed.png (same on standalone /research/?embed=1). DOM probe: body.w95-embed-body leaves .w95-shell at height:100vh, display:flex, align-items:center while .w95-window is height:auto (2543px) → window rect.top = -891px at scrollTop 0; body.scrollHeight 1651 vs content 2543, i.e. the top 891px is layout overflow above the scroll origin and cannot be scrolled to. Playwright fill only reached the search box via CDP scroll — real users cannot.",
+            "fix": "In src/layouts/Win95Layout.astro embed-mode CSS block (~line 330): add `body.w95-embed-body .w95-shell { display: block !important; height: auto !important; min-height: 100vh; }` (or keep flex but `align-items: flex-start !important;`). This makes every window open at the page top, restoring the Research H1+search bar and the CV header (name, Print, PDF (Drive)) as the first thing visitors see."
+          },
+          {
+            "title": "Taskbar text nearly invisible: Start, Home, window chips and clock inherit cream on light grey",
+            "severity": "high",
+            "evidence": "All desktop screenshots (01, 02, 03…): 'Start', 'Home', chip labels ('Research'), and the clock render in pale yellow-cream on #c3c6ca. Computed style probe: color = rgb(232,219,182) (the site body cream) on .win95-start-btn, .win95-taskbar-chip and .win95-clock — roughly 1.5:1 contrast. Compare the statusbar 'Ready' which sets #333 and is legible.",
+            "fix": "In WIN95_STYLE in src/components/InnerDesktop.tsx add `color: #000;` to `.win95-start-btn` (~line 539), `.win95-taskbar-chip` (~line 558) and `.win95-clock` (~line 585) so they stop inheriting the body cream from Layout.astro."
+          },
+          {
+            "title": "Windows paint OVER the taskbar when dragged low",
+            "severity": "medium",
+            "evidence": "04-after-drag.png / 06-restored.png: after dragging the Research window down, its statusbar covers the right half of the taskbar (volume + clock hidden). .win95-toolbar has z-index:10 while windows start at z-index 100+.",
+            "fix": "In src/components/InnerDesktop.tsx raise `.win95-toolbar` to a z-index above any window but below the Start menu (e.g. 8500; startmenu is 9000), matching real Win95 where the taskbar is always on top. Optionally also clamp drag Y so a window's titlebar can't go below containerSize.h - 30."
+          },
+          {
+            "title": "Drag clamp lets the close/minimize buttons slide off the right edge",
+            "severity": "low",
+            "evidence": "04-after-drag.png: window at x=306 w=1120 on a 1400px viewport — the ✕ button is off-screen (clamp allows x up to containerSize.w - 80, leaving only 80px of a 1120px window visible, titlebar buttons are at the far right).",
+            "fix": "In startDragWin/inertia clamps in src/components/InnerDesktop.tsx, clamp x to `containerSize.w - 160` or, better, clamp so the titlebar button cluster (right edge of titlebar) stays on-screen, e.g. min(nx, containerSize.w - 160) while keeping the existing -200 left allowance."
+          },
+          {
+            "title": "Desktop-home 'Open paper →' opens the Research list, not the paper",
+            "severity": "low",
+            "evidence": "HomeContent in src/components/InnerDesktop.tsx (~line 2076): the Latest-paper card link has href=/research/<slug> but onClick calls `openApp('research')` with no path override, so the window opens the full list and the user must find the paper again.",
+            "fix": "Call `openApp('research', undefined, `/research/${LATEST_PAPER.slug}`)` so the window opens the actual paper detail (the pathOverride plumbing already exists and works — verified via in-iframe link routing)."
+          },
+          {
+            "title": "Search inside windows is undiscoverable until you know it exists",
+            "severity": "low",
+            "evidence": "Embed mode hides the floating '⌘K search' and 'dark' buttons (body.w95-embed-body .cmdk-hint-btn { display:none } in Win95Layout.astro ~line 340), and issue #1 currently hides the in-page search bar too. Cmd+K still works when the iframe has focus but nothing advertises it.",
+            "fix": "After fixing issue #1 the Research search bar is visible on open, which mostly resolves this. Optionally add a 'Search (Ctrl+K)' cell to the window statusbar in InnerDesktop.tsx, or stop hiding .cmdk-hint-btn in embed mode and reposition it above the window statusbar."
+          },
+          {
+            "title": "Multi-window cascade is invisible — windows stack almost exactly on top of each other",
+            "severity": "low",
+            "evidence": "11-multiwindow.png: Research + Talks + CV open simultaneously but the 32/26px cascade steps with near-full-desktop default sizes (1120-1140px wide) mean only the top window is perceivable; the taskbar chips are the sole cue (and they are illegible per issue #2).",
+            "fix": "Acceptable given the deliberate content-first window sizing, but consider larger cascade steps (~48/40px) or slightly smaller defaults so a sliver of each underlying titlebar stays visible; fixing chip contrast (issue #2) is the cheaper remedy."
+          },
+          {
+            "title": "Volume slider breaks the Win95 illusion",
+            "severity": "low",
+            "evidence": "All desktop screenshots: the system-tray volume control is a native <input type=range> with modern blue accent (accentColor #0000a3) — visibly un-Win95 next to the bevelled chrome.",
+            "fix": "Style the range input with Win95 bevels (appearance:none, square thumb with the raised box-shadow recipe already used for .win95-titlebtn) in WIN95_STYLE in src/components/InnerDesktop.tsx, or swap to a click-to-step volume icon."
+          }
+        ]
+      },
+      {
+        "lens": "mobile",
+        "verdict": "The mobile desktop/window layer is genuinely solid — the Win95 overlay is natively fullscreen at 390x844, windows open maximized as designed, icons activate on a single tap, the Start menu works, and there are zero JS errors anywhere in the flow — but two things undercut the experience. First, a verified bug: any app window whose embedded content is taller than the screen opens showing the BOTTOM of the page with the top permanently unreachable (the Research window opens at \"Revise & Resubmit\"; its header, search box, filters, and both Published papers cannot be scrolled to). It is a classic flex-centering overflow gotcha in `.w95-shell` and a one-line CSS fix that I verified live. Second, the 3D scene is a poor deal on mobile as a mandatory gate: ~4.9 MB (including a 1.5 MB HDR fetched from raw.githubusercontent.com) and a heavy WebGL room exist solely to present one ~25–30 px tap target (the monitor). A phone visitor who wants a paper must tap START, sit through the entry animation, find and hit a tiny monitor, then navigate the desktop. Recommendation: keep the 3D room on mobile as an optional delight, but after the BIOS START tap drop phone users straight onto the fullscreen Win95 desktop (which already works well), with a \"step outside / view the office\" path back to the scene — and land the embed-scroll fix plus the small touch-target and clipping fixes below.",
+        "strengths": [
+          "Mobile desktop overlay is natively fullscreen (measured .win95-desktop.embedded at 0,0,390x844 with no CSS pin needed) - the prior mobile audit fix works (13-desktop-nopin.png)",
+          "Windows open MAXIMIZED on <600px as required - Research window measured at 390x814 (full width, full height minus taskbar) (05-desktop-research-window.png)",
+          "Desktop icons activate on a single tap on touch devices via the (hover:none) onClick handler (InnerDesktop.tsx:1762), and icon tap targets are a healthy 84x63 px",
+          "BIOS gate is touch-friendly: a clear bordered dialog with a large START button (~160x46) rather than a keyboard-only prompt (08-bios-2.4s.png)",
+          "Welcome toast is legible, concise, explicitly instructs 'Tap the monitor', and is dismissible (02-idle-scene.png)",
+          "Zero pageerror and zero console errors across BIOS, 3D scene, desktop, windows, and standalone pages",
+          "No horizontal document overflow on /research/ or /cv/ at 390px; filter chips wrap correctly and content is readable when scrolled (06/10 shots)",
+          "Start menu opens and offers full navigation (Home/Research/Talks/Library/Now/CV/Shut Down) (09-start-menu.png)",
+          "All inner pages double as standalone URLs, so content is reachable without the 3D scene at all - good bones for a mobile fast-path"
+        ],
+        "issues": [
+          {
+            "title": "Embedded app windows open scrolled to the bottom with the top of the page unreachable",
+            "severity": "high",
+            "evidence": "Reproduced 4/4 opens of the Research window (shots 05-desktop-research-window.png, 12-research-window-again.png, 14-research-nopin.png): first screenful starts at 'Revise & Resubmit' with a clipped card edge above; the page header, search box, filter chips, Published (2) and Accepted (1) sections are above the viewport and CANNOT be scrolled to. Probe: inside the iframe (/research?embed=1) the H1 sits at y=-1326 while every scroller reports scrollTop=0; setting scrollTop=600 moves content further up past the document end (H1 y=-1926, blank space below last card, 15-research-scrolled600.png). Root cause: .w95-shell keeps height:100vh; display:flex; align-items:center; justify-content:center (src/layouts/Win95Layout.astro:106-117) even in embed mode, so content taller than the iframe center-overflows and the overflow above the flex start is unscrollable (classic CSS flex-centering gotcha). Injecting the fix live moved H1 from -1326 to 59 and the window rendered perfectly from the top (16-research-fixed-css.png). Affects every app window whose embed content overflows - i.e. all of them on mobile, likely desktop too.",
+            "fix": "In src/layouts/Win95Layout.astro, embed override block (~lines 329-336), add: body.w95-embed-body .w95-shell { height: auto !important; min-height: 100vh; align-items: flex-start !important; justify-content: flex-start !important; } - verified working by live CSS injection."
+          },
+          {
+            "title": "3D scene is a mandatory ~4.9 MB gate on mobile whose only purpose is one tiny tap target - mobile should shortcut to the desktop",
+            "severity": "high",
+            "evidence": "Home page transfers 4,860 KB over 14 requests; load event at 4.85 s on a fast connection. Top assets: 1,488 KB HDR fetched from raw.githubusercontent.com (third-party, no CDN guarantees), 1,291 KB Office.js chunk, ~1.9 MB of 1K carpet/wood/plaster texture JPGs. In the idle scene (02-idle-scene.png) the CRT monitor - the single tap target that advances to content - is roughly 25-30 CSS px wide, surrounded by empty green carpet. Headless GL rendered ~3 fps (software renderer, not device-representative, but the texture/HDR load is real). Path to a paper on a phone: BIOS tap, 4 s entry animation, find and hit a ~28 px monitor, desktop, tap Research.",
+            "fix": "On (hover:none) or <600px viewports, after the BIOS START tap go directly to the fullscreen Win95 desktop (it already works standalone via the pg_phase sessionStorage path in InnerDesktop/Room wiring) and skip loading the 3D room, HDR, and textures entirely; keep a 'Step outside' desktop icon/Start item to opt into the scene. At minimum add a 'Skip to desktop' button in the welcome toast. Independently: self-host the HDR (replace the raw.githubusercontent.com st_fagans_interior_1k.hdr with a local 512px copy, ~1.2 MB saved) and serve smaller textures to mobile."
+          },
+          {
+            "title": "Monitor tap target far below 44 px minimum and the hint disappears after dismissal",
+            "severity": "medium",
+            "evidence": "02-idle-scene.png / 03-idle-later.png: at the idle camera distance the monitor screen is ~25-30 CSS px wide. The welcome toast ('Tap the monitor to step inside...') is 'tap to dismiss' - once dismissed there is no persistent affordance pointing at the only interactive object.",
+            "fix": "Add an enlarged invisible raycast hit mesh around the desk+monitor (3-4x the monitor bounds) in src/components/Room.tsx, and/or render a small pulsing 'tap' badge projected over the monitor that persists until first activation."
+          },
+          {
+            "title": "Affiliations rows clip off the right edge of the Home window at 390 px",
+            "severity": "medium",
+            "evidence": "04-desktop.png / 13-desktop-nopin.png: the 'CURRENT' badge is cut to 'CURREN' at the right edge on the University of Cambridge row, and 'Postdoctoral Researcher (from Sept 2026' is truncated mid-text. Cause: .win95-affil-row is a nowrap flex row with flex-shrink:0 on .win95-affil-role and margin-left:auto on the tag (src/components/InnerDesktop.tsx:376-399).",
+            "fix": "Add flex-wrap: wrap to .win95-affil-row (and allow .win95-affil-role to shrink) under a narrow-viewport media query in InnerDesktop.tsx styles so the badge wraps to its own line instead of overflowing."
+          },
+          {
+            "title": "Window title-bar controls are 16x14 px - far below touch size",
+            "severity": "medium",
+            "evidence": "Measured _ , [], and X buttons at 16x14 CSS px on the maximized Research window and on standalone /research/ and /cv/ pages (WINDOW BUTTONS probe output; visible in 05/06 shots). Apple/Android guidelines want ~44 px; close is the primary escape from a maximized mobile window.",
+            "fix": "On (hover:none) or <600px, scale title-bar buttons to >=32px (the Win95 pixel look survives 2x fine), or hide minimize/maximize on mobile (windows are always maximized anyway) and enlarge only the close button. Styles live in Win95Layout.astro / InnerDesktop.tsx title-bar CSS."
+          },
+          {
+            "title": "BIOS copy is keyboard-centric on touch, with a blank frame between boot text and the START dialog",
+            "severity": "low",
+            "evidence": "BIOS DOM text includes 'Press any key to skip memory test' (meaningless on a phone) and the dialog reads 'Click START to enter' (08-bios-2.4s.png). One run captured a fully blank dark frame at ~1.8 s between the boot text and the dialog (01-bios.png).",
+            "fix": "On touch devices swap copy to 'Tap START to enter' and drop the 'Press any key' line; keep the boot text on screen until the START dialog paints so there is never a fully blank frame. BIOS component is in the boot/BIOS overlay used by index (search for 'Click START to enter' in src/)."
+          },
+          {
+            "title": "Nav links and filter chips are sub-32 px touch targets on standalone pages",
+            "severity": "low",
+            "evidence": "Measured: menubar links (back-arrow Study/Research/Talks/Library/Now/CV) 24 px tall; research filter chips 26 px; library blogroll links 24 px (METRICS probe output, 06-research-top.png).",
+            "fix": "Under (hover:none), add vertical padding so effective hit areas reach ~40 px: .w95-menubar a and the filter chip buttons in the research page styles (Win95Layout.astro + research page component)."
+          },
+          {
+            "title": "Body text 13.6-14 px on mobile; search input under 16 px risks iOS focus auto-zoom",
+            "severity": "low",
+            "evidence": "Computed font-size histogram: /cv/ body dominated by 13.6 px (59 elements), /research/ by 14 px (78 elements). Legible in 10-research-scrolled.png / 10-cv-scrolled.png but dense; iOS Safari zooms the page when focusing inputs with font-size <16px (the research search box).",
+            "fix": "Bump base body text to 15-16 px under a <480px media query in src/layouts/Win95Layout.astro, and set the research search input to 16 px to prevent iOS focus zoom."
+          }
+        ]
+      },
+      {
+        "lens": "content-quality",
+        "verdict": "The content mostly survives a skeptical 30-second read: the desktop home leads with name, role, \"12 papers · 59 talks\", two Nature Human Behaviour papers, honest status labels (Published / Acceptance-in-Principle / R&R / Working), current affiliations with CURRENT/INCOMING tags, a visible copyable email, and working CV/Scholar/GitHub links — that is more verifiable substance than most academic sites. The counts check out exactly (12 = 2+1+1+7+1 papers; 59 talks tally line-by-line) and the Now page and CV are genuinely fresh (June 2026 / generated 2026-06-10). What a hiring committee would ding: (1) the \"As seen in\" press chips on several papers link to outlet HOMEPAGES (theguardian.com, faz.net, economist.com, worldbank.org, ft.com...), which reads as unverifiable padding — the single most damaging credibility issue on the site; (2) the web CV has no education history, no awards/grants, no teaching, no references — it is affiliations + papers + talks only, with a \"with —\" rendering bug on solo papers; (3) every canonical/share/BibTeX URL points to prashantgarg.org, a domain that currently serves the OLD Google Sites site and 404s on /cv and /research/* — so the BibTeX people copy today contains a dead link. All of this is data-file-level fixable; nothing structural is wrong.",
+        "strengths": [
+          "Honest, legible status taxonomy: Published (2) / Accepted (Acceptance-in-Principle, stated verbatim) / R&R (1) / Working (7) / Essay (1) — no inflation, and the venue names (Nature Human Behaviour x2, Economics Letters, BMJ H&CI) are stated plainly with coauthors. Counts are internally consistent everywhere (12 papers, 59 talks tally exactly).",
+          "Every paper, including all 7 working papers, has a public artifact: arXiv, CEPR DPs (19708, 21230), ResearchSquare, CESifo WP, or a live paper site. Spot-checked 12 links — Drive CV PDF, Google Scholar, Nature article, both GitHub repos, arXiv, automationatlas.org/paper, ResearchSquare, Bath press release all return 200 (ScienceDirect 403 and Aeon 429 are bot/rate-limit blocks, fine in a real browser).",
+          "Per-paper detail pages with real abstracts (well-written, e.g. political-expression-academics), a working Cite (BibTeX) copy button, share links, companion-site cards, and presented-at history — above the bar for academic sites.",
+          "The companion-site portfolio (causal.claims, aipnet.io, automationatlas.org, academicexpression.online, frontiergraph.com) is a distinctive, verifiable asset that signals real engineering capability.",
+          "Freshness: Now page says Cambridge, June 2026 with Bocconi from Sept 2026, consistent with the affiliations block and CV; CV footer shows Generated 2026-06-10; the talks list includes 2026 entries. Nothing reads abandoned.",
+          "Email is visible with a one-click copy on the landing desktop — committees do not have to hunt for contact info."
+        ],
+        "issues": [
+          {
+            "title": "Press-mention chips link to outlet homepages, not the actual coverage",
+            "severity": "high",
+            "evidence": "On /research/local-decline-populism the 'As seen in' chips link to https://www.theguardian.com/, https://www.faz.net/, https://blogs.lse.ac.uk/businessreview/, https://theconversation.com/, https://cepr.org/voxeu, https://warwick.ac.uk/.../cage/ — all homepages (detail-ldp-links.json). Same pattern on causal-claims (economist.com, marginalrevolution.com, noahpinion.blog, worldbank.org, treasury.gov.au, nadaesgratis.es) and Dylan (ft.com). To a skeptical reader, press claims you cannot click through to verify look fabricated, even if real. Notably some chips DO have specific URLs (Marginal Revolution post, Yglesias tweet, Bath press release), proving the data model supports it.",
+            "fix": "In the research data file (likely src/data/* feeding the press/asSeenIn arrays), replace every homepage href with the specific article URL; where no URL exists, delete the chip rather than linking the outlet root. A committee will click exactly these."
+          },
+          {
+            "title": "All canonical/share/BibTeX URLs point to prashantgarg.org, which still serves the old Google Sites and 404s on deep paths",
+            "severity": "high",
+            "evidence": "BibTeX copy yields url = {https://prashantgarg.org/research/political-expression-academics}; X/Bluesky/mailto share intents encode prashantgarg.org URLs; CV footer prints 'Generated 2026-06-10 · prashantgarg.org/cv'. Verified: https://www.prashantgarg.org/cv returns 404 today (domain not cut over; root serves the old site). Anyone citing or sharing from the live site today propagates dead links.",
+            "fix": "Either complete the domain cutover now, or temporarily switch the site-URL constant (likely a SITE/canonical const in astro.config.mjs or a shared data file) to https://prashgarg.github.io until cutover, then flip back. Do not ship a citation generator that emits 404s."
+          },
+          {
+            "title": "Web CV is missing the sections committees actually scan: education, awards/grants, teaching, references",
+            "severity": "high",
+            "evidence": "cv.txt: the page contains only contact line, Affiliations (4 rows), Publications & Working Papers, and Talks (59). No degrees with years (Imperial PhD appears only as a 'past' affiliation, no start/end dates, no BSc/MSc), no funding, no teaching experience, no referee list. The page bills itself 'Generated from site data — printable', so this IS the CV many people will print.",
+            "fix": "Add Education (degrees, institutions, years), Grants & Awards, Teaching, and References/available-on-request sections to the CV data source rendering /cv. Even 4 short sections transform it from a paper list into a CV."
+          },
+          {
+            "title": "Solo-authored items render 'with —' on the CV",
+            "severity": "medium",
+            "evidence": "cv.txt lines: 'What Should Economics Ask Next?' followed by 'with —', and 'Mapping Bob Dylan's Mind' followed by 'with — · Aeon · arXiv'. Reads as a data error and undercuts the otherwise careful presentation.",
+            "fix": "In the CV page template, omit the 'with …' line when the coauthor list is empty (or render 'solo-authored'). Likely a one-line conditional in src/pages/cv.astro or its component."
+          },
+          {
+            "title": "Talks header claims '2022–2026' but the earliest listed talk is January 2023",
+            "severity": "medium",
+            "evidence": "talks.txt line: '59 talks across 14 topics, 2022–2026'; the oldest entry anywhere (talks page and CV) is 'Warwick PhD Conference · 13 Jan 2023'. A committee member who checks one number and finds it wrong distrusts the rest.",
+            "fix": "Either correct the subtitle to 2023–2026 (or compute the range from the talks data instead of hardcoding), or add the missing 2022 talks if they exist."
+          },
+          {
+            "title": "BibTeX is malformed/underspecified for published papers",
+            "severity": "medium",
+            "evidence": "Clipboard from Cite (BibTeX) on the NHB paper: author = {Garg, Prashant and Thiemo Fetzer} — mixes 'Last, First' and 'First Last' formats (BibTeX will parse 'Thiemo' as surname); no DOI, volume, pages, or article number for a published Nature Human Behaviour 2025 article; url field is the broken prashantgarg.org link (see separate issue).",
+            "fix": "Normalize authors to 'Garg, Prashant and Fetzer, Thiemo', add doi = {10.1038/s41562-025-02199-1} (and the Economics Letters DOI), and volume/pages where assigned. This is generated from site data, so fix the generator once."
+          },
+          {
+            "title": "No photo and no one-paragraph bio on the landing surface",
+            "severity": "medium",
+            "evidence": "desktop-home.png: hero is 'Prashant Garg / Economist · Research Associate at Cambridge'. The actual research-identity sentence ('Economist working on science, innovation, production, and media using machine learning, causal inference, and network science') appears only on the /cv page. No headshot exists anywhere on the site — committees and seminar organizers routinely need one.",
+            "fix": "Add the one-line research-identity sentence under the hero name on the desktop home, and add a small headshot (hero corner or CV header). Both are content additions to existing components, no redesign needed."
+          },
+          {
+            "title": "CV PDF lives only on Google Drive",
+            "severity": "low",
+            "evidence": "Both the desktop-home 'CV ↗' and the /cv page 'PDF (Drive) ↗' point to https://drive.google.com/file/d/1loWtmOeOwDtSSJ2WHKf7n_PzpQiP6rgF/view (returns 200, publicly viewable today). Drive links are blocked on some institutional networks, look transient, and can silently break if sharing settings change.",
+            "fix": "Commit the PDF as /public/cv.pdf and link prashgarg.github.io/cv.pdf as primary (keep Drive as a mirror if desired)."
+          },
+          {
+            "title": "Contact email is an @imperial.ac.uk address while Imperial is tagged 'past'",
+            "severity": "low",
+            "evidence": "desktop-home and /cv show prashant.garg@imperial.ac.uk; the affiliations block on the same screen marks Imperial College London as 'past' with Cambridge 'current'. PhD alumni addresses commonly expire; a committee may hesitate to write to it.",
+            "fix": "Switch to (or add alongside) a durable address — Cambridge address while current, or a personal-domain/gmail forward — in the shared contact constant used by the home card and CV header."
+          },
+          {
+            "title": "Abstracts are collapsed by default on paper pages; listing page shows titles only",
+            "severity": "low",
+            "evidence": "detail-political-expression.png: abstract hidden behind a '+ Abstract' toggle (content exists and is good once expanded); the /research listing cards show only title/venue/coauthors with a small '+' affordance, so a fast skimmer never sees a single sentence of what any paper finds.",
+            "fix": "Default the Abstract section open on detail pages, and consider a one-line finding/teaser per paper on the listing cards (one field in the research data)."
+          },
+          {
+            "title": "Suspected location typo: 'XII IBEO Workshop in Complexity Economics · Ibeo'",
+            "severity": "low",
+            "evidence": "talks.txt and cv.txt both list the venue city as 'Ibeo' — IBEO is the workshop acronym, not a place; the IBEO complexity workshop is held in Alghero, Sardinia.",
+            "fix": "Correct the location field for the 21–23 Jun 2023 entry in the talks data (likely 'Alghero' — verify against your records)."
+          }
+        ]
+      }
+    ],
+    "inspirations": [
+      {
+        "source": "creative-web",
+        "features": [
+          {
+            "name": "MDR.exe — playable Macrodata Refinement mini-game",
+            "what": "A desktop app that recreates the show's number-refining: a grid of softly wiggling digits, 'scary numbers' cluster and tremble, you lasso them into five bins. The twist: each bin is one of your research topics, and filling a bin to 100% unlocks/opens that topic's filtered research view (plus a confetti 'waffle party' or Milchick-style praise toast at completion). Visitors get the single most shareable Severance artifact possible while literally navigating your research taxonomy. The official Lumon site proved people will happily do this 'work' for 5+ minutes.",
+            "inspiration": "Official Severance site lumon-industries.com (browser MDR game with progress bar and dance-party reward, https://lumon-industries.com/); structural pattern also in devwithlex.itch.io/macrodata-refinement",
+            "fit": "This IS the metaphor's centerpiece — the site is an MDR office but currently has no refining to do. Ships as a desktop app icon (MDR.exe), launchable from Start menu and Cmd+K, with bins named after your actual research topics so the gimmick doubles as navigation.",
+            "effort": "medium",
+            "impact": "high"
+          },
+          {
+            "name": "BIOS Setup screen (press DEL during boot) = real settings panel",
+            "what": "During the existing BIOS splash, show 'Press DEL to enter SETUP'. It opens an authentic blue/grey BIOS settings screen where toggles actually work and persist to localStorage: reduced motion, CRT scanlines on/off, sound scheme on/off, theme (innie/outie), skip-intro-by-default. Accessibility and preference controls delivered entirely in-fiction — visitors who find it feel like they discovered a secret, and visitors who need reduced motion get a real control.",
+            "inspiration": "Henry Heffernan's obsessively authentic boot sequence (https://henryheffernan.com); daedalOS's idea that system chrome is functional, not decorative (https://dustinbrett.com / https://github.com/DustinBrett/daedalOS)",
+            "fit": "Deepens the boot sequence you already have from linear cutscene into interactive system. BIOS easter egg + genuine utility (a11y settings) in one; the settings also get a Start-menu 'Control Panel' alias inside the desktop.",
+            "effort": "medium",
+            "impact": "high"
+          },
+          {
+            "name": "Win95 sound scheme wired to existing volume slider",
+            "what": "Tiny, soft, Severance-clean UI sounds: startup chime after boot, window open/close/minimize thwips, error ding on invalid actions, faint click on Start menu. Everything routes through the audio context + volume slider + focus-mode lowpass you already built, so muting/ducking is free. Sound is the highest feel-per-byte upgrade available — Comeau's landing page proves near-everything having a sound reads as craft, not noise, when the sounds are quiet and fast.",
+            "inspiration": "Josh Comeau — 'just about everything has a sound effect' (https://www.joshwcomeau.com, see https://www.joshwcomeau.com/blog/whimsical-animations/); rauno.me's OS-style dock with interface sounds (https://rauno.me)",
+            "fit": "Windows 95 is half-defined by its sound scheme; a retro OS with silent windows is uncanny. Your audio infrastructure (slider, lowpass) already exists — this is the missing payload for it.",
+            "effort": "small",
+            "impact": "high"
+          },
+          {
+            "name": "Terminal app (C:\\> prompt) with real academic commands",
+            "what": "An MS-DOS-style terminal as a desktop app: `help`, `papers [--year --topic]`, `cite <paper-id>` (prints + copies BibTeX), `cv`, `now`, `open <app>`, `whoami`, plus hidden `lumon`, `kier`, `overtime` responses. `cite` is the killer feature — academics constantly want your BibTeX, and no academic site makes it this fun to get. Power users get a keyboard-only path through the whole site that the Cmd+K palette only partially covers.",
+            "inspiration": "Terminal-portfolio pattern (jQuery Terminal / freeCodeCamp guide, https://dev.to/jcubic/how-to-create-an-interactive-terminal-based-portfolio-n7h); daedalOS's in-OS terminal (https://dustinbrett.com)",
+            "fit": "A DOS prompt is canon Win95 furniture; Severance flavor comes from the hidden Lumon commands. Reuses the paper/talk data the Cmd+K palette already indexes — mostly a new view over existing data.",
+            "effort": "medium",
+            "impact": "high"
+          },
+          {
+            "name": "My Documents file explorer + Recycle Bin 'file drawer'",
+            "what": "A real file-explorer app: papers as .pdf icons in folders by year/topic, talks as .ppt, CV.pdf on the desktop; double-click opens the existing window/PDF for it. The Recycle Bin is the joke with substance: it contains 'rejected_draft_v7.doc', null results, and dead projects — the academic 'file drawer' made literal. Honest, funny, and quietly signals research integrity; every visitor checks a Recycle Bin.",
+            "inspiration": "daedalOS's full file system with context menus and icons (https://dustinbrett.com, https://github.com/DustinBrett/daedalOS); indie-web honesty pages / 'failure CV' culture",
+            "fit": "The desktop metaphor currently has apps but no files — an explorer makes the OS feel inhabited. Recycle Bin = the Severance theme of discarded work nobody is allowed to understand. Backed by the same papers/talks data files, so no new content pipeline.",
+            "effort": "medium",
+            "impact": "high"
+          },
+          {
+            "name": "Idle screensaver (Lumon After Dark)",
+            "what": "After ~90s of inactivity the desktop dims and a screensaver starts: a bouncing Lumon-esque logo DVD-style, or drifting Kier quotes / waffle-party toasters homage; any input dismisses it. Cheap, period-perfect, and turns an abandoned tab into a delight moment — people leave tabs open and come back to a surprise. Bonus: corner-hit confetti, the meme everyone knows.",
+            "inspiration": "After Dark flying toasters + Google's DVD-screensaver easter egg (https://techcrunch.com/2021/05/14/googles-dvd-screensaver-easter-egg-makes-the-logo-bounce-around-your-screen-accordingly/); daedalOS animated screensavers (https://dustinbrett.com)",
+            "fit": "Screensavers are the most-loved dead OS feature and Severance's CRT idle screens are iconic. Pure overlay component on the existing desktop — no data, no layout changes. Respect the BIOS reduced-motion toggle.",
+            "effort": "small",
+            "impact": "medium"
+          },
+          {
+            "name": "Run… dialog + deep-linkable windows (?app=research&paper=x)",
+            "what": "Start menu gets 'Run…' (a classic Win95 dialog accepting app names and paper ids), and every window state becomes a shareable URL (?app=talks, ?paper=slug). The academic payoff is real: you can email a colleague a link that opens YOUR site with the right paper window already open, instead of 'go to my site and click around'. Also makes the desktop indexable/navigable for people arriving from Google Scholar.",
+            "inspiration": "daedalOS URL parameters (?app=Browser) and Run dialog supporting aliases/paths (https://github.com/DustinBrett/daedalOS)",
+            "fit": "Run… is canonical Win95 chrome; deep links make the OS metaphor compatible with how academia actually shares URLs. Mostly routing glue over the existing window manager.",
+            "effort": "small",
+            "impact": "high"
+          },
+          {
+            "name": "Perks & Incentives — egg-hunt achievement tracker",
+            "what": "A small 'Incentives' app listing Lumon-style perks the visitor has earned: Finger Trap (find the BIOS), Waffle Party (finish MDR), Music Dance Experience (use the volume slider), Wellness Session, '5% of files refined' (read 5 abstracts), etc. Stored in localStorage with empty silhouette slots that bait completionists. Bruno Simon showed explicit egg hunts measurably drive exploration — people systematically visit everything to fill the grid, which for you means they actually open Research, Talks, Now.",
+            "inspiration": "Bruno Simon's 12-egg hunt with rewards (https://bruno-simon.com, https://x.com/bruno_simon/status/1378673335744217090); game-dev reward loops per Comeau's 'learn from game developers' (https://www.joshwcomeau.com/email/009/)",
+            "fit": "Severance's absurd incentive system (finger traps, waffle parties) is a ready-made achievements skin — the joke writes itself and the mechanic funnels visitors through your actual content. Add eggs incrementally; ship with 6.",
+            "effort": "medium",
+            "impact": "medium"
+          },
+          {
+            "name": "Overtime Contingency — in-fiction dark mode trigger",
+            "what": "Hidden trigger (Konami code, or typing 'overtime' in the terminal/Run box): the CRT flickers, a half-second static glitch, and the site switches innie↔outie — i.e., your existing dark/light themes, reframed as severed states. Dark mode gets named 'Outie' with subtle differences (desktop clock shows evening, wallpaper darkens, ambient audio swaps). Turns a commodity feature you already have into the single best fan-service moment on the site.",
+            "inspiration": "Easter-egg culture of Bruno Simon / Comeau's 'Million Little Secrets' (https://www.joshwcomeau.com/blog/whimsical-animations/); Severance S2 Overtime Contingency scene",
+            "fit": "Reuses the dark-mode system 100% — this is narrative dressing plus a glitch animation. Deepens the lore for fans without confusing normal visitors (the normal toggle still exists).",
+            "effort": "small",
+            "impact": "medium"
+          },
+          {
+            "name": "Wellness Session — deadpan assistant that doubles as About/FAQ",
+            "what": "A 'Wellness' desktop app where a Ms. Casey-style figure delivers flat, soothing statements that are actually your bio/FAQ: 'Your outie studies the economics of technology and language.' 'Your outie has published in journals your innie will never read.' Click-through, ~15 lines, with 3-4 real links embedded (CV, email, Scholar). It is the About page rewritten as the show's funniest format — memorable enough that seminar audiences will quote it.",
+            "inspiration": "Clippy/assistant revival on retro-OS sites and poolsuite.net's committed in-fiction copywriting (https://poolsuite.net); Severance wellness sessions",
+            "fit": "Pure content + one simple window — the highest personality-per-hour feature available. Lives as a desktop app and a Start-menu item; also a natural Perks unlock.",
+            "effort": "small",
+            "impact": "medium"
+          },
+          {
+            "name": "Standard Issue mode — one-click plain-HTML 'boss key'",
+            "what": "A taskbar/Start item ('Standard Issue View', or press B) that instantly swaps the whole experience for a fast, boring, beautifully plain academic page — name, papers list, CV link, email. Framed as the Milchick-approved compliance view. This is the 90s 'boss key' inverted into genuine utility: reviewers, journalists, and screen-reader users get a zero-gimmick path, and the joke ('break glass for normal website') lands with everyone who has opinions about flashy academic sites.",
+            "inspiration": "90s shareware boss-key convention; the accessibility-first ethos in Rauno's Web Interface Guidelines (https://interfaces.rauno.me/); your existing no-WebGL fallback extended to the desktop layer",
+            "fit": "Severance is about two selves — the site gets an innie (OS) and outie (plain) version of itself. Mostly an Astro route reusing existing data; also your insurance policy for hiring committees in a hurry.",
+            "effort": "medium",
+            "impact": "high"
+          },
+          {
+            "name": "Lumon FM — channel-based music player app",
+            "what": "A small Winamp-style player app with 2-3 curated channels ('MDR Drone', 'Writing Lo-fi', 'Music Dance Experience') that routes through your existing ambient-audio context, volume slider, and focus lowpass. Poolsuite proved a channel picker + waveform + retro chrome makes people stay on a website for 40 minutes. Keep tracks CC-licensed; persists across pages so it becomes a 'leave it on while working' utility.",
+            "inspiration": "poolsuite.net — retro Mac player with channels, favorites, session persistence (https://poolsuite.net); daedalOS ships Webamp (https://dustinbrett.com)",
+            "fit": "The Music Dance Experience is a canon Severance perk; audio plumbing already exists, so this is UI + playlist curation. Natural Perks-unlock tie-in.",
+            "effort": "medium",
+            "impact": "medium"
+          },
+          {
+            "name": "Org Chart — interactive co-author & topic network app",
+            "what": "A desktop app rendering a force-directed graph: you at the center, co-authors, topics, and papers as nodes; click a paper node to open its research card window, click a co-author to see joint work. Real academic utility — visitors instantly see the shape of your research program, which a list view never conveys — and it is exactly the kind of artifact other economists screenshot and share.",
+            "inspiration": "VOSviewer/Gephi bibliometric-network convention brought to a personal site (https://gephi.github.io/); Awwwards 2025-26 trend of data-as-interface portfolios (https://www.awwwards.com/websites/winner_category_portfolio/)",
+            "fit": "Skinned as a Lumon 'org chart / department map', it's an in-metaphor app over your existing papers data (needs a coauthors field added). d3-force in a Win95 window; heaviest item here but the most academically substantive.",
+            "effort": "large",
+            "impact": "medium"
+          },
+          {
+            "name": "Visitor Log — Severance-themed guestbook",
+            "what": "A 'Visitor Badge' desktop app where guests sign the Lumon visitor log: name, affiliation optional, one line. Rendered as a dot-matrix ledger. Guestbooks are the single most-revived indie-web feature of 2024-26 because they make a personal site feel alive and reciprocal; for an academic, it doubles as a low-friction 'I saw your talk, nice site' channel. Implement via giscus/GitHub Discussions to stay static-host friendly with built-in spam control.",
+            "inspiration": "IndieWeb guestbook revival (https://indieweb.org/guestbook, e.g. https://wilcosky.com/guestbook/); Severance's visitor-badge lobby scenes",
+            "fit": "An office needs a front desk: this is the lobby of the OS metaphor. Only feature here needing third-party backing (giscus), hence ranked last despite charm — ship after the static wins.",
+            "effort": "medium",
+            "impact": "medium"
+          }
+        ]
+      },
+      {
+        "source": "academic-features",
+        "features": [
+          {
+            "name": "BibTeX / citation copy buttons on every paper",
+            "what": "A one-click 'Copy BibTeX' (plus APA/Chicago plaintext) button on each research card, with the .bib entries generated at build time from the existing papers data. This is the single most-performed task by the site's core audience — coauthors, referees, and students citing the work — and al-folio/jekyll-scholar made it table stakes for academic sites. Right now anyone citing a paper has to leave the site to hunt down the entry.",
+            "inspiration": "al-folio publications page (https://github.com/alshedivat/al-folio) and jekyll-scholar's bibtex_show field; Benjamin Moll's per-paper link rows (https://benjaminmoll.com/papers/)",
+            "fit": "A small Win95-chrome button row in each Research window's paper card; also add 'Copy citation' to the existing right-click context menu when a paper card is focused. The copy confirmation can be a period-correct tooltip ('Copied to Clipboard').",
+            "effort": "small",
+            "impact": "high"
+          },
+          {
+            "name": "Per-paper permalink pages (paper 'Properties' dialogs)",
+            "what": "Each paper gets its own deep-linkable URL rendering as an opened window: abstract, version date ('draft of June 2026'), links to PDF/appendix/slides/code/coverage, status, and BibTeX. Econ job-market and hiring-committee convention is to share direct links to individual papers; right now the Research window state isn't addressable, so a coauthor can't email 'here's my paper' as a link to this site, and Google can't rank individual papers. Also makes the existing OG-image system pay off per paper.",
+            "inspiration": "Econ JMP site conventions (https://www.europeanjobmarketofeconomists.org/uploads/Job-Market-Guide-EEA-Website-Michela-Carlana-with-EAYE-Interventions.pdf); Benjamin Moll's paper entries (https://benjaminmoll.com/papers/)",
+            "fit": "URL like /research/paper-slug opens the desktop with that paper's window already open and focused — styled as a file 'Properties' dialog (General / Versions / Related tabs). The Cmd+K palette already indexes papers, so palette hits can route to these permalinks.",
+            "effort": "medium",
+            "impact": "high"
+          },
+          {
+            "name": "Plain-English TL;DR per paper (VoxEU-style summaries)",
+            "what": "A 3–5 sentence non-technical summary for each paper, shown as a toggle or tab alongside the abstract. Journalists, policy staff, and students consistently cite this as the highest-value thing an economist's site can add — VoxEU/VoxDev exist precisely because abstracts are unreadable to non-specialists, and the 2025 academic-website contest specifically praised 'publication overview with key takeaways' (Kamšek). Mostly a writing task, not an engineering one.",
+            "inspiration": "VoxEU column format (https://cepr.org/voxeu/about-voxeu); Ana Rebeka Kamšek's key-takeaways publications page praised in the 2025 contest (https://theacademicdesigner.com/2025/winners-of-the-best-personal-academic-websites-contest-2025/)",
+            "fit": "A checkbox in the Research window chrome — '[x] Plain English' — that swaps abstracts for summaries site-wide, like a Win95 accessibility setting. On-theme joke writes itself: the technical abstract is 'severed' from the readable one.",
+            "effort": "small",
+            "impact": "high"
+          },
+          {
+            "name": "Terminal.exe blog / research notes",
+            "what": "A lightweight blog rendered as a terminal app: short research notes, conference debriefs, half-baked ideas, commentary. Blogging is how economists (Gelman, Cowen/Tabarrok, Blattman) build audiences an order of magnitude larger than their papers alone, and it's the only feature that gives anyone a reason to RETURN to the site — everything currently on it is static credentials. The existing RSS/Atom feed gives distribution for free.",
+            "inspiration": "Marginal Revolution (https://marginalrevolution.com), Andrew Gelman's blog (https://statmodeling.stat.columbia.edu), Chris Blattman's blog (https://chrisblattman.com/blog/)",
+            "fit": "Perfect metaphor fit: a green-phosphor MDR terminal window where posts are 'files' listed by `ls`, opened by `cat post-name.txt`, with a normal scrollable reading view once opened. Posts are markdown content collections in Astro — minimal new infrastructure.",
+            "effort": "medium",
+            "impact": "high"
+          },
+          {
+            "name": "File Explorer for data, code & replication packages",
+            "what": "An Explorer-style app listing each paper's replication package, datasets, and GitHub repos with READMEs, file sizes, and licenses. AEA/Econometric Society data-availability policies have made replication materials a first-class research output, and coauthors/grad students actively hunt for them; surfacing them signals open-science credibility to committees. Currently this material (if it exists) is buried in journal supplementary sites.",
+            "inspiration": "AEA Data & Code Availability Policy (https://www.aeaweb.org/journals/data/data-code-policy); Benjamin Moll's code/data links per paper (https://benjaminmoll.com/papers/)",
+            "fit": "The most natural app the OS is missing: 'My Computer' / File Explorer with folder tree (Datasets, Replication Packages, Code), file-type icons (.dta, .R, .zip), a details pane showing the README, and double-click opening the GitHub/Zenodo link. Cross-link each folder from its paper's Research card.",
+            "effort": "medium",
+            "impact": "high"
+          },
+          {
+            "name": "Citation metrics as Task Manager performance graphs",
+            "what": "A 'System Monitor' app showing citations-over-time, h-index, and per-paper citation counts, fetched at build time from the OpenAlex or Semantic Scholar API (both free, no scraping) via a scheduled GitHub Action. Committees and journalists triangulate credibility through Google Scholar anyway; putting verified numbers on-site keeps them in your framing and adds a live-feeling element to a static site.",
+            "inspiration": "Semantic Scholar Academic Graph API (https://www.semanticscholar.org/product/api); Google Scholar badge generators (https://github.com/WenjieDu/Google_Scholar_Badge_Generator)",
+            "fit": "Win95 Task Manager parody: the citations-per-year chart as the green CPU-usage graph, h-index as 'System Resources', each paper as a 'process' with its citation count. Severance layer: the running total framed as 'Quarterly Quota: 73% complete'.",
+            "effort": "medium",
+            "impact": "medium"
+          },
+          {
+            "name": "Help.exe — advice pages for students",
+            "what": "Blattman-style advice content (applying to PhD programs, being an RA, writing an economics paper, emailing professors) in a Windows Help viewer. These are the most-trafficked and most-linked pages on economists' sites — Blattman's advice pages outrank his research in search — and they compound goodwill with the student audience for years. Content-writing is the real cost; the payoff is durable inbound links.",
+            "inspiration": "Chris Blattman's advice hub (https://chrisblattman.com/phd-advice/ and https://chrisblattman.com/undergrad-ma/)",
+            "fit": "A pixel-perfect WinHelp clone: left-pane Contents tree with little book/page icons, right-pane article view, 'Related Topics' links at the bottom. Severance flavor: title it 'Employee Handbook' or 'Compliance Handbook' in the Start menu.",
+            "effort": "medium",
+            "impact": "high"
+          },
+          {
+            "name": "Press clippings page (media coverage)",
+            "what": "A dedicated media/press section listing coverage (FT, Economist, podcasts, VoxEU columns) grouped by paper, plus a short 'for journalists' blurb with a headshot download and one-line bio. Media mentions are the credibility currency journalists and policy audiences check first, and economists like Moll thread coverage through their papers page to show real-world impact. Cheap to build, pure content.",
+            "inspiration": "Benjamin Moll's media-coverage links per paper (https://benjaminmoll.com/papers/); Patrick Manser's credentialed media section praised in the 2025 contest (https://theacademicdesigner.com/2025/winners-of-the-best-personal-academic-websites-contest-2025/)",
+            "fit": "A 'Newspaper.exe' clippings viewer — scanned-newsprint styling, each clipping a halftone card with outlet name in masthead type — or simply a 'Press' folder of .txt clippings opened from the desktop. Also feed coverage links into each paper's permalink page.",
+            "effort": "small",
+            "impact": "medium"
+          },
+          {
+            "name": "Hover preview cards + 'related items' backlinks",
+            "what": "Gwern-style hover popups: mousing over any internal reference (a paper mentioned in a talk, a book in Library related to a paper) shows a preview card, and each item lists what links to it ('Referenced by: 2 talks, 1 post'). This turns four siloed apps into a navigable knowledge graph and rewards the exact deep-reading behavior coauthors and committees engage in. Scoped to internal links only to stay tractable.",
+            "inspiration": "gwern.net popups and backlinks (https://gwern.net/design)",
+            "fit": "Previews styled as Win95 tooltips-on-steroids or small non-focusable preview windows; backlinks rendered as 'Shortcut to...' icons at the bottom of each window, complete with the little shortcut-arrow badge.",
+            "effort": "large",
+            "impact": "medium"
+          },
+          {
+            "name": "Talks upgrade: embedded slides, video, and .ics calendar",
+            "what": "Each talk gets downloadable slides and embedded video where available, and upcoming talks get an 'Add to Calendar' (.ics) link plus location. Seminar invitations and discussant prep are core economist workflows — organizers grab slides from past talks, and attendees want calendar entries. The 2025 contest specifically praised embeddable presentation slides (Baldoni).",
+            "inspiration": "Cecilia Baldoni's embedded-slides site praised in the 2025 contest (https://theacademicdesigner.com/2025/winners-of-the-best-personal-academic-websites-contest-2025/); karpathy.ai's thumbnail-rich talks list (https://karpathy.ai)",
+            "fit": "Slides/video open in a 'Media Player' window with chunky transport buttons; the .ics download is a desktop 'calendar file' icon. Upcoming talks could surface as a desktop sticky note or taskbar balloon notification.",
+            "effort": "medium",
+            "impact": "medium"
+          },
+          {
+            "name": "System Properties — /uses + colophon",
+            "what": "A combined /uses + colophon page: research toolchain (Stata/R/Python stack, reference manager, writing setup) and how the site itself is built (Astro + R3F, CC0 Quaternius models, the texture-stripping pipeline). Students constantly ask economists about tooling, and the site's unusual build is itself a conversation piece worth documenting — karpathy's '0 frameworks were used' note and gwern's design page are among their most-shared pages.",
+            "inspiration": "uses.tech directory (https://uses.tech); gwern.net's design colophon (https://gwern.net/design); karpathy.ai's build note (https://karpathy.ai)",
+            "fit": "The canonical Win95 'System Properties' dialog (right-click My Computer → Properties): General tab = bio/specs, Hardware tab = research stack, Performance tab = site build details and asset-pipeline war stories.",
+            "effort": "small",
+            "impact": "low"
+          },
+          {
+            "name": "Guestbook.exe",
+            "what": "A retro guestbook where visitors leave a name + short note, backed by GitHub Issues/giscus or a static-form service so there's no server to run. Zero academic function but maximal 90s-web authenticity — guestbooks are the signature artifact of the era the site recreates — and it's the kind of delight feature that gets the site shared on HN/Twitter, which is realistically how a retro-OS academic site earns attention beyond its CV function.",
+            "inspiration": "Classic GeoCities-era guestbooks via uses-of-nostalgia sites like wiby.me-indexed pages; giscus for static-site comments (https://giscus.app)",
+            "fit": "Strongest theme synergy of anything on this list: in Severance, visitors sign in at reception — frame it as the 'Visitor Log' with a Lumon-style sign-in sheet, entries rendered in a ruled-paper window with timestamps. Sits on the desktop next to the existing apps.",
+            "effort": "medium",
+            "impact": "medium"
+          }
+        ]
+      }
+    ]
+  }
+}
