@@ -2745,6 +2745,74 @@ function OfficeScene({ phase, onMonitorClick }: {
    OVERLAYS — copied verbatim from Study.tsx
    ================================================================ */
 
+/* ---------- G41: BIOS Setup — persisted preferences in-fiction -------
+ * Settings live in localStorage under pg_bios. Read by a tiny inline
+ * head script (set on <html>) so they take effect before first paint. */
+const BIOS_LS = 'pg_bios_v1';
+interface BiosCfg { skipIntro: boolean; scanlines: boolean; sounds: boolean; reducedMotion: boolean; }
+const BIOS_DEFAULTS: BiosCfg = { skipIntro: false, scanlines: true, sounds: true, reducedMotion: false };
+function getBiosCfg(): BiosCfg {
+  if (typeof window === 'undefined') return BIOS_DEFAULTS;
+  try { return { ...BIOS_DEFAULTS, ...JSON.parse(localStorage.getItem(BIOS_LS) || '{}') }; }
+  catch { return BIOS_DEFAULTS; }
+}
+function setBiosCfg(c: BiosCfg) {
+  try { localStorage.setItem(BIOS_LS, JSON.stringify(c)); } catch { /* */ }
+}
+
+function BiosSetup({ onExit }: { onExit: () => void }) {
+  const [cfg, setCfg] = useState<BiosCfg>(() => getBiosCfg());
+  const [sel, setSel] = useState(0);
+  // G37 perk: finding SETUP earns "Finger Trap".
+  useEffect(() => {
+    try {
+      const cur = JSON.parse(localStorage.getItem('pg_perks_v1') || '{}');
+      if (!cur['finger-trap']) { cur['finger-trap'] = true; localStorage.setItem('pg_perks_v1', JSON.stringify(cur)); }
+    } catch { /* */ }
+  }, []);
+  const rows: { key: keyof BiosCfg; label: string }[] = [
+    { key: 'skipIntro', label: 'Skip intro on load' },
+    { key: 'scanlines', label: 'CRT scanlines' },
+    { key: 'sounds', label: 'UI sounds' },
+    { key: 'reducedMotion', label: 'Reduced motion' },
+  ];
+  const save = (c: BiosCfg) => { setCfg(c); setBiosCfg(c); };
+  const toggle = (i: number) => { const k = rows[i].key; save({ ...cfg, [k]: !cfg[k] }); playUiClick('down'); };
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowDown') { setSel(s => (s + 1) % rows.length); e.preventDefault(); }
+      else if (e.key === 'ArrowUp') { setSel(s => (s - 1 + rows.length) % rows.length); e.preventDefault(); }
+      else if (e.key === 'Enter' || e.key === ' ') { toggle(sel); e.preventDefault(); }
+      else if (e.key === 'Escape' || e.key === 'F10') { onExit(); e.preventDefault(); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [cfg, sel]); // eslint-disable-line
+  const mono = "ui-monospace, 'SF Mono', Menlo, Monaco, Consolas, monospace";
+  return (
+    <div className="bios-setup" style={{ position: 'fixed', inset: 0, zIndex: 10000, background: '#0000a8', color: '#d8d8d8', fontFamily: mono, padding: '5vh 6vw', boxSizing: 'border-box' }}>
+      <div style={{ background: '#d8d8d8', color: '#0000a8', textAlign: 'center', padding: '4px', fontWeight: 'bold', letterSpacing: '0.1em' }}>
+        prashantgarg.os — CMOS SETUP UTILITY
+      </div>
+      <div style={{ marginTop: 24, maxWidth: 560 }}>
+        {rows.map((r, i) => (
+          <div
+            key={r.key}
+            onClick={() => { setSel(i); toggle(i); }}
+            style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 12px', cursor: 'pointer', background: i === sel ? '#d8d8d8' : 'transparent', color: i === sel ? '#0000a8' : '#d8d8d8' }}
+          >
+            <span>{r.label}</span>
+            <span style={{ fontWeight: 'bold' }}>[ {cfg[r.key] ? 'ENABLED ' : 'DISABLED'} ]</span>
+          </div>
+        ))}
+      </div>
+      <div style={{ position: 'absolute', bottom: '5vh', left: '6vw', right: '6vw', fontSize: 12, color: '#a8a8c8', borderTop: '1px solid #6868a8', paddingTop: 10 }}>
+        ↑↓ Select · Enter/Space Toggle · Esc/F10 Save &amp; Exit. Changes persist on this device.
+      </div>
+    </div>
+  );
+}
+
 /* ---------- BIOS splash ---------------------------------------------- */
 function BiosScreen({ onDone }: { onDone: () => void }) {
   const [step,        setStep]        = useState(0);
@@ -2752,6 +2820,7 @@ function BiosScreen({ onDone }: { onDone: () => void }) {
   const [showPopup,   setShowPopup]   = useState(false);
   const [dismissed,   setDismissed]   = useState(false);
   const [startHover,  setStartHover]  = useState(false);
+  const [setupOpen,   setSetupOpen]   = useState(false);
   const dismissedRef = useRef(false);
   // G28c: a keypress in the first frames (held key, autorepeat, double
   // Enter) could race the splash past before first paint — enforce a
@@ -2767,7 +2836,7 @@ function BiosScreen({ onDone }: { onDone: () => void }) {
     { text: '> calibrating fluorescent ceiling',                               type: 'check'  },
     { text: '> establishing network link',                                     type: 'check'  },
     { text: '',                                                                 type: 'blank'  },
-    { text: `Press any key to skip memory test · ${new Date().getFullYear()}`, type: 'footer' },
+    { text: `Press any key to skip · DEL to enter SETUP · ${new Date().getFullYear()}`, type: 'footer' },
   ] as const;
   const DELAYS = [0, 130, 280, 420, 560, 700, 840, 960, 1060];
 
@@ -2787,17 +2856,23 @@ function BiosScreen({ onDone }: { onDone: () => void }) {
   };
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key !== 'Tab') dismiss(); };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Tab') return;
+      // G41: DEL during the splash opens CMOS Setup instead of skipping.
+      if (e.key === 'Delete' && performance.now() - mountedAtRef.current >= 300) { setSetupOpen(true); e.preventDefault(); return; }
+      if (setupOpen) return;     // setup owns the keyboard while open
+      dismiss();
+    };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, []); // eslint-disable-line
+  }, [setupOpen]); // eslint-disable-line
 
   useEffect(() => {
-    if (!showPopup) return;
+    if (!showPopup || setupOpen) return;
     const onDown = () => dismiss();
     window.addEventListener('pointerdown', onDown, { capture: true });
     return () => window.removeEventListener('pointerdown', onDown, { capture: true });
-  }, [showPopup]); // eslint-disable-line
+  }, [showPopup, setupOpen]); // eslint-disable-line
 
   const mono = "ui-monospace, 'SF Mono', Menlo, Monaco, Consolas, monospace";
   return (
@@ -2871,6 +2946,7 @@ function BiosScreen({ onDone }: { onDone: () => void }) {
         </div>
       )}
       <style>{`@keyframes bios-blink{0%,100%{opacity:1}50%{opacity:0}}@keyframes bios-popup-in{from{opacity:0;transform:scale(0.95)}to{opacity:1;transform:scale(1)}}`}</style>
+      {setupOpen && <BiosSetup onExit={() => setSetupOpen(false)} />}
     </div>
   );
 }
@@ -3344,6 +3420,8 @@ export default function Office() {
     // G30: ?app=… deep links open the desktop directly with that window
     try { if (new URLSearchParams(window.location.search).get('app')) return 'desktop'; } catch { /* */ }
     try { if (sessionStorage.getItem(SS_PHASE) === 'desktop') return 'desktop'; } catch { /* */ }
+    // G41: BIOS "Skip intro on load" jumps straight to the desktop.
+    try { if (getBiosCfg().skipIntro) return 'desktop'; } catch { /* */ }
     return 'splash';
   });
   // Lazy init is safe — this component renders client:only (no SSR

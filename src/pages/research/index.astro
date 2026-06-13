@@ -337,6 +337,29 @@ const visibleTopics = TOPIC_TAGS.filter(t => topicCounts[t.slug]);
       cb.addEventListener('click', e => e.stopPropagation());
     });
 
+    // G37 perk — "Diligent Refiner": open five different abstracts.
+    (function () {
+      const seen = new Set();
+      function award() {
+        try {
+          const p = JSON.parse(localStorage.getItem('pg_perks_v1') || '{}');
+          if (!p['refined-5']) { p['refined-5'] = true; localStorage.setItem('pg_perks_v1', JSON.stringify(p)); }
+        } catch (e) { /* */ }
+      }
+      document.querySelectorAll('details[data-paper]').forEach(d => {
+        d.addEventListener('toggle', () => {
+          if (d.open) { seen.add(d.id); if (seen.size >= 5) award(); }
+        });
+      });
+    })();
+
+    // ?topic=<tag> deep link (MDR.exe opens the filtered view this way)
+    const qTopic = new URLSearchParams(location.search).get('topic');
+    if (qTopic) {
+      const btn = document.querySelector(`[data-topic="${qTopic}"]`);
+      if (btn) btn.click();
+    }
+
     // Open paper if URL hash matches
     if (location.hash) {
       const el = document.getElementById(location.hash.slice(1));

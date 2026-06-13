@@ -5,6 +5,12 @@
 // committees in a hurry (and the accessibility/no-WebGL story).
 import { site, papers, talks, affiliations, statusMeta, education, awards, datasets, type PaperStatus } from '../data/site';
 
+// G43: press clippings grouped by paper (all coverage with article URLs).
+const pressGroups = papers
+  .filter(p => p.coverage && p.coverage.length)
+  .map(p => ({ title: p.title, slug: p.slug, items: p.coverage! }));
+const pressCount = pressGroups.reduce((n, g) => n + g.items.length, 0);
+
 const order: PaperStatus[] = ['published', 'accepted', 'rr', 'working', 'other'];
 const sectionTitles: Record<PaperStatus, string> = {
   published: 'Publications',
@@ -106,6 +112,22 @@ const current = affiliations.filter((a: any) => a.current);
     <ul>
       {affiliations.map((a: any) => <li>{a.role}, <a href={a.url}>{a.org}</a>{a.incoming ? ' (incoming)' : a.current ? '' : ' (past)'}</li>)}
     </ul>
+  </section>
+
+  <section id="press">
+    <h2>Press &amp; coverage ({pressCount})</h2>
+    <p class="meta" style="margin-bottom:0.8rem">
+      For journalists: short bio above; headshot at <a href="/photo.jpg">/photo.jpg</a>;
+      reach me at <a href={`mailto:${site.email}`}>{site.email}</a>.
+    </p>
+    {pressGroups.map(g => (
+      <div style="margin-bottom:0.7rem">
+        <strong>{g.title}</strong>
+        <div class="links">
+          {g.items.map(c => <a href={c.url} target="_blank" rel="noopener">{c.outlet}</a>)}
+        </div>
+      </div>
+    ))}
   </section>
 
   <p class="meta">Talks: {talks.length} since 2023 — <a href="/talks">full list</a>.</p>
