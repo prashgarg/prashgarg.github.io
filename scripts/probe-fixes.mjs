@@ -1,5 +1,5 @@
 import { chromium } from 'playwright';
-const BASE = 'http://localhost:4321';
+const BASE = process.argv[2] || 'http://localhost:4321';
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 const b = await chromium.launch({ headless: true });
 
