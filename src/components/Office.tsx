@@ -154,7 +154,15 @@ const CAM_MONITOR_TGT = MONITOR_WORLD.clone();
 // until it fills the viewport — we stop further back so the monitor +
 // bezel + a little room stay framed around it. Dead-on (same x/y as the
 // screen centre) so the screen reads square.
-const CAM_COMPOSITE_POS = new THREE.Vector3(MONITOR_WORLD.x, MONITOR_WORLD.y + 0.02, DESK_Z + 0.92);
+// Composite framing distance — how far the camera stops in front of the
+// screen. Smaller = bigger screen / less room (sliver of bezel); larger =
+// more 'monitor in a room'. Tunable via ?cz= during the pilot.
+const _COMPOSITE_CZ = (() => {
+  if (typeof window === 'undefined') return 0.18;
+  const v = parseFloat(new URLSearchParams(window.location.search).get('cz') || '');
+  return Number.isFinite(v) ? v : 0.18;   // ≈64% of viewport — big screen, sliver of bezel
+})();
+const CAM_COMPOSITE_POS = new THREE.Vector3(MONITOR_WORLD.x, MONITOR_WORLD.y + 0.02, DESK_Z + _COMPOSITE_CZ);
 const CAM_COMPOSITE_TGT = new THREE.Vector3(MONITOR_WORLD.x, MONITOR_WORLD.y + 0.02, MONITOR_WORLD.z);
 // URL flag — keeps the proven overlay experience as default while the
 // composited monitor is piloted at /?composite=1

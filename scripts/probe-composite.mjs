@@ -1,12 +1,13 @@
 import { chromium } from 'playwright';
 const BASE = process.argv[2] || 'http://localhost:4321';
+const CZ = process.argv[3] || '';   // framing distance to test
 const b = await chromium.launch({ headless: true });
 const p = await (await b.newContext({ viewport: { width: 1400, height: 900 } })).newPage();
 const errs = [];
 p.on('pageerror', e => errs.push(e.message.slice(0, 140)));
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
-await p.goto(BASE + '/?composite=1', { waitUntil: 'load' });
+await p.goto(BASE + '/?composite=1' + (CZ ? '&cz=' + CZ : ''), { waitUntil: 'load' });
 await sleep(1500);
 await p.keyboard.press('Enter');         // BIOS → entering
 await sleep(5000);
@@ -46,12 +47,13 @@ const st = await p.evaluate(() => {
     hasMatrix3d: !!wrap || (f ? /matrix3d/.test(f.parentElement?.parentElement?.getAttribute('style') || '') : false),
   };
 });
-console.log('COMPOSITE:', JSON.stringify(st));
-await p.screenshot({ path: 'shots/goal0612/composite-1.png' });
+const widthPct = Math.round((parseInt(st.screenBox) / 1400) * 100);
+console.log(`COMPOSITE cz=${CZ || 'default'}: ${JSON.stringify(st)} screenWidth≈${widthPct}% of viewport`);
+await p.screenshot({ path: `shots/goal0612/composite-cz${CZ || 'def'}.png` });
 
 // Interaction test: click the Research icon inside the composited iframe
 let clicked = 'skip';
-try {
+if (process.argv[4] === 'interact') try {
   const f = await p.$('iframe[src="/os"]');
   const frame = f && await f.contentFrame();
   if (frame) {
