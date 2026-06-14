@@ -15,23 +15,8 @@
  *   - minimize to taskbar button (click _ or the taskbar chip)
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { papers, talks, affiliations, site, tools, datasets, library, statusMeta, topicsForPaper, TOPIC_TAGS } from '../data/site';
-import { citationsByPaper, citationsAsOf, citationSource } from '../data/citations';
+import { papers, talks, affiliations, site } from '../data/site';
 
-// Compute the most recent paper for the homepage "Latest" card.
-// Sort by year desc, then by published > accepted > rr > working > other.
-const STATUS_RANK: Record<string, number> = { published: 5, accepted: 4, rr: 3, working: 2, other: 1 };
-const LATEST_PAPER = [...papers].sort((a, b) => {
-  const yearDiff = (b.year || 0) - (a.year || 0);
-  if (yearDiff !== 0) return yearDiff;
-  return (STATUS_RANK[b.status] || 0) - (STATUS_RANK[a.status] || 0);
-})[0];
-const LATEST_PAPER_COUNT = papers.length;
-const LATEST_TALK_COUNT = talks.length;
-
-// Current affiliations (excluding past PhD and incoming Bocconi)
-const CURRENT_AFFILIATIONS = affiliations.filter((a: any) => a.current);
-const INCOMING_AFFILIATION = affiliations.find((a: any) => a.incoming);
 
 /* ---------- Win95 CSS injected once ----------------------------------- */
 const GFONTS_HREF = 'https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;700&display=swap';
@@ -268,230 +253,67 @@ const WIN95_STYLE = `
 .win95-home {
   display: flex;
   flex-direction: column;
-  align-items: stretch;
-  justify-content: flex-start;
+  align-items: center;
+  justify-content: center;
   height: 100%;
-  padding: 28px 40px 24px;
+  padding: 32px 40px;
   box-sizing: border-box;
   overflow-y: auto;
 }
 .win95-home-header {
   text-align: center;
-  margin-bottom: 22px;
+  max-width: 640px;
 }
-/* portrait — white-matted print taped to the cream panel (G16) */
+/* portrait — white-matted print taped to the cream panel */
 .win95-home-photo {
-  width: 92px;
+  width: 110px;
   height: auto;
   display: block;
-  margin: 0 auto 12px;
-  padding: 4px;
+  margin: 0 auto 16px;
+  padding: 5px;
   background: #fff;
   box-shadow: inset 0 0 0 1px #c3c6ca, 1px 2px 0 rgba(0,0,0,0.25);
 }
-/* prose bio under the masthead (G17 — mirrors the old site's bio) */
+/* prose bio under the masthead (mirrors the old site's bio) */
 .win95-home-bio {
   font-family: Millennium, 'Times New Roman', serif;
-  font-size: 13.5px;
-  line-height: 1.55;
+  font-size: 14px;
+  line-height: 1.6;
   color: #333;
   text-align: center;
-  max-width: 620px;
-  margin: 14px auto 0;
+  max-width: 600px;
+  margin: 16px auto 0;
 }
 .win95-home-name {
   font-family: 'Cormorant Garamond', Georgia, serif;
-  font-size: 56px;
-  line-height: 0.95;
+  font-size: 44px;
+  line-height: 1.0;
   color: #1a1a1a;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 .win95-home-subtitle {
   font-family: Millennium, 'Times New Roman', serif;
   font-size: 15px;
-  color: #444;
-  margin-bottom: 14px;
-}
-.win95-home-stats {
-  display: flex;
-  gap: 14px;
-  justify-content: center;
-  font-family: MSSerif, Arial, sans-serif;
-  font-size: 11px;
-  color: #444;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-.win95-home-stats .dot {
-  color: #8a8a8a;
-}
-/* Sectioned card grid below the header */
-.win95-home-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-.win95-card {
-  background: #FFFFFF;
-  padding: 12px 14px;
-  box-shadow: inset -1px -1px #fff, inset 1px 1px #86898d,
-              inset -2px -2px #c3c6ca, inset 2px 2px #2b2b2b;
-  display: flex;
-  flex-direction: column;
-}
-.win95-card-label {
-  font-family: MSSerif, Arial, sans-serif;
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.10em;
-  color: #6a6a6a;
-  margin-bottom: 6px;
-}
-.win95-card-title {
-  font-family: 'Cormorant Garamond', Georgia, serif;
-  font-size: 17px;
-  line-height: 1.25;
-  color: #1a1a1a;
-  margin-bottom: 6px;
-}
-.win95-card-meta {
-  font-family: MSSerif, Arial, sans-serif;
-  font-size: 11px;
   color: #555;
-  margin-bottom: 8px;
 }
-.win95-card-link {
-  font-family: MSSerif, Arial, sans-serif;
-  font-size: 12px;
-  color: #0000a3;
-  text-decoration: underline;
-  cursor: pointer;
-  margin-top: auto;
-}
-.win95-card-text {
-  font-family: Millennium, serif;
-  font-size: 13px;
-  line-height: 1.45;
-  color: #2a2a2a;
-}
-.win95-home-buttons {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  justify-content: center;
-  margin-top: auto;
-  padding-top: 8px;
-}
-/* AFFILIATIONS strip — full-width below the 2-card grid */
-.win95-affil {
-  background: #FFFFFF;
-  padding: 10px 14px;
-  box-shadow: inset -1px -1px #fff, inset 1px 1px #86898d,
-              inset -2px -2px #c3c6ca, inset 2px 2px #2b2b2b;
-  margin-bottom: 12px;
-}
-.win95-affil-label {
-  font-family: MSSerif, Arial, sans-serif;
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.10em;
-  color: #6a6a6a;
-  margin-bottom: 6px;
-}
-.win95-affil-list {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.win95-affil-row {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-  font-family: Millennium, serif;
-  font-size: 13px;
-  line-height: 1.35;
-}
-.win95-affil-role { color: #6a6a6a; min-width: 0; flex-shrink: 0; }
-.win95-affil-org {
-  color: #1a1a1a; text-decoration: none;
-  border-bottom: 1px dotted rgba(0,0,0,0.30);
-}
-.win95-affil-org:hover { color: #0000a3; }
-.win95-affil-tag {
-  font-family: MSSerif, Arial, sans-serif;
-  font-size: 9px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  padding: 1px 5px;
-  background: #c3c6ca;
-  color: #2b2b2b;
-  margin-left: auto;
-  /* don't let flex squeeze the tag into "CURREN…" on narrow viewports (G8) */
-  flex-shrink: 0;
-  white-space: nowrap;
-}
-@media (max-width: 700px) {
-  .win95-affil-row { flex-wrap: wrap; }
-  /* long roles ("Postdoctoral Researcher (from Sept 2026)") must be
-     allowed to shrink + wrap on phones or they clip at the row edge */
-  .win95-affil-role { flex-shrink: 1; }
-}
-.win95-affil-tag.current  { background: #d8e8c8; color: #2a4a18; }
-.win95-affil-tag.incoming { background: #ffe4b8; color: #6a3500; }
 
-/* CONTACT strip — email + icon buttons */
+/* CONTACT strip — plain old-site text-link row (no buttons, no glyphs) */
 .win95-contact {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 8px;
-  padding: 8px 12px;
-  margin-bottom: 12px;
-  background: #c3c6ca;
-  box-shadow: inset -1px -1px #fff, inset 1px 1px #86898d;
+  gap: 6px 8px;
+  margin-top: 14px;
 }
-.win95-contact-email {
-  font-family: 'Courier New', monospace;
-  font-size: 12px;
-  color: #1a1a1a;
-  user-select: all;
-}
-.win95-copy-btn {
-  font-family: MSSerif, Arial, sans-serif;
-  font-size: 10px;
-  padding: 2px 6px;
-  background: #c3c6ca;
-  border: none;
-  cursor: pointer;
-  box-shadow: inset -1px -1px #2b2b2b, inset 1px 1px #fff;
-  color: #1a1a1a;
-}
-.win95-copy-btn:active {
-  box-shadow: inset -1px -1px #fff, inset 1px 1px #2b2b2b;
-}
-.win95-copy-btn.copied { background: #d8e8c8; }
-.win95-contact-spacer { flex: 1; }
 .win95-contact-link {
-  font-family: MSSerif, Arial, sans-serif;
-  font-size: 11px;
-  padding: 3px 10px;
-  background: #c3c6ca;
-  border: none;
-  cursor: pointer;
-  box-shadow: inset -1px -1px #2b2b2b, inset 1px 1px #fff,
-              inset -2px -2px #86898d, inset 2px 2px #c3c6ca;
+  font-family: Millennium, 'Times New Roman', serif;
+  font-size: 13px;
+  color: #0000a3;
   text-decoration: none;
-  color: #1a1a1a;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
+  border-bottom: 1px dotted rgba(0,0,32,0.35);
 }
-.win95-contact-link:hover { background: #d4d8dc; }
-.win95-contact-link:active {
-  box-shadow: inset -1px -1px #fff, inset 1px 1px #2b2b2b,
-              inset -2px -2px #c3c6ca, inset 2px 2px #86898d;
-}
+.win95-contact-link:hover { color: #0000ee; }
+.win95-contact-sep { color: #8a8a8a; font-size: 12px; }
 .win95-btn {
   font-family: Millennium, serif;
   font-size: 15px;
@@ -734,11 +556,10 @@ const WIN95_STYLE = `
 }
 @media (max-width: 700px) {
   .win95-desktop-home { left: 104px; right: 8px; }
-  /* collapse the two-card grid + shrink the masthead so the panel reads
-     cleanly in the ~280px column beside the icons */
+  /* shrink the masthead so the panel reads cleanly in the narrow
+     column beside the icons */
   .win95-desktop-home .win95-home { padding: 16px 14px 14px; }
   .win95-desktop-home .win95-home-name { font-size: 34px; }
-  .win95-desktop-home .win95-home-grid { grid-template-columns: 1fr; }
 }
 .win95-icon {
   display: flex;
@@ -965,93 +786,6 @@ const WIN95_STYLE = `
 .win95-screensaver-mark b { color: #E8EEDF; }
 .win95-screensaver-sub { font-size: 10px; opacity: 0.6; margin-top: 4px; }
 
-/* ===== Phase 4 component apps ===== */
-.win95-link-btn { background: none; border: none; color: #0000a3; cursor: pointer; text-decoration: underline; font: inherit; padding: 0 4px; }
-
-/* G38 Terminal */
-.win95-term { height: 100%; overflow-y: auto; background: #0a1410; color: #9fe8cf; font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 13px; line-height: 1.45; padding: 10px; cursor: text; }
-.win95-term-line { white-space: pre-wrap; word-break: break-word; }
-.win95-term-input-row { display: flex; gap: 6px; }
-.win95-term-input { flex: 1; background: transparent; border: none; color: #9fe8cf; font: inherit; outline: none; }
-
-/* G39 Files */
-.win95-files { height: 100%; display: flex; flex-direction: column; background: #fff; }
-.win95-files-bar { display: flex; gap: 2px; padding: 4px; background: #c3c6ca; flex-shrink: 0; box-shadow: inset 0 -1px #86898d; }
-.win95-files-tab { font-family: MSSerif, Arial, sans-serif; font-size: 12px; padding: 3px 10px; background: #c3c6ca; border: none; cursor: pointer; color: #000; box-shadow: inset -1px -1px #2b2b2b, inset 1px 1px #fff, inset -2px -2px #86898d, inset 2px 2px #c3c6ca; }
-.win95-files-tab.active { box-shadow: inset -1px -1px #fff, inset 1px 1px #2b2b2b, inset -2px -2px #c3c6ca, inset 2px 2px #86898d; }
-.win95-files-body { flex: 1; overflow-y: auto; padding: 10px; }
-.win95-files-folder { margin-bottom: 14px; }
-.win95-files-folder-name { font-family: MSSerif, Arial, sans-serif; font-size: 12px; font-weight: bold; color: #333; margin-bottom: 6px; }
-.win95-files-grid { display: grid; grid-template-columns: repeat(auto-fill, 92px); gap: 8px; }
-.win95-file { display: flex; flex-direction: column; align-items: center; gap: 3px; width: 92px; padding: 6px 2px; background: none; border: 1px solid transparent; cursor: pointer; text-decoration: none; }
-.win95-file:hover { border: 1px dotted #888; background: rgba(0,0,128,0.06); }
-.win95-file-ico { font-size: 26px; line-height: 1; }
-.win95-file-label { font-family: MSSerif, Arial, sans-serif; font-size: 10.5px; color: #1a1a1a; text-align: center; word-break: break-word; }
-
-/* G40 System Monitor */
-.win95-sysmon { height: 100%; overflow-y: auto; background: #c3c6ca; padding: 12px; font-family: MSSerif, Arial, sans-serif; font-size: 12px; color: #000; }
-.win95-sysmon-graph { background: #000; padding: 8px; box-shadow: inset 1px 1px #2b2b2b, inset -1px -1px #fff; }
-.win95-sysmon-graph-title { color: #39e639; font-size: 11px; margin-bottom: 6px; }
-.win95-sysmon-bars { display: flex; align-items: flex-end; gap: 6px; height: 90px; }
-.win95-sysmon-bar-col { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; flex: 1; height: 100%; }
-.win95-sysmon-bar { width: 100%; background: #39e639; min-height: 2px; }
-.win95-sysmon-bar-lbl { color: #39e639; font-size: 9px; margin-top: 3px; }
-.win95-sysmon-stats { display: flex; gap: 16px; margin: 12px 0; padding: 8px; box-shadow: inset -1px -1px #fff, inset 1px 1px #86898d; }
-.win95-sysmon-stats b { font-size: 15px; }
-.win95-sysmon-table { width: 100%; border-collapse: collapse; background: #fff; box-shadow: inset 1px 1px #2b2b2b, inset -1px -1px #fff; }
-.win95-sysmon-table th, .win95-sysmon-table td { text-align: left; padding: 4px 6px; border-bottom: 1px solid #d4d4d4; font-size: 11px; }
-.win95-sysmon-table th { background: #c3c6ca; }
-.win95-sysmon-table td:last-child, .win95-sysmon-table th:last-child { text-align: right; }
-.win95-sysmon-note { font-size: 10.5px; color: #444; margin-top: 10px; line-height: 1.5; }
-
-/* G42 Help */
-.win95-help { height: 100%; display: flex; background: #fff; }
-.win95-help-toc { width: 160px; flex-shrink: 0; background: #c3c6ca; padding: 8px 4px; box-shadow: inset -1px 0 #86898d; }
-.win95-help-toc-title { font-family: MSSerif, Arial, sans-serif; font-size: 11px; font-weight: bold; color: #333; padding: 2px 6px 6px; }
-.win95-help-toc-item { display: block; width: 100%; text-align: left; background: none; border: none; cursor: pointer; font-family: MSSerif, Arial, sans-serif; font-size: 12px; padding: 4px 6px; color: #000; }
-.win95-help-toc-item.active { background: #000080; color: #fff; }
-.win95-help-content { flex: 1; overflow-y: auto; padding: 14px 18px; }
-.win95-help-content h3 { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 1.5rem; margin: 0 0 10px; }
-.win95-help-content p { font-size: 13px; line-height: 1.6; margin: 0 0 10px; color: #1a1a1a; }
-
-/* G46 Org Chart */
-.win95-orgchart { height: 100%; display: flex; flex-direction: column; background: #fff; }
-.win95-orgchart svg { flex: 1; }
-.win95-orgchart-legend { flex-shrink: 0; padding: 8px 12px; font-family: MSSerif, Arial, sans-serif; font-size: 11px; color: #333; background: #c3c6ca; box-shadow: inset 0 1px #fff; }
-
-/* G45 Lumon FM */
-.win95-fm { height: 100%; padding: 14px; background: #c3c6ca; display: flex; flex-direction: column; gap: 12px; font-family: MSSerif, Arial, sans-serif; }
-.win95-fm-display { background: #0a1410; color: #9fe8cf; padding: 12px; box-shadow: inset 1px 1px #2b2b2b, inset -1px -1px #fff; font-family: ui-monospace, monospace; }
-.win95-fm-channel { font-size: 15px; }
-.win95-fm-status { font-size: 11px; opacity: 0.7; margin-top: 4px; }
-.win95-fm-controls { display: flex; align-items: center; gap: 10px; }
-.win95-fm-note { font-size: 10.5px; color: #444; }
-
-/* G37 Perks */
-.win95-perks { height: 100%; overflow-y: auto; padding: 12px; background: #c3c6ca; font-family: MSSerif, Arial, sans-serif; }
-.win95-perks-head { font-size: 13px; font-weight: bold; margin-bottom: 10px; color: #000; }
-.win95-perks-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
-.win95-perk { background: #b7babe; padding: 8px; text-align: center; box-shadow: inset -1px -1px #fff, inset 1px 1px #86898d; opacity: 0.8; }
-.win95-perk.earned { background: #d8e8c8; opacity: 1; }
-.win95-perk-badge { font-size: 22px; color: #b58a00; }
-.win95-perk.earned .win95-perk-badge { color: #2a7a1a; }
-.win95-perk-name { font-size: 11.5px; font-weight: bold; color: #1a1a1a; margin: 2px 0; }
-.win95-perk-hint { font-size: 10px; color: #555; }
-
-/* G37 MDR */
-.win95-mdr { height: 100%; display: flex; flex-direction: column; background: #0a1410; padding: 10px; gap: 10px; }
-.win95-mdr-head { color: #9fe8cf; font-family: ui-monospace, monospace; font-size: 12px; }
-.win95-mdr-canvas { width: 100%; height: auto; background: #0a1410; box-shadow: inset 0 0 0 1px #2C4434; image-rendering: auto; }
-.win95-mdr-bins { display: flex; gap: 4px; }
-.win95-mdr-bin { flex: 1; background: #0E1B16; border: 1px solid #2C4434; cursor: pointer; padding: 5px 3px; color: #9fe8cf; font-family: ui-monospace, monospace; }
-.win95-mdr-bin.active { border-color: #9fe8cf; }
-.win95-mdr-bin.full { background: #173a2a; }
-.win95-mdr-bin-label { font-size: 9px; line-height: 1.2; min-height: 22px; }
-.win95-mdr-bin-bar { height: 5px; background: #06100c; margin: 3px 0; }
-.win95-mdr-bin-bar > div { height: 100%; background: #9fe8cf; transition: width 0.2s; }
-.win95-mdr-bin-pct { font-size: 9px; }
-.win95-mdr-controls { display: flex; align-items: center; gap: 10px; }
-.win95-mdr-note { color: #6fae93; font-family: ui-monospace, monospace; font-size: 10px; }
 `;
 
 /* ---------- synthesised UI click sounds (Henry Heffernan pattern, MIT) ---
@@ -1301,487 +1035,8 @@ const NAV_LINKS: { label: string; href: string }[] = [
   { label: 'CV',       href: '/cv'       },
 ];
 
-/* ====================================================================
-   PHASE 4 — flagship component apps (G37-G46)
-   ==================================================================== */
-
-// Shared BibTeX builder (same logic as the research pages).
-function bibName(full: string): string {
-  const parts = full.trim().split(/\s+/);
-  return parts.length < 2 ? full : `${parts[parts.length - 1]}, ${parts.slice(0, -1).join(' ')}`;
-}
-function paperBibTeX(p: typeof papers[number]): string {
-  const key = `garg${p.year || ''}${p.slug.split('-')[0]}`;
-  const entryType = p.venue && /journal|review|economics|nature|science|letters/i.test(p.venue) ? 'article' : 'misc';
-  const author = ['Prashant Garg', ...p.coauthors].map(bibName).join(' and ');
-  const natureId = p.links.map(l => l.url.match(/nature\.com\/articles\/([a-z0-9.-]+)/i)?.[1]).find(Boolean);
-  const url = p.links[0]?.url || `${site.origin}/research/${p.slug}`;
-  return [
-    `@${entryType}{${key},`,
-    `  author = {${author}},`,
-    `  title  = {${p.title}},`,
-    ...(p.venue ? [`  journal = {${p.venue.replace(/\s*\((Forthcoming|R&R)\)\s*$/i, '')}},`] : []),
-    ...(p.year ? [`  year   = {${p.year}},`] : []),
-    ...(natureId ? [`  doi    = {10.1038/${natureId}},`] : []),
-    `  url    = {${url}}`,
-    '}',
-  ].join('\n');
-}
-async function copyText(s: string): Promise<boolean> {
-  try { await navigator.clipboard.writeText(s); return true; }
-  catch { try { window.prompt('Copy:', s); return true; } catch { return false; } }
-}
-
-/* ---------- G38: Terminal.exe — C:\> with real academic commands ----- */
-const TERM_HELP = [
-  'Available commands:',
-  '  help                 show this list',
-  '  papers [--year YYYY] list papers (optionally by year)',
-  '  cite <id>            print + copy a paper\'s BibTeX',
-  '  open <app>           open research|talks|library|now|cv',
-  '  cv                   open the CV',
-  '  now                  what I\'m working on',
-  '  whoami               short bio',
-  '  clear                clear the screen',
-];
-function TerminalApp({ api }: { api: AppApi }) {
-  const [lines, setLines] = useState<string[]>([
-    'prashantgarg.os  [Version 1.0]', '(c) Prashant Garg. Type "help" to begin.', '',
-  ]);
-  const [val, setVal] = useState('');
-  const endRef = useRef<HTMLDivElement | null>(null);
-  const inputRef = useRef<HTMLInputElement | null>(null);
-  useEffect(() => { endRef.current?.scrollIntoView(); }, [lines]);
-  const print = (...ls: string[]) => setLines(prev => [...prev, ...ls]);
-  const run = async (raw: string) => {
-    const cmd = raw.trim();
-    print(`C:\\> ${cmd}`);
-    const [verb, ...args] = cmd.split(/\s+/);
-    const v = (verb || '').toLowerCase();
-    if (!v) { /* blank */ }
-    else if (v === 'help') print(...TERM_HELP);
-    else if (v === 'clear') { setLines([]); return; }
-    else if (v === 'whoami') print(site.bio);
-    else if (v === 'now') print('Cambridge, June 2026 — building the Global Automation Atlas.');
-    else if (v === 'cv') { api.openApp('cv'); print('Opening CV…'); }
-    else if (v === 'open') {
-      const t = (args[0] || '').toLowerCase();
-      if (['research','talks','library','now','cv'].includes(t)) { api.openApp(t as AppId); print(`Opening ${t}…`); }
-      else print(`open: unknown app '${args[0] || ''}'.`);
-    }
-    else if (v === 'papers') {
-      let list = papers;
-      const yi = args.indexOf('--year');
-      if (yi >= 0 && args[yi + 1]) list = list.filter(p => String(p.year) === args[yi + 1]);
-      if (!list.length) print('No papers match.');
-      else list.forEach(p => print(`  ${p.slug.padEnd(34)} ${p.year || '—'}  ${statusMeta[p.status].label}`));
-      print(`(${list.length} paper${list.length === 1 ? '' : 's'})  — try: cite ${list[0]?.slug || '<id>'}`);
-    }
-    else if (v === 'cite') {
-      const id = (args[0] || '').toLowerCase();
-      const p = papers.find(x => x.slug === id || x.slug.includes(id));
-      if (!p) { print(`cite: no paper matching '${args[0] || ''}'. Try: papers`); playErrorDing(); }
-      else { const bib = paperBibTeX(p); print(...bib.split('\n')); const ok = await copyText(bib); print(ok ? '— copied to clipboard ✓' : ''); api.awardPerk('cite'); }
-    }
-    else if (['lumon','kier'].includes(v)) print('"The remembered man does not die." — Kier Eagan');
-    else if (v === 'overtime') print('Overtime Contingency is engaged from the Start menu.');
-    else { print(`'${verb}' is not recognized. Type "help".`); playErrorDing(); }
-    print('');
-  };
-  return (
-    <div className="win95-term" onClick={() => inputRef.current?.focus()}>
-      {lines.map((l, i) => <div key={i} className="win95-term-line">{l || ' '}</div>)}
-      <div className="win95-term-input-row">
-        <span>C:\&gt;</span>
-        <input
-          ref={inputRef}
-          className="win95-term-input"
-          value={val}
-          spellCheck={false}
-          autoFocus
-          onChange={e => setVal(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter') { run(val); setVal(''); } }}
-        />
-      </div>
-      <div ref={endRef} />
-    </div>
-  );
-}
-
-/* ---------- G39: My Documents — file explorer + Recycle Bin --------- */
-function FilesApp({ api }: { api: AppApi }) {
-  const [bin, setBin] = useState(false);
-  const folders = [
-    { name: 'Published', items: papers.filter(p => p.status === 'published') },
-    { name: 'Forthcoming', items: papers.filter(p => p.status === 'accepted') },
-    { name: 'Working papers', items: papers.filter(p => p.status === 'working' || p.status === 'rr') },
-    { name: 'Essays', items: papers.filter(p => p.status === 'other') },
-  ].filter(f => f.items.length);
-  const recycled = [
-    'rejected_draft_v7.doc', 'null_results_final_FINAL.xlsx', 'referee_2_comments.txt',
-    'identification_strategy_that_didnt_work.do', 'abstract_attempt_11.txt', 'reviewer_response_(angry).md',
-  ];
-  return (
-    <div className="win95-files">
-      <div className="win95-files-bar">
-        <button className={`win95-files-tab ${!bin ? 'active' : ''}`} onClick={() => { playUiClick('down','tap'); setBin(false); }}>📁 My Documents</button>
-        <button className={`win95-files-tab ${bin ? 'active' : ''}`} onClick={() => { playUiClick('down','tap'); setBin(true); }}>🗑 Recycle Bin</button>
-      </div>
-      {!bin ? (
-        <div className="win95-files-body">
-          {folders.map(f => (
-            <div key={f.name} className="win95-files-folder">
-              <div className="win95-files-folder-name">{f.name}</div>
-              <div className="win95-files-grid">
-                {f.items.map(p => (
-                  <button key={p.slug} className="win95-file" title={p.title}
-                    onDoubleClick={() => api.openApp('research', undefined, `/research/${p.slug}`)}
-                    onClick={(e) => { if ((e as any).detail === 1) playUiClick('down','tap'); }}>
-                    <span className="win95-file-ico">📄</span>
-                    <span className="win95-file-label">{p.slug}.pdf</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          ))}
-          <div className="win95-files-folder">
-            <div className="win95-files-folder-name">Data (open / public goods)</div>
-            <div className="win95-files-grid">
-              {datasets.map(d => (
-                <a key={d.name} className="win95-file" href={d.links[0].url} target="_blank" rel="noopener" title={d.blurb}>
-                  <span className="win95-file-ico">🗄</span>
-                  <span className="win95-file-label">{d.links[0].label}</span>
-                </a>
-              ))}
-              <a className="win95-file" href="/cv.pdf" target="_blank" rel="noopener">
-                <span className="win95-file-ico">📄</span><span className="win95-file-label">CV.pdf</span>
-              </a>
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="win95-files-body">
-          <div className="win95-files-folder-name" style={{ marginBottom: 8 }}>The academic file drawer — where projects go to rest.</div>
-          <div className="win95-files-grid">
-            {recycled.map(r => (
-              <div key={r} className="win95-file" style={{ cursor: 'default', opacity: 0.85 }}>
-                <span className="win95-file-ico">🗎</span>
-                <span className="win95-file-label">{r}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* ---------- G40: System Monitor — citations as Task Manager ---------- */
-function SysMonApp() {
-  const byYear = useMemo(() => {
-    const m = new Map<number, number>();
-    for (const p of papers) if (p.year) m.set(p.year, (m.get(p.year) || 0) + 1);
-    return [...m.entries()].sort((a, b) => a[0] - b[0]);
-  }, []);
-  const maxY = Math.max(1, ...byYear.map(([, n]) => n));
-  const cited = papers.filter(p => citationsByPaper[p.slug] != null)
-    .map(p => ({ p, c: citationsByPaper[p.slug] }))
-    .sort((a, b) => b.c - a.c);
-  const indexed = cited.reduce((s, x) => s + x.c, 0);
-  return (
-    <div className="win95-sysmon">
-      <div className="win95-sysmon-graph">
-        <div className="win95-sysmon-graph-title">Output — papers per year</div>
-        <div className="win95-sysmon-bars">
-          {byYear.map(([y, n]) => (
-            <div key={y} className="win95-sysmon-bar-col">
-              <div className="win95-sysmon-bar" style={{ height: `${(n / maxY) * 100}%` }} title={`${n} in ${y}`} />
-              <div className="win95-sysmon-bar-lbl">{String(y).slice(2)}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-      <div className="win95-sysmon-stats">
-        <span><b>{papers.length}</b> papers</span>
-        <span><b>{talks.length}</b> talks</span>
-        <span><b>{indexed}</b> indexed citations</span>
-      </div>
-      <table className="win95-sysmon-table">
-        <thead><tr><th>Paper</th><th>Year</th><th>Citations</th></tr></thead>
-        <tbody>
-          {cited.map(({ p, c }) => (
-            <tr key={p.slug}><td title={p.title}>{p.title.length > 44 ? p.title.slice(0, 42) + '…' : p.title}</td><td>{p.year || '—'}</td><td>{c}</td></tr>
-          ))}
-        </tbody>
-      </table>
-      <div className="win95-sysmon-note">
-        Citation counts as indexed by {citationSource}, {citationsAsOf} — conservative for recent
-        preprints, and OpenAlex conflates this profile with an unrelated author.{' '}
-        <a href={site.scholar} target="_blank" rel="noopener">Google Scholar</a> is authoritative.
-      </div>
-    </div>
-  );
-}
-
-/* ---------- G42: Help.exe — Employee Handbook (SCAFFOLD) ------------- */
-const HELP_PAGES: { id: string; title: string; body: string[] }[] = [
-  { id: 'welcome', title: 'Welcome', body: [
-    'This handbook collects practical notes for students and early-career researchers.',
-    'DRAFT — these starter pages use generic, widely-shared guidance and are flagged for the author to replace with his own advice.',
-  ]},
-  { id: 'emailing', title: 'Emailing professors', body: [
-    'Keep it short. State who you are, what you want, and why you are writing to this person specifically.',
-    'Do your homework first: read a paper or two so the email shows you have a reason to reach out.',
-    'One clear ask beats three vague ones. Make the reply a two-minute job.',
-    '(Draft — replace with the author\'s own advice.)',
-  ]},
-  { id: 'ra', title: 'Being a good RA', body: [
-    'Version everything. Your future self and your PI will thank you.',
-    'When a task is ambiguous, write down your assumptions and send them before spending a day on it.',
-    'Reproducibility is a gift you give the next person — often yourself.',
-    '(Draft — replace with the author\'s own advice.)',
-  ]},
-];
-function HelpApp() {
-  const [page, setPage] = useState(HELP_PAGES[0].id);
-  const cur = HELP_PAGES.find(p => p.id === page)!;
-  return (
-    <div className="win95-help">
-      <div className="win95-help-toc">
-        <div className="win95-help-toc-title">Contents</div>
-        {HELP_PAGES.map(p => (
-          <button key={p.id} className={`win95-help-toc-item ${p.id === page ? 'active' : ''}`} onClick={() => { playUiClick('down','tap'); setPage(p.id); }}>{p.title}</button>
-        ))}
-      </div>
-      <div className="win95-help-content">
-        <h3>{cur.title}</h3>
-        {cur.body.map((b, i) => <p key={i}>{b}</p>)}
-      </div>
-    </div>
-  );
-}
-
-/* ---------- G46: Org Chart — coauthor / topic network --------------- */
-function OrgChartApp({ api }: { api: AppApi }) {
-  // Build a simple radial layout: center = me, ring 1 = topics, papers
-  // attach to topics; clicking a paper opens it.
-  const W = 560, H = 420, cx = W / 2, cy = H / 2;
-  const coauthors = useMemo(() => {
-    const m = new Map<string, number>();
-    for (const p of papers) for (const c of p.coauthors) m.set(c, (m.get(c) || 0) + 1);
-    return [...m.entries()].sort((a, b) => b[1] - a[1]);
-  }, []);
-  const nodes = coauthors.map(([name, n], i) => {
-    const ang = (i / coauthors.length) * Math.PI * 2 - Math.PI / 2;
-    const r = 150 + (i % 2) * 28;
-    return { name, n, x: cx + Math.cos(ang) * r, y: cy + Math.sin(ang) * r * 0.78 };
-  });
-  return (
-    <div className="win95-orgchart">
-      <svg viewBox={`0 0 ${W} ${H}`} width="100%" height="100%" style={{ display: 'block' }}>
-        {nodes.map(nd => (
-          <line key={`l-${nd.name}`} x1={cx} y1={cy} x2={nd.x} y2={nd.y} stroke="#86898d" strokeWidth={1} />
-        ))}
-        {nodes.map(nd => (
-          <g key={nd.name} transform={`translate(${nd.x},${nd.y})`}>
-            <circle r={6 + nd.n * 2} fill="#27443A" stroke="#fff" strokeWidth={1} />
-            <text x={0} y={-(10 + nd.n * 2)} textAnchor="middle" fontSize={10} fill="#1a1a1a">{nd.name}</text>
-            <text x={0} y={4} textAnchor="middle" fontSize={9} fill="#fff">{nd.n}</text>
-          </g>
-        ))}
-        <circle cx={cx} cy={cy} r={26} fill="#0000a3" stroke="#fff" strokeWidth={2} />
-        <text x={cx} y={cy + 3} textAnchor="middle" fontSize={11} fill="#fff" fontWeight="bold">PG</text>
-      </svg>
-      <div className="win95-orgchart-legend">
-        Co-author network — bubble size = joint papers. Open a paper from
-        <button className="win95-link-btn" onClick={() => api.openApp('research')}>Research</button>.
-      </div>
-    </div>
-  );
-}
-
-/* ---------- G45: Lumon FM — ambient drone player (CONDITIONAL) -------
- * No CC-licensed track files are bundled, so this ships a single
- * WebAudio-synthesised "MDR Drone" channel (zero assets). Real curated
- * channels await user-supplied, properly-licensed audio. */
-function LumonFmApp() {
-  const [playing, setPlaying] = useState(false);
-  const nodesRef = useRef<{ ac: AudioContext; stop: () => void } | null>(null);
-  const start = () => {
-    const ac = getUiAc(); if (!ac) return;
-    const master = ac.createGain();
-    master.gain.value = 0.04 * getUiVolume();
-    master.connect(ac.destination);
-    const freqs = [55, 82.41, 110, 164.81];
-    const oscs = freqs.map((f, i) => {
-      const o = ac.createOscillator(); o.type = i % 2 ? 'sine' : 'triangle'; o.frequency.value = f;
-      const g = ac.createGain(); g.gain.value = 1 / freqs.length;
-      const lfo = ac.createOscillator(); lfo.frequency.value = 0.05 + i * 0.03;
-      const lg = ac.createGain(); lg.gain.value = 0.4; lfo.connect(lg); lg.connect(g.gain);
-      o.connect(g); g.connect(master); o.start(); lfo.start();
-      return { o, lfo };
-    });
-    nodesRef.current = { ac, stop: () => { oscs.forEach(({ o, lfo }) => { try { o.stop(); lfo.stop(); } catch { /* */ } }); try { master.disconnect(); } catch { /* */ } } };
-    setPlaying(true);
-  };
-  const stop = () => { nodesRef.current?.stop(); nodesRef.current = null; setPlaying(false); };
-  useEffect(() => () => { nodesRef.current?.stop(); }, []);
-  return (
-    <div className="win95-fm">
-      <div className="win95-fm-display">
-        <div className="win95-fm-channel">▶ MDR Drone</div>
-        <div className="win95-fm-status">{playing ? 'NOW PLAYING · synthesised ambient' : 'STOPPED'}</div>
-      </div>
-      <div className="win95-fm-controls">
-        {!playing
-          ? <button className="win95-btn" onClick={() => { playUiClick('down','soft'); start(); }}>▶ Play</button>
-          : <button className="win95-btn" onClick={() => { playUiClick('down','soft'); stop(); }}>■ Stop</button>}
-        <span className="win95-fm-note">Volume follows the taskbar slider. Curated tracks await licensed files.</span>
-      </div>
-    </div>
-  );
-}
-
-/* ---------- G37: Perks &amp; Incentives — achievement tracker -------- */
-const PERKS: { id: string; name: string; hint: string }[] = [
-  { id: 'finger-trap', name: 'Finger Trap', hint: 'Find the BIOS setup screen' },
-  { id: 'waffle-party', name: 'Waffle Party', hint: 'Refine all five bins in MDR.exe' },
-  { id: 'music-dance', name: 'Music Dance Experience', hint: 'Use the volume slider' },
-  { id: 'cite', name: 'Kier Citation', hint: 'Copy a BibTeX entry' },
-  { id: 'wellness', name: 'Wellness Session', hint: 'Attend a wellness session' },
-  { id: 'overtime', name: 'Overtime Contingency', hint: 'Trigger the innie/outie switch' },
-  { id: 'refined-5', name: 'Diligent Refiner', hint: 'Read five abstracts' },
-];
-const LS_PERKS = 'pg_perks_v1';
-function getPerks(): Record<string, boolean> {
-  try { return JSON.parse(localStorage.getItem(LS_PERKS) || '{}'); } catch { return {}; }
-}
-function awardPerkGlobal(id: string) {
-  try {
-    const cur = getPerks();
-    if (cur[id]) return;
-    cur[id] = true;
-    localStorage.setItem(LS_PERKS, JSON.stringify(cur));
-    window.dispatchEvent(new CustomEvent('pg-perk', { detail: id }));
-  } catch { /* */ }
-}
-function PerksApp() {
-  const [state, setState] = useState<Record<string, boolean>>(() => getPerks());
-  useEffect(() => {
-    const on = () => setState(getPerks());
-    window.addEventListener('pg-perk', on);
-    return () => window.removeEventListener('pg-perk', on);
-  }, []);
-  const earned = PERKS.filter(p => state[p.id]).length;
-  return (
-    <div className="win95-perks">
-      <div className="win95-perks-head">Perks &amp; Incentives — {earned} / {PERKS.length} earned</div>
-      <div className="win95-perks-grid">
-        {PERKS.map(p => (
-          <div key={p.id} className={`win95-perk ${state[p.id] ? 'earned' : ''}`}>
-            <div className="win95-perk-badge">{state[p.id] ? '★' : '☆'}</div>
-            <div className="win95-perk-name">{state[p.id] ? p.name : '???'}</div>
-            <div className="win95-perk-hint">{p.hint}</div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/* ---------- G37: MDR.exe — Macrodata Refinement mini-game ------------
- * A grid of wiggling digits; "scary" clusters tremble. Lasso-select a
- * cluster and bin it into one of five research topics; filling a bin
- * opens that topic's filtered Research view. Original art only. */
-const MDR_BINS = [
-  { key: 'ai', label: 'AI & automation', topic: 'ai' },
-  { key: 'academia', label: 'Academia', topic: 'academia' },
-  { key: 'networks', label: 'Networks', topic: 'networks' },
-  { key: 'media', label: 'Media', topic: 'media' },
-  { key: 'politics', label: 'Politics', topic: 'politics' },
-];
-function MdrApp({ api }: { api: AppApi }) {
-  const COLS = 20, ROWS = 10;
-  const [progress, setProgress] = useState<number[]>(() => MDR_BINS.map(() => 0));
-  const [active, setActive] = useState(0);
-  const [refined, setRefined] = useState(0);
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const cellsRef = useRef<{ d: number; scary: boolean; ph: number }[]>([]);
-  const rafRef = useRef(0);
-  const doneRef = useRef(false);
-  if (cellsRef.current.length === 0) {
-    for (let i = 0; i < COLS * ROWS; i++) {
-      // deterministic-ish "randomness" from index (no Math.random per harness rules elsewhere; fine here but keep stable)
-      const r = Math.abs(Math.sin(i * 12.9898) * 43758.5453) % 1;
-      cellsRef.current.push({ d: Math.floor(r * 10), scary: r > 0.78, ph: r * Math.PI * 2 });
-    }
-  }
-  useEffect(() => {
-    const cv = canvasRef.current; if (!cv) return;
-    const ctx = cv.getContext('2d'); if (!ctx) return;
-    let t0 = performance.now();
-    const draw = (now: number) => {
-      const t = (now - t0) / 1000;
-      const W = cv.width, H = cv.height;
-      ctx.clearRect(0, 0, W, H);
-      ctx.fillStyle = '#0a1410'; ctx.fillRect(0, 0, W, H);
-      ctx.font = '13px ui-monospace, monospace';
-      const cw = W / COLS, ch = H / ROWS;
-      cellsRef.current.forEach((c, i) => {
-        const col = i % COLS, row = Math.floor(i / COLS);
-        const wig = c.scary ? Math.sin(t * 6 + c.ph) * 2.2 : Math.sin(t * 1.5 + c.ph) * 0.7;
-        const x = col * cw + cw / 2, y = row * ch + ch / 2 + wig;
-        ctx.fillStyle = c.scary ? '#9fe8cf' : 'rgba(120,170,150,0.5)';
-        ctx.textAlign = 'center';
-        ctx.fillText(String(c.d), x, y);
-      });
-      rafRef.current = requestAnimationFrame(draw);
-    };
-    rafRef.current = requestAnimationFrame(draw);
-    return () => cancelAnimationFrame(rafRef.current);
-  }, []);
-  const refine = () => {
-    // "refine" the scary numbers into the active bin
-    const scaryCount = cellsRef.current.filter(c => c.scary).length || 1;
-    setProgress(prev => {
-      const next = [...prev];
-      next[active] = Math.min(100, next[active] + 22);
-      if (next[active] >= 100 && !doneRef.current) {
-        // open the filtered research view for this bin's topic
-        api.openApp('research', undefined, `/research?topic=${MDR_BINS[active].topic}`);
-      }
-      if (next.every(v => v >= 100)) { doneRef.current = true; api.awardPerk('waffle-party'); }
-      return next;
-    });
-    setRefined(r => r + scaryCount);
-    playUiClick('down', 'soft');
-  };
-  return (
-    <div className="win95-mdr">
-      <div className="win95-mdr-head">Macrodata Refinement — refine the scary numbers into their bin</div>
-      <canvas ref={canvasRef} width={520} height={210} className="win95-mdr-canvas" />
-      <div className="win95-mdr-bins">
-        {MDR_BINS.map((b, i) => (
-          <button key={b.key} className={`win95-mdr-bin ${i === active ? 'active' : ''} ${progress[i] >= 100 ? 'full' : ''}`} onClick={() => { playUiClick('down','tap'); setActive(i); }}>
-            <div className="win95-mdr-bin-label">{b.label}</div>
-            <div className="win95-mdr-bin-bar"><div style={{ width: `${progress[i]}%` }} /></div>
-            <div className="win95-mdr-bin-pct">{progress[i]}%</div>
-          </button>
-        ))}
-      </div>
-      <div className="win95-mdr-controls">
-        <button className="win95-btn" onClick={refine}>Refine → {MDR_BINS[active].label}</button>
-        <span className="win95-mdr-note">Fill a bin to 100% to open that topic's papers. {progress.every(v => v >= 100) ? '🧇 Waffle party!' : ''}</span>
-      </div>
-    </div>
-  );
-}
-
 /* ---------- App registry (multi-window) -------------------------------- */
-// Phase 4 (G37-G46): the flagship apps are React components rendered
-// in-window (not iframes). They share the window-manager chrome.
-type AppId = 'home' | 'research' | 'talks' | 'library' | 'now' | 'cv'
-  | 'terminal' | 'mdr' | 'files' | 'sysmon' | 'help' | 'orgchart' | 'perks' | 'fm';
+type AppId = 'home' | 'research' | 'talks' | 'library' | 'now' | 'cv';
 
 /* small 32×32 Win95-style shortcut icons (one per app). Drawn inline as
  * SVG using primitive shapes + the classic Win95 palette so each app has
@@ -1863,31 +1118,10 @@ interface AppDef {
   defH: number;
   // offset for default placement (so windows cascade)
   cascadeIdx: number;
-  // Phase 4: component apps render this instead of an iframe; they
-  // don't push a URL (no standalone page) — desktop-only.
-  render?: (api: AppApi) => React.ReactNode;
-  noUrl?: boolean;     // don't pushState for this app (component-only)
-  hideIcon?: boolean;  // not on the desktop grid (launched via Run/menu)
-}
-// Small API handed to component apps so they can open other windows
-// (e.g. MDR fills a bin → opens the filtered Research view).
-interface AppApi {
-  openApp: (id: AppId, fromPoint?: { x: number; y: number }, pathOverride?: string) => void;
-  awardPerk: (id: string) => void;
 }
 // Default window sizes are LARGE (clamped to the desktop by defaultGeo) —
 // a window should show its page's actual content on open, with no
 // resizing or scrolling needed to see what the section is about.
-// Phase-4 app icons — distinct Win95 silhouettes.
-function TerminalIconLg() { return (<svg width="32" height="32" viewBox="0 0 32 32"><rect x="4" y="6" width="24" height="20" fill="#0a1410" stroke="#000"/><text x="8" y="20" fontSize="11" fill="#9fe8cf" fontFamily="monospace">{'>_'}</text></svg>); }
-function MdrIconLg() { return (<svg width="32" height="32" viewBox="0 0 32 32"><rect x="4" y="5" width="24" height="22" fill="#0a1410" stroke="#000"/>{[9,14,19,24].map((x,i)=><text key={i} x={x} y="13" fontSize="7" fill="#9fe8cf" fontFamily="monospace">{(i*3)%10}</text>)}{[9,14,19,24].map((x,i)=><text key={i+'b'} x={x} y="22" fontSize="7" fill="#9fe8cf" fontFamily="monospace">{(i*7)%10}</text>)}</svg>); }
-function FilesIconLg() { return (<svg width="32" height="32" viewBox="0 0 32 32"><path d="M4 9 h9 l2 3 h13 v15 H4 Z" fill="#f9d56e" stroke="#000"/><rect x="4" y="9" width="9" height="3" fill="#e0b94e" stroke="#000"/></svg>); }
-function SysMonIconLg() { return (<svg width="32" height="32" viewBox="0 0 32 32"><rect x="4" y="5" width="24" height="22" fill="#dcdfe4" stroke="#000"/><rect x="6" y="7" width="20" height="13" fill="#000"/><polyline points="7,17 11,12 15,15 19,9 25,13" fill="none" stroke="#39e639" strokeWidth="1.5"/></svg>); }
-function HelpIconLg() { return (<svg width="32" height="32" viewBox="0 0 32 32"><rect x="6" y="3" width="20" height="26" fill="#fffbe8" stroke="#000"/><text x="16" y="22" fontSize="18" fill="#0000a3" textAnchor="middle" fontWeight="bold">?</text></svg>); }
-function OrgChartIconLg() { return (<svg width="32" height="32" viewBox="0 0 32 32"><line x1="16" y1="16" x2="7" y2="7" stroke="#86898d"/><line x1="16" y1="16" x2="25" y2="8" stroke="#86898d"/><line x1="16" y1="16" x2="9" y2="25" stroke="#86898d"/><circle cx="7" cy="7" r="3" fill="#27443A"/><circle cx="25" cy="8" r="3" fill="#27443A"/><circle cx="9" cy="25" r="3" fill="#27443A"/><circle cx="16" cy="16" r="4" fill="#0000a3"/></svg>); }
-function PerksIconLg() { return (<svg width="32" height="32" viewBox="0 0 32 32"><polygon points="16,3 20,12 30,12 22,18 25,28 16,22 7,28 10,18 2,12 12,12" fill="#f9d56e" stroke="#000"/></svg>); }
-function FmIconLg() { return (<svg width="32" height="32" viewBox="0 0 32 32"><rect x="4" y="8" width="24" height="16" fill="#2a2a2a" stroke="#000"/><circle cx="11" cy="16" r="4" fill="#9fe8cf"/><circle cx="21" cy="16" r="4" fill="#9fe8cf"/></svg>); }
-
 const APPS: AppDef[] = [
   { id: 'home',     label: 'Home',     title: 'Prashant Garg — Home',     path: '/',         Icon: HomeIconLg,     defW: 720,  defH: 540, cascadeIdx: 0 },
   { id: 'research', label: 'Research', title: 'Research — Prashant Garg', path: '/research', Icon: ResearchIconLg, defW: 1120, defH: 780, cascadeIdx: 1 },
@@ -1895,15 +1129,6 @@ const APPS: AppDef[] = [
   { id: 'library',  label: 'Library',  title: 'Library — Prashant Garg',  path: '/library',  Icon: LibraryIconLg,  defW: 1080, defH: 760, cascadeIdx: 3 },
   { id: 'now',      label: 'Now',      title: 'Now — Prashant Garg',      path: '/now',      Icon: NowIconLg,      defW: 980,  defH: 700, cascadeIdx: 4 },
   { id: 'cv',       label: 'CV',       title: 'CV — Prashant Garg',       path: '/cv',       Icon: CvIconLg,       defW: 1140, defH: 800, cascadeIdx: 5 },
-  // Phase 4 component apps (desktop-only, no standalone URL)
-  { id: 'terminal', label: 'Terminal', title: 'Terminal — prashantgarg.os', path: '/terminal', Icon: TerminalIconLg, defW: 720, defH: 460, cascadeIdx: 6, noUrl: true, render: (api) => <TerminalApp api={api} /> },
-  { id: 'mdr',      label: 'MDR.exe',  title: 'Macrodata Refinement',     path: '/mdr',      Icon: MdrIconLg,      defW: 600, defH: 540, cascadeIdx: 7, noUrl: true, render: (api) => <MdrApp api={api} /> },
-  { id: 'files',    label: 'My Documents', title: 'My Documents',         path: '/files',    Icon: FilesIconLg,    defW: 760, defH: 560, cascadeIdx: 8, noUrl: true, render: (api) => <FilesApp api={api} /> },
-  { id: 'sysmon',   label: 'System Monitor', title: 'System Monitor',     path: '/sysmon',   Icon: SysMonIconLg,   defW: 640, defH: 560, cascadeIdx: 9, noUrl: true, render: () => <SysMonApp /> },
-  { id: 'orgchart', label: 'Org Chart', title: 'Org Chart — co-authors',  path: '/orgchart', Icon: OrgChartIconLg, defW: 620, defH: 520, cascadeIdx: 10, noUrl: true, render: (api) => <OrgChartApp api={api} /> },
-  { id: 'perks',    label: 'Perks',    title: 'Perks & Incentives',       path: '/perks',    Icon: PerksIconLg,    defW: 560, defH: 460, cascadeIdx: 11, noUrl: true, hideIcon: true, render: () => <PerksApp /> },
-  { id: 'help',     label: 'Help',     title: 'Help — Employee Handbook', path: '/help',     Icon: HelpIconLg,     defW: 640, defH: 480, cascadeIdx: 12, noUrl: true, hideIcon: true, render: () => <HelpApp /> },
-  { id: 'fm',       label: 'Lumon FM', title: 'Lumon FM',                 path: '/fm',       Icon: FmIconLg,       defW: 420, defH: 240, cascadeIdx: 13, noUrl: true, hideIcon: true, render: () => <LumonFmApp /> },
 ];
 const APP_BY_ID: Record<AppId, AppDef> = APPS.reduce((acc, a) => { acc[a.id] = a; return acc; }, {} as any);
 const APP_BY_PATH: Record<string, AppDef> = APPS.reduce((acc, a) => { acc[a.path] = a; return acc; }, {} as any);
@@ -1966,32 +1191,20 @@ function NavLink({ label, href, onNavigate, active }: { label: string; href: str
 
 /* ---------- contact strip (email + CV / scholar / github / X / bsky) --- */
 function ContactStrip() {
-  const [copied, setCopied] = useState(false);
-  const copyEmail = async () => {
-    try {
-      await navigator.clipboard.writeText(site.email);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1600);
-    } catch {
-      window.prompt('Copy email:', site.email);
-    }
-  };
+  // Old-site link row: plain text links, no glyphs, no beveled buttons.
   return (
     <div className="win95-contact">
-      <span className="win95-contact-email">{site.email}</span>
-      <button
-        className={`win95-copy-btn${copied ? ' copied' : ''}`}
-        onClick={copyEmail}
-        onMouseDown={() => playUiClick('down')}
-        onMouseUp={() => playUiClick('up')}
-        title="Copy email"
-      >{copied ? '✓ copied' : '📋 copy'}</button>
-      <span className="win95-contact-spacer" />
-      <a className="win95-contact-link" href={site.cv}      target="_blank" rel="noopener">CV ↗</a>
-      <a className="win95-contact-link" href={site.scholar} target="_blank" rel="noopener">Scholar ↗</a>
-      <a className="win95-contact-link" href={site.github}  target="_blank" rel="noopener">GitHub ↗</a>
-      <a className="win95-contact-link" href={site.twitter} target="_blank" rel="noopener">X ↗</a>
-      <a className="win95-contact-link" href={site.bluesky} target="_blank" rel="noopener">Bluesky ↗</a>
+      <a className="win95-contact-link" href={`mailto:${site.email}`}>{site.email}</a>
+      <span className="win95-contact-sep">·</span>
+      <a className="win95-contact-link" href={site.cv}      target="_blank" rel="noopener">CV</a>
+      <span className="win95-contact-sep">·</span>
+      <a className="win95-contact-link" href={site.scholar} target="_blank" rel="noopener">Google Scholar</a>
+      <span className="win95-contact-sep">·</span>
+      <a className="win95-contact-link" href={site.github}  target="_blank" rel="noopener">GitHub</a>
+      <span className="win95-contact-sep">·</span>
+      <a className="win95-contact-link" href={site.twitter} target="_blank" rel="noopener">Twitter/X</a>
+      <span className="win95-contact-sep">·</span>
+      <a className="win95-contact-link" href={site.bluesky} target="_blank" rel="noopener">Bluesky</a>
     </div>
   );
 }
@@ -2058,7 +1271,6 @@ function VolumeTray() {
     if (clamped > 0) lastNonZeroRef.current = clamped;
     setVolLocal(clamped);
     setUiVolume(clamped);
-    awardPerkGlobal('music-dance');   // G37: Music Dance Experience
   };
   const toggleMute = () => {
     if (vol > 0) apply(0);
@@ -2225,17 +1437,13 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
     if (!wasOpen) setTimeout(() => playWindowOpenDing(), 30);
     // promote to URL after a tick so opening animations show.
     // URL is the sub-path override (if any), else the app's root path.
-    // Component apps (noUrl) have no standalone page — don't push.
     setTimeout(() => {
-      if (!app.noUrl) { try { window.history.pushState({}, '', pathOverride || app.path); } catch { /* */ } }
+      try { window.history.pushState({}, '', pathOverride || app.path); } catch { /* */ }
       // mark animation done
       setWins(ws => ws.map(w => w.id === id ? { ...w, state: 'open' as const } : w));
     }, 220);
     if (fromPoint) focusApp(id);
   }, [defaultGeo, topZ, focusApp, containerSize]);
-
-  // API handed to component apps (open other windows, award perks).
-  const appApi: AppApi = useMemo(() => ({ openApp, awardPerk: awardPerkGlobal }), [openApp]);
 
   // Close an app — play closing animation, then remove from array
   // and update URL to whatever is now the topmost open window (or '/').
@@ -2245,9 +1453,9 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
     setTimeout(() => {
       setWins(ws => {
         const remaining = ws.filter(w => w.id !== id);
-        // pick new top window, URL follows (component apps have no page → '/')
+        // pick new top window, URL follows
         const top = [...remaining].filter(w => !w.minimized).sort((a,b) => b.zIndex - a.zIndex)[0];
-        const newPath = top && !APP_BY_ID[top.id].noUrl ? APP_BY_ID[top.id].path : '/';
+        const newPath = top ? APP_BY_ID[top.id].path : '/';
         try { window.history.pushState({}, '', newPath); } catch { /* */ }
         return remaining;
       });
@@ -2361,7 +1569,7 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
   const runCommand = useCallback((raw: string) => {
     const cmd = raw.trim().toLowerCase();
     if (!cmd) return;
-    if (cmd === 'overtime') { setDialog(null); awardPerkGlobal('overtime'); overtime(); return; }
+    if (cmd === 'overtime') { setDialog(null); overtime(); return; }
     if (cmd === 'standard' || cmd === 'standard issue') { window.location.href = '/standard'; return; }
     if (cmd === 'wellness') { setDialog('wellness'); return; }
     if (cmd === 'properties' || cmd === 'sysprops' || cmd === 'system properties') { setDialog('sysprops'); return; }
@@ -2665,7 +1873,7 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
 
       {/* ───────────── desktop icons ───────────── */}
       <div className="win95-icons" onMouseDown={e => e.stopPropagation()}>
-        {APPS.filter(a => !a.hideIcon).map(app => (
+        {APPS.map(app => (
           <div
             key={app.id}
             className={`win95-icon${selectedIcon === app.id ? ' selected' : ''}`}
@@ -2760,12 +1968,10 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
               >✕</button>
             </div>
 
-            {/* content area — inline HOME, component render, or iframe */}
+            {/* content area — inline HOME, or iframe */}
             <div className="win95-content">
               {w.id === 'home' ? (
                 <HomeContent openApp={openApp} />
-              ) : app.render ? (
-                app.render(appApi)
               ) : (
                 /* When the window has a sub-path override (e.g. a paper
                    detail under /research/...), the iframe loads that
@@ -2927,23 +2133,6 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
               </div>
               Standard Issue View
             </div>
-            <div className="win95-startmenu-sep" />
-            {/* Phase 4: the hidden component apps (no desktop icon) */}
-            {(['mdr','terminal','files','sysmon','orgchart','perks','help','fm'] as AppId[]).map(id => {
-              const a = APP_BY_ID[id];
-              return (
-                <div
-                  key={id}
-                  className="win95-startmenu-item"
-                  onMouseDown={() => playUiClick('down', 'menu')}
-                  onMouseUp={() => playUiClick('up', 'menu')}
-                  onClick={() => { setStartOpen(false); openApp(id); }}
-                >
-                  <div className="win95-startmenu-icon"><span style={{ display: 'flex', transform: 'scale(0.62)' }}><a.Icon /></span></div>
-                  {a.label}
-                </div>
-              );
-            })}
             <div className="win95-startmenu-sep" />
             {/* G7: touch devices boot straight to this desktop, so the
                 3D office needs an explicit way in. Shutting down lands
@@ -3176,7 +2365,6 @@ const WELLNESS_LINES: { text: string; link?: { label: string; href: string } }[]
 
 function WellnessDialog({ onClose }: { onClose: () => void }) {
   const [i, setI] = useState(0);
-  useEffect(() => { awardPerkGlobal('wellness'); }, []);   // G37 perk
   const last = i >= WELLNESS_LINES.length - 1;
   const line = WELLNESS_LINES[Math.min(i, WELLNESS_LINES.length - 1)];
   return (
@@ -3207,88 +2395,12 @@ function HomeContent({ openApp }: { openApp: (id: AppId, fp?: { x: number; y: nu
     <div className="win95-home">
       <div className="win95-home-header">
         <img className="win95-home-photo" src="/photo.jpg" alt="Prashant Garg" />
-        <div className="win95-home-name">Prashant<br/>Garg</div>
+        <div className="win95-home-name">Prashant Garg</div>
         <div className="win95-home-subtitle">
           Economist · Research Associate at Cambridge
         </div>
-        <div className="win95-home-stats">
-          <span>{LATEST_PAPER_COUNT} papers</span>
-          <span className="dot">·</span>
-          <span>{LATEST_TALK_COUNT} talks</span>
-          {INCOMING_AFFILIATION && (
-            <>
-              <span className="dot">·</span>
-              <span title="Incoming">→ {(INCOMING_AFFILIATION as any).org}</span>
-            </>
-          )}
-        </div>
         <p className="win95-home-bio">{site.bio}</p>
-      </div>
-      <div className="win95-home-grid">
-        {LATEST_PAPER && (
-          <div className="win95-card">
-            <div className="win95-card-label">Latest paper</div>
-            <div className="win95-card-title">{LATEST_PAPER.title}</div>
-            <div className="win95-card-meta">
-              {LATEST_PAPER.venue || 'Working paper'}{LATEST_PAPER.year ? ` · ${LATEST_PAPER.year}` : ''}
-              {LATEST_PAPER.coauthors.length ? ` · with ${LATEST_PAPER.coauthors.join(', ')}` : ''}
-            </div>
-            <a
-              className="win95-card-link"
-              href={`/research/${LATEST_PAPER.slug}`}
-              onMouseDown={() => playUiClick('down')}
-              onMouseUp={() => playUiClick('up')}
-              onClick={(e) => { e.preventDefault(); openApp('research', undefined, `/research/${LATEST_PAPER.slug}`); }}
-            >Open paper →</a>
-          </div>
-        )}
-        <div className="win95-card">
-          <div className="win95-card-label">Now</div>
-          <div className="win95-card-text">
-            Cambridge, June 2026. Working on the <strong>Global Automation Atlas</strong> — mapping where automation arrives across global production networks and what it displaces.
-          </div>
-          <a
-            className="win95-card-link"
-            href="/now"
-            onMouseDown={() => playUiClick('down')}
-            onMouseUp={() => playUiClick('up')}
-            onClick={(e) => { e.preventDefault(); openApp('now'); }}
-          >Read more →</a>
-        </div>
-      </div>
-      <div className="win95-affil">
-        <div className="win95-affil-label">Affiliations</div>
-        <div className="win95-affil-list">
-          {affiliations.map((a: any, i: number) => (
-            <div className="win95-affil-row" key={i}>
-              <span className="win95-affil-role">{a.role} ·</span>
-              <a
-                href={a.url}
-                target="_blank"
-                rel="noopener"
-                className="win95-affil-org"
-                onMouseDown={() => playUiClick('down')}
-                onMouseUp={() => playUiClick('up')}
-              >{a.org}</a>
-              {a.current  && <span className="win95-affil-tag current">current</span>}
-              {a.incoming && <span className="win95-affil-tag incoming">incoming</span>}
-            </div>
-          ))}
-        </div>
-      </div>
-      <ContactStrip />
-      <div className="win95-home-buttons">
-        {APPS.filter(a => a.id !== 'home').map(a => (
-          <button
-            key={a.id}
-            className="win95-btn"
-            onMouseDown={() => playUiClick('down')}
-            onMouseUp={() => playUiClick('up')}
-            onClick={() => openApp(a.id)}
-          >
-            {a.label.toUpperCase()}
-          </button>
-        ))}
+        <ContactStrip />
       </div>
     </div>
   );

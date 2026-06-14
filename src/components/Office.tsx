@@ -2763,13 +2763,6 @@ function setBiosCfg(c: BiosCfg) {
 function BiosSetup({ onExit }: { onExit: () => void }) {
   const [cfg, setCfg] = useState<BiosCfg>(() => getBiosCfg());
   const [sel, setSel] = useState(0);
-  // G37 perk: finding SETUP earns "Finger Trap".
-  useEffect(() => {
-    try {
-      const cur = JSON.parse(localStorage.getItem('pg_perks_v1') || '{}');
-      if (!cur['finger-trap']) { cur['finger-trap'] = true; localStorage.setItem('pg_perks_v1', JSON.stringify(cur)); }
-    } catch { /* */ }
-  }, []);
   const rows: { key: keyof BiosCfg; label: string }[] = [
     { key: 'skipIntro', label: 'Skip intro on load' },
     { key: 'scanlines', label: 'CRT scanlines' },

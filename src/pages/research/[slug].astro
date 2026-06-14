@@ -1,6 +1,6 @@
 ---
 import Layout from '../../layouts/Win95Layout.astro';
-import { site, papers, statusMeta, tools, talks, topicForTalk, type Paper, type Talk } from '../../data/site';
+import { site, papers, tools, talks, topicForTalk, type Paper, type Talk } from '../../data/site';
 
 export async function getStaticPaths() {
   return papers.map(p => ({ params: { slug: p.slug }, props: { paper: p } }));
@@ -9,11 +9,6 @@ export async function getStaticPaths() {
 interface Props { paper: Paper }
 const { paper } = Astro.props;
 const tool = paper.tools?.length ? tools.find(t => t.slug === paper.tools![0]) : undefined;
-
-// Sibling navigation
-const idx = papers.findIndex(p => p.slug === paper.slug);
-const prev = idx > 0 ? papers[idx - 1] : null;
-const next = idx < papers.length - 1 ? papers[idx + 1] : null;
 
 // Talks for this paper
 const MONTHS = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
@@ -75,207 +70,76 @@ const bibTeX = [
   <!-- JSON-LD structured data for academic indexing -->
   <script type="application/ld+json" is:inline set:html={JSON.stringify(scholarlyJsonLd)} />
 
-  <article class="max-w-4xl mx-auto px-4 pt-10 pb-20">
-    <div class="flex items-center justify-between gap-4 mb-6 flex-wrap">
-      <a href="/research" class="inline-flex items-center gap-1.5 text-sm font-semibold hover:bg-brand-yellow/40 px-1">
-        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M11 5l-7 7 7 7"/></svg>
-        All research
-      </a>
-      <div class="flex items-center gap-2 flex-wrap">
-        <button
-          type="button"
-          id="cite-btn"
-          data-bibtex={bibTeX}
-          class="inline-flex items-center gap-2 text-sm font-semibold px-3 py-1.5 border-2 border-ink dark:border-cream rounded-md bg-white dark:bg-ink-2 hover:bg-brand-yellow"
-        >
-          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-          Cite (BibTeX)
-        </button>
-        <button
-          type="button"
-          id="copy-link-btn"
-          class="inline-flex items-center gap-2 text-sm font-semibold px-3 py-1.5 border-2 border-ink dark:border-cream rounded-md bg-white dark:bg-ink-2 hover:bg-brand-yellow"
-        >
-          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
-          Copy link
-        </button>
-        <a
-          href={`https://x.com/intent/tweet?text=${encodeURIComponent(paper.title)}&url=${encodeURIComponent(pageUrl)}`}
-          target="_blank"
-          rel="noopener"
-          class="inline-flex items-center justify-center w-9 h-9 border-2 border-ink dark:border-cream rounded-md bg-white dark:bg-ink-2 hover:bg-brand-yellow"
-          aria-label="Share on X (Twitter)"
-          title="Share on X"
-        >
-          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
-        </a>
-        <a
-          href={`https://bsky.app/intent/compose?text=${encodeURIComponent(paper.title + ' ' + pageUrl)}`}
-          target="_blank"
-          rel="noopener"
-          class="inline-flex items-center justify-center w-9 h-9 border-2 border-ink dark:border-cream rounded-md bg-white dark:bg-ink-2 hover:bg-brand-yellow"
-          aria-label="Share on Bluesky"
-          title="Share on Bluesky"
-        >
-          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M6.335 5.066c2.797 2.092 5.81 6.34 6.916 8.614v6.166c0-.146-.056.061-.179.494-.667 2.34-2.835 7.51-6.832 3.376-2.105-2.176-1.13-4.353 2.701-5.001-2.193.37-4.658-.245-5.337-2.65-.196-.694-.559-5.864-.559-6.518 0-2.952 2.581-4.706 3.29-4.481zm11.33 0c-2.797 2.092-5.81 6.34-6.916 8.614v6.166c0-.146.056.061.179.494.667 2.34 2.835 7.51 6.832 3.376 2.105-2.176 1.13-4.353-2.701-5.001 2.193.37 4.658-.245 5.337-2.65.196-.694.559-5.864.559-6.518 0-2.952-2.581-4.706-3.29-4.481z"/></svg>
-        </a>
-        <a
-          href={`mailto:?subject=${encodeURIComponent(paper.title)}&body=${encodeURIComponent(paper.title + '\n\n' + pageUrl)}`}
-          class="inline-flex items-center justify-center w-9 h-9 border-2 border-ink dark:border-cream rounded-md bg-white dark:bg-ink-2 hover:bg-brand-yellow"
-          aria-label="Share via email"
-          title="Share via email"
-        >
-          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 8l9 6 9-6M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-        </a>
-      </div>
+  <article class="max-w-3xl mx-auto px-4 pt-10 pb-20">
+    <a href="/research" class="text-sm text-ink/55 dark:text-cream/55 hover:underline">← All research</a>
+
+    <h1 class="font-display text-2xl md:text-4xl font-bold leading-tight tracking-tight mt-4">{paper.title}</h1>
+
+    <div class="mt-2 text-base text-ink/70 dark:text-cream/70">
+      {paper.coauthors.length > 0 && <span>with {paper.coauthors.join(', ')}</span>}
+      {paper.coauthors.length > 0 && (paper.venue || paper.year) && <span> · </span>}
+      {paper.venue && <span>{paper.venue}</span>}
+      {paper.venue && paper.year && <span>, {paper.year}</span>}
+      {!paper.venue && paper.year && <span>{paper.year}</span>}
+      {paper.award && <span> · {paper.award.url ? <a href={paper.award.url} target="_blank" rel="noopener" class="hover:underline">{paper.award.label}</a> : paper.award.label}</span>}
     </div>
 
-    <div class="flex items-center gap-2 flex-wrap mb-3">
-      <span class={`badge ${statusMeta[paper.status].badge}`}>{statusMeta[paper.status].label}</span>
-      {paper.venue && <span class="text-sm font-medium text-ink/60 dark:text-cream/60">{paper.venue}{paper.year ? ` · ${paper.year}` : ''}</span>}
-      {paper.award && (
-        <a href={paper.award.url} target="_blank" rel="noopener" class="badge badge-yellow hover:bg-brand-yellow" title={paper.award.label}>
-          ★ {paper.award.label}
-        </a>
-      )}
+    <p class="mt-6 text-base leading-relaxed text-ink/90 dark:text-cream/90">{paper.blurb}</p>
+
+    <div class="mt-5 text-sm">
+      {paper.links.map((l, i) => (
+        <>{i > 0 && <span class="text-ink/40 dark:text-cream/40"> · </span>}<a href={l.url} target="_blank" rel="noopener" class="text-brand-red hover:underline">{l.label}</a></>
+      ))}
+      {tool && <><span class="text-ink/40 dark:text-cream/40"> · </span><a href={tool.url} target="_blank" rel="noopener" class="text-brand-red hover:underline">{tool.name}</a></>}
+      <span class="text-ink/40 dark:text-cream/40"> · </span>
+      <button type="button" id="cite-btn" data-bibtex={bibTeX} class="text-brand-red hover:underline">BibTeX</button>
     </div>
 
-    <h1 class="font-display text-3xl md:text-5xl font-bold leading-tight tracking-tight">{paper.title}</h1>
-
-    {paper.coauthors.length > 0 && (
-      <div class="mt-3 text-base text-ink/70 dark:text-cream/70">
-        with {paper.coauthors.map((c, i) => (
-          <span><span class="font-semibold">{c}</span>{i < paper.coauthors.length - 1 ? ', ' : ''}</span>
+    {paper.coverage && paper.coverage.length > 0 && (
+      <div class="mt-2 text-sm text-ink/70 dark:text-cream/70">
+        Coverage: {paper.coverage.map((c, i) => (
+          <>{i > 0 && <span>, </span>}<a href={c.url} target="_blank" rel="noopener" class="hover:underline">{c.outlet}</a></>
         ))}
       </div>
-    )}
-
-    {paper.tldr && (
-      <div class="mt-8 bg-brand-yellow/15 border-l-4 border-brand-yellow px-4 py-3 rounded-r-md">
-        <div class="text-xs font-bold uppercase tracking-wider text-ink/55 dark:text-cream/55 mb-1.5">In plain English</div>
-        <p class="text-base leading-relaxed text-ink/90 dark:text-cream/90">{paper.tldr}</p>
-      </div>
-    )}
-
-    <details class="mt-6 group">
-      <summary class="list-none cursor-pointer inline-flex items-center gap-2 text-sm font-semibold hover:bg-brand-yellow/40 px-2 py-1 -mx-2 rounded">
-        <span class="inline-flex items-center justify-center w-5 h-5 transition-transform group-open:rotate-45">
-          <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
-        </span>
-        Abstract
-      </summary>
-      <p class="mt-4 text-base leading-relaxed text-ink/90 dark:text-cream/90">{paper.blurb}</p>
-    </details>
-
-    <!-- LINKS -->
-    <section class="mt-10">
-      <div class="text-xs font-bold uppercase tracking-wider text-ink/50 dark:text-cream/50 mb-3">Links</div>
-      <div class="flex flex-wrap gap-2">
-        {paper.links.map(l => (
-          <a href={l.url} target="_blank" rel="noopener"
-             class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md border-2 border-ink dark:border-cream bg-white dark:bg-ink-3 hover:bg-brand-yellow dark:hover:bg-brand-yellow dark:hover:text-ink transition-colors">
-            {l.label}
-            <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M7 7h10v10"/></svg>
-          </a>
-        ))}
-      </div>
-    </section>
-
-    {tool && (
-      <section class="mt-8">
-        <a href={tool.url} target="_blank" rel="noopener" class="card flex items-center justify-between gap-4 hover:bg-brand-yellow/20 transition-colors">
-          <div>
-            <div class="text-xs font-bold uppercase tracking-wider text-brand-red">Companion site</div>
-            <div class="font-display font-bold text-xl mt-1">{tool.name}</div>
-            <div class="text-sm text-ink/70 dark:text-cream/70 mt-1">{tool.blurb}</div>
-            <div class="text-xs font-mono text-ink/50 dark:text-cream/50 mt-2">{tool.url.replace(/^https?:\/\//, '')}</div>
-          </div>
-          <svg class="w-6 h-6 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M7 7h10v10"/></svg>
-        </a>
-      </section>
     )}
 
     {paper.figures && paper.figures.length > 0 && (
-      <section class="mt-10">
-        <div class="text-xs font-bold uppercase tracking-wider text-ink/50 dark:text-cream/50 mb-3">Figures</div>
-        <div class="space-y-6">
-          {paper.figures.map(f => (
-            <figure class="card p-3">
-              <img src={f.src} alt={f.caption} loading="lazy" class="w-full h-auto bg-white" />
-              <figcaption class="mt-2 text-sm leading-relaxed text-ink/70 dark:text-cream/70">{f.caption}</figcaption>
-            </figure>
-          ))}
-        </div>
-      </section>
-    )}
-
-    {paper.coverage && paper.coverage.length > 0 && (
-      <section class="mt-10">
-        <div class="text-xs font-bold uppercase tracking-wider text-ink/50 dark:text-cream/50 mb-3">As seen in</div>
-        <div class="flex flex-wrap gap-2">
-          {paper.coverage.map(c => (
-            <a href={c.url} target="_blank" rel="noopener" class="chip hover:bg-brand-yellow/60">{c.outlet}</a>
-          ))}
-        </div>
-      </section>
+      <div class="mt-8 space-y-6">
+        {paper.figures.map(f => (
+          <figure>
+            <img src={f.src} alt={f.caption} loading="lazy" class="w-full h-auto bg-white border border-ink/15 dark:border-cream/15" />
+            <figcaption class="mt-2 text-sm leading-relaxed text-ink/65 dark:text-cream/65">{f.caption}</figcaption>
+          </figure>
+        ))}
+      </div>
     )}
 
     {myTalks.length > 0 && (
-      <section class="mt-10 pt-8 border-t border-ink/15 dark:border-cream/15">
-        <div class="text-xs font-bold uppercase tracking-wider text-ink/50 dark:text-cream/50 mb-3">Presented at</div>
+      <section class="mt-10 pt-6 border-t border-ink/15 dark:border-cream/15">
+        <h2 class="font-display text-lg font-bold mb-2">Presented at</h2>
         <ul class="space-y-1 text-sm text-ink/80 dark:text-cream/80">
           {myTalks.map(t => (
-            <li class="flex gap-3">
-              <span class="shrink-0 w-24 text-xs font-mono text-ink/55 dark:text-cream/55">{t.date}</span>
-              <span class="min-w-0">
-                {t.url
-                  ? <a href={t.url} target="_blank" rel="noopener" class="hover:underline">{t.venue}</a>
-                  : <span>{t.venue}</span>}
-                <span class="text-ink/45 dark:text-cream/45"> · {t.location}</span>
-              </span>
+            <li>
+              <span class="text-ink/55 dark:text-cream/55">{t.date}</span> —
+              {t.url
+                ? <a href={t.url} target="_blank" rel="noopener" class="hover:underline">{t.venue}</a>
+                : <span>{t.venue}</span>}, {t.location}
             </li>
           ))}
         </ul>
       </section>
     )}
-
-    <!-- Sibling nav -->
-    <nav class="mt-16 pt-8 border-t border-ink/15 dark:border-cream/15 grid sm:grid-cols-2 gap-3">
-      {prev ? (
-        <a href={`/research/${prev.slug}`} class="card hover:bg-brand-yellow/20 transition-colors block">
-          <div class="text-xs font-bold uppercase tracking-wider text-ink/50 dark:text-cream/50">Previous</div>
-          <div class="font-display font-semibold mt-1">{prev.title}</div>
-        </a>
-      ) : <span></span>}
-      {next ? (
-        <a href={`/research/${next.slug}`} class="card hover:bg-brand-yellow/20 transition-colors block sm:text-right">
-          <div class="text-xs font-bold uppercase tracking-wider text-ink/50 dark:text-cream/50">Next</div>
-          <div class="font-display font-semibold mt-1">{next.title}</div>
-        </a>
-      ) : <span></span>}
-    </nav>
   </article>
 
   <script is:inline>
     (function () {
       const citeBtn = document.getElementById('cite-btn');
-      const linkBtn = document.getElementById('copy-link-btn');
-      function flash(btn, label) {
-        const orig = btn.innerHTML;
-        btn.innerHTML = '<svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 13l4 4L19 7"/></svg> ' + label;
-        setTimeout(() => { btn.innerHTML = orig; }, 1800);
-      }
       if (citeBtn) {
         citeBtn.addEventListener('click', async () => {
           const bib = citeBtn.getAttribute('data-bibtex') || '';
-          try { await navigator.clipboard.writeText(bib); flash(citeBtn, 'Copied!'); }
+          const orig = citeBtn.textContent;
+          try { await navigator.clipboard.writeText(bib); citeBtn.textContent = 'BibTeX copied'; setTimeout(() => { citeBtn.textContent = orig; }, 1600); }
           catch { window.prompt('Copy BibTeX:', bib); }
-        });
-      }
-      if (linkBtn) {
-        linkBtn.addEventListener('click', async () => {
-          try { await navigator.clipboard.writeText(window.location.href); flash(linkBtn, 'Copied!'); }
-          catch { window.prompt('Copy link:', window.location.href); }
         });
       }
     })();

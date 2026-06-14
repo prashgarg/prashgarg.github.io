@@ -1,6 +1,6 @@
 ---
 import Layout from '../../layouts/Win95Layout.astro';
-import { site, papers, statusMeta, tools, TOPIC_TAGS, topicsForPaper, type Paper, type PaperStatus } from '../../data/site';
+import { papers, tools, type PaperStatus } from '../../data/site';
 
 const order: PaperStatus[] = ['published', 'accepted', 'rr', 'working', 'other'];
 const sectionTitles: Record<PaperStatus, string> = {
@@ -10,360 +10,55 @@ const sectionTitles: Record<PaperStatus, string> = {
   working:   'Working papers',
   other:     'Essays & other writing',
 };
-
-// Canonical BibTeX, computed server-side (same logic as [slug].astro):
-// "Lastname, Firstname" authors, DOI when derivable, publisher/preprint
-// URL preferred over this site's URL.
-function bibName(full: string): string {
-  const parts = full.trim().split(/\s+/);
-  return parts.length < 2 ? full : `${parts[parts.length - 1]}, ${parts.slice(0, -1).join(' ')}`;
-}
-function buildBibTeX(p: Paper): string {
-  const key = `garg${p.year || ''}${p.slug.split('-')[0]}`;
-  const entryType = p.venue && /journal|review|economics|nature|science|letters/i.test(p.venue) ? 'article' : 'misc';
-  const author = ['Prashant Garg', ...p.coauthors].map(bibName).join(' and ');
-  const natureId = p.links.map(l => l.url.match(/nature\.com\/articles\/([a-z0-9.-]+)/i)?.[1]).find(Boolean);
-  const doi = natureId ? `10.1038/${natureId}` : undefined;
-  const url = p.links[0]?.url || `${site.origin}/research/${p.slug}`;
-  return [
-    `@${entryType}{${key},`,
-    `  author = {${author}},`,
-    `  title  = {${p.title}},`,
-    ...(p.venue ? [`  journal = {${p.venue.replace(/\s*\((Forthcoming|R&R)\)\s*$/i, '')}},`] : []),
-    ...(p.year ? [`  year   = {${p.year}},`] : []),
-    ...(doi ? [`  doi    = {${doi}},`] : []),
-    `  url    = {${url}}`,
-    '}',
-  ].join('\n');
-}
-
 const grouped = order.map(s => ({ status: s, items: papers.filter(p => p.status === s) }))
                      .filter(g => g.items.length > 0);
-
-// Unique years across papers, sorted newest first
-const years = Array.from(new Set(papers.map(p => p.year).filter((y): y is number => !!y)))
-                   .sort((a, b) => b - a);
-
-// Pre-compute topic tags per paper so we can pass them to data-attrs
-const paperTopics: Record<string, string[]> = {};
-const topicCounts: Record<string, number> = {};
-for (const p of papers) {
-  const tags = topicsForPaper(p);
-  paperTopics[p.slug] = tags;
-  for (const t of tags) topicCounts[t] = (topicCounts[t] || 0) + 1;
-}
-const visibleTopics = TOPIC_TAGS.filter(t => topicCounts[t.slug]);
+const toolFor = (slug?: string) => slug ? tools.find(t => t.slug === slug) : undefined;
 ---
 <Layout title="Research — Prashant Garg" current="research">
-  <section class="border-b-2 border-ink dark:border-cream">
-    <div class="max-w-6xl mx-auto px-4 pt-14 pb-8">
-      <h1 class="font-display text-3xl md:text-4xl font-bold">Research</h1>
+  <article class="max-w-3xl mx-auto px-4 pt-14 pb-20">
+    <h1 class="font-display text-3xl md:text-4xl font-bold mb-8">Research</h1>
 
-      <!-- Search bar -->
-      <div class="mt-6 relative max-w-xl">
-        <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink/40 dark:text-cream/40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
-        <input
-          id="paper-search"
-          type="text"
-          placeholder="Search by title, author, venue, or keyword..."
-          class="w-full pl-10 pr-10 py-2.5 text-base sm:text-sm border-2 border-ink dark:border-cream rounded-md bg-white dark:bg-ink-2 focus:outline-none focus:bg-brand-yellow/10 placeholder:text-ink/40 dark:placeholder:text-cream/40"
-        />
-        <button
-          id="search-clear"
-          class="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 hidden items-center justify-center rounded hover:bg-ink/10 dark:hover:bg-cream/10"
-          aria-label="Clear search"
-        ><svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 6l12 12M6 18L18 6"/></svg></button>
-      </div>
-      <div id="search-status" class="mt-2 text-xs text-ink/50 dark:text-cream/50 hidden"></div>
-
-      <div class="mt-5 flex flex-wrap gap-2" id="filters">
-        <button data-filter="all" class="btn btn-yellow text-sm">All ({papers.length})</button>
-        {order.map(s => {
-          const count = papers.filter(p => p.status === s).length;
-          if (!count) return null;
-          return <button data-filter={s} class="btn text-sm">{statusMeta[s].label} ({count})</button>
-        })}
-      </div>
-
-      <!-- Year chips -->
-      <div class="mt-3 flex flex-wrap items-center gap-2 text-xs">
-        <span class="text-ink/45 dark:text-cream/45 uppercase tracking-wider mr-1">Year</span>
-        <button data-year="all" class="year-btn px-2.5 py-1 rounded border border-ink/30 dark:border-cream/30 bg-brand-yellow font-mono">all</button>
-        {years.map(y => (
-          <button data-year={String(y)} class="year-btn px-2.5 py-1 rounded border border-ink/30 dark:border-cream/30 hover:bg-brand-yellow/40 font-mono">
-            {y}
-          </button>
-        ))}
-      </div>
-
-      <!-- Topic chips -->
-      <div class="mt-2 flex flex-wrap items-center gap-2 text-xs">
-        <span class="text-ink/45 dark:text-cream/45 uppercase tracking-wider mr-1">Topic</span>
-        <button data-topic="all" class="topic-btn px-2.5 py-1 rounded border border-ink/30 dark:border-cream/30 bg-brand-yellow">all</button>
-        {visibleTopics.map(t => (
-          <button data-topic={t.slug} class="topic-btn px-2.5 py-1 rounded border border-ink/30 dark:border-cream/30 hover:bg-brand-yellow/40">
-            {t.label} <span class="text-ink/40 dark:text-cream/40">({topicCounts[t.slug]})</span>
-          </button>
-        ))}
-      </div>
-    </div>
-  </section>
-
-  <section class="max-w-6xl mx-auto px-4 py-12 space-y-14">
     {grouped.map(group => (
-      <div data-section={group.status}>
-        <h2 class="font-display text-2xl md:text-3xl font-bold mb-5 flex items-center gap-3">
-          <span class={`badge ${statusMeta[group.status].badge}`}>{statusMeta[group.status].label}</span>
-          <span>{sectionTitles[group.status]}</span>
-          <span class="text-ink/40 dark:text-cream/40 text-base font-normal">· {group.items.length}</span>
-        </h2>
-
-        <div class="space-y-4">
-          {group.items.map(p => (
-            <details
-              id={p.slug}
-              data-paper={p.status}
-              data-year={p.year ? String(p.year) : ''}
-              data-topics={(paperTopics[p.slug] || []).join(' ')}
-              data-search={`${p.title} ${p.coauthors.join(' ')} ${p.venue || ''} ${p.year || ''} ${p.blurb}`.toLowerCase()}
-              class="card group [&_summary]:cursor-pointer"
-            >
-              <summary class="list-none flex items-start gap-4">
-                <div class="flex-1">
-                  <div class="flex items-center gap-2 flex-wrap">
-                    <span class={`badge ${statusMeta[p.status].badge}`}>{statusMeta[p.status].label}</span>
-                    {p.venue && <span class="text-xs font-medium text-ink/60 dark:text-cream/60">{p.venue}{p.year ? ` · ${p.year}` : ''}</span>}
-                    {p.award && <span class="badge badge-yellow" title={p.award.label}>★ {p.award.label}</span>}
-                  </div>
-                  <h3 class="font-display font-bold text-lg md:text-xl mt-2">{p.title}</h3>
-                  {p.coauthors.length > 0 && (
-                    <div class="mt-1 text-sm text-ink/70 dark:text-cream/70">
-                      with {p.coauthors.map((c, i) => (
-                        <span><span class="font-medium">{c}</span>{i < p.coauthors.length - 1 ? ', ' : ''}</span>
-                      ))}
-                    </div>
-                  )}
+      <section class="mb-10">
+        <h2 class="font-display text-xl md:text-2xl font-bold mb-4 pb-1 border-b border-ink/20 dark:border-cream/20">{sectionTitles[group.status]}</h2>
+        <ul class="space-y-6">
+          {group.items.map(p => {
+            const tool = toolFor(p.tools?.[0]);
+            return (
+              <li id={p.slug}>
+                <h3 class="font-display font-semibold text-lg leading-snug">
+                  <a href={`/research/${p.slug}`} class="hover:underline">{p.title}</a>
+                </h3>
+                <div class="mt-1 text-sm text-ink/70 dark:text-cream/70">
+                  {p.coauthors.length > 0 && <span>with {p.coauthors.join(', ')}</span>}
+                  {p.coauthors.length > 0 && (p.venue || p.year) && <span> · </span>}
+                  {p.venue && <span>{p.venue}</span>}
+                  {p.venue && p.year && <span>, {p.year}</span>}
+                  {!p.venue && p.year && <span>{p.year}</span>}
+                  {p.award && <span> · {p.award.url ? <a href={p.award.url} target="_blank" rel="noopener" class="hover:underline">{p.award.label}</a> : p.award.label}</span>}
                 </div>
-                <span class="shrink-0 mt-1 w-7 h-7 inline-flex items-center justify-center rounded-md border-2 border-ink dark:border-cream bg-cream dark:bg-ink-2 transition-transform group-open:rotate-45">
-                  <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
-                </span>
-              </summary>
-
-              <div class="mt-5 pt-5 border-t border-ink/15 dark:border-cream/15">
-                {p.tldr && (
-                  <label class="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-ink/55 dark:text-cream/55 cursor-pointer select-none mb-3">
-                    <input type="checkbox" class="tldr-toggle" />
-                    Plain English
-                  </label>
-                )}
-                <p class="text-ink/85 dark:text-cream/85 leading-relaxed" data-abstract>{p.blurb}</p>
-                {p.tldr && (
-                  <p class="text-ink/85 dark:text-cream/85 leading-relaxed hidden bg-brand-yellow/15 px-3 py-2 rounded-md" data-tldr>{p.tldr}</p>
-                )}
-
-                <div class="mt-5">
-                  <div class="text-xs font-bold uppercase tracking-wider text-ink/50 dark:text-cream/50 mb-2">Links</div>
-                  <div class="flex flex-wrap gap-2">
-                    {p.links.map(l => (
-                      <a href={l.url} target="_blank" rel="noopener"
-                         class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md border-2 border-ink dark:border-cream bg-white dark:bg-ink-3 hover:bg-brand-yellow dark:hover:bg-brand-yellow dark:hover:text-ink transition-colors">
-                        {l.label}
-                        <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M7 7h10v10"/></svg>
-                      </a>
+                <div class="mt-1.5 text-sm">
+                  {p.links.map((l, i) => (
+                    <>{i > 0 && <span class="text-ink/40 dark:text-cream/40"> · </span>}<a href={l.url} target="_blank" rel="noopener" class="text-brand-red hover:underline">{l.label}</a></>
+                  ))}
+                  {tool && <><span class="text-ink/40 dark:text-cream/40"> · </span><a href={tool.url} target="_blank" rel="noopener" class="text-brand-red hover:underline">{tool.name}</a></>}
+                </div>
+                {p.coverage && p.coverage.length > 0 && (
+                  <div class="mt-1 text-sm text-ink/70 dark:text-cream/70">
+                    Coverage: {p.coverage.map((c, i) => (
+                      <>{i > 0 && <span>, </span>}<a href={c.url} target="_blank" rel="noopener" class="hover:underline">{c.outlet}</a></>
                     ))}
                   </div>
-                </div>
-
-                {p.coverage && p.coverage.length > 0 && (
-                  <div class="mt-5">
-                    <div class="text-xs font-bold uppercase tracking-wider text-ink/50 dark:text-cream/50 mb-2">As seen in</div>
-                    <div class="flex flex-wrap gap-2">
-                      {p.coverage.map(c => (
-                        <a href={c.url} target="_blank" rel="noopener" class="chip hover:bg-brand-yellow/60">{c.outlet}</a>
-                      ))}
-                    </div>
-                  </div>
                 )}
-
-                {p.tools && p.tools.length > 0 && (() => {
-                  const tool = tools.find(t => t.slug === p.tools![0]);
-                  return tool ? (
-                    <div class="mt-5">
-                      <a href={tool.url} target="_blank" rel="noopener" class="inline-flex items-center gap-1.5 text-sm font-semibold text-brand-red hover:underline">
-                        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m12.728 0a8 8 0 11-11.314 11.314 8 8 0 0111.314-11.314z"/></svg>
-                        Companion site · {tool.url.replace(/^https?:\/\//, '')} &rarr;
-                      </a>
-                    </div>
-                  ) : null;
-                })()}
-
-                <div class="mt-5 pt-5 border-t border-ink/15 dark:border-cream/15 flex items-center gap-4 flex-wrap">
-                  <a href={`/research/${p.slug}`} class="inline-flex items-center gap-2 text-sm font-semibold hover:bg-brand-yellow/40 px-1">
-                    Open full page
-                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
-                  </a>
-                  <button
-                    type="button"
-                    class="cite-btn inline-flex items-center gap-2 text-sm font-semibold px-2 py-1 border border-ink/30 dark:border-cream/30 rounded hover:bg-brand-yellow/40"
-                    data-bibtex={buildBibTeX(p)}
-                  >
-                    <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                    Copy BibTeX
-                  </button>
-                </div>
-              </div>
-            </details>
-          ))}
-        </div>
-      </div>
+                <details class="mt-1.5 text-sm group">
+                  <summary class="list-none cursor-pointer text-ink/55 dark:text-cream/55 hover:text-ink dark:hover:text-cream select-none">Abstract</summary>
+                  <p class="mt-1.5 leading-relaxed text-ink/85 dark:text-cream/85">{p.blurb}</p>
+                </details>
+              </li>
+            );
+          })}
+        </ul>
+      </section>
     ))}
-  </section>
+  </article>
 </Layout>
-
-<script is:inline>
-  (function () {
-    const filterButtons = document.querySelectorAll('[data-filter]');
-    const yearButtons   = document.querySelectorAll('[data-year]');
-    const topicButtons  = document.querySelectorAll('[data-topic]');
-    const papers        = document.querySelectorAll('[data-paper]');
-    const sections      = document.querySelectorAll('[data-section]');
-    const searchInput   = document.getElementById('paper-search');
-    const searchClear   = document.getElementById('search-clear');
-    const searchStatus  = document.getElementById('search-status');
-    let activeFilter = 'all';
-    let activeYear   = 'all';
-    let activeTopic  = 'all';
-    let activeQuery  = '';
-
-    function applyVisibility() {
-      let totalShown = 0;
-      papers.forEach(p => {
-        const matchFilter = activeFilter === 'all' || p.getAttribute('data-paper') === activeFilter;
-        const matchYear   = activeYear   === 'all' || p.getAttribute('data-year')  === activeYear;
-        const topicsAttr  = p.getAttribute('data-topics') || '';
-        const matchTopic  = activeTopic  === 'all' || topicsAttr.split(' ').indexOf(activeTopic) !== -1;
-        const haystack    = p.getAttribute('data-search') || '';
-        const matchQuery  = activeQuery === '' || haystack.indexOf(activeQuery) !== -1;
-        const show        = matchFilter && matchYear && matchTopic && matchQuery;
-        p.style.display   = show ? '' : 'none';
-        if (show) totalShown++;
-      });
-      // Hide sections whose papers are all hidden
-      sections.forEach(s => {
-        const visibleInSection = s.querySelectorAll('[data-paper]:not([style*="display: none"])');
-        const status = s.getAttribute('data-section');
-        const sectionMatchesFilter = activeFilter === 'all' || status === activeFilter;
-        s.style.display = (sectionMatchesFilter && visibleInSection.length > 0) ? '' : 'none';
-      });
-      // Update status text (only when actively filtering by query)
-      if (activeQuery !== '') {
-        searchStatus.textContent = totalShown + ' paper' + (totalShown === 1 ? '' : 's') + ' matching "' + activeQuery + '"';
-        searchStatus.classList.remove('hidden');
-      } else if (activeYear !== 'all' || activeFilter !== 'all') {
-        searchStatus.textContent = totalShown + ' paper' + (totalShown === 1 ? '' : 's')
-          + (activeYear !== 'all' ? ' from ' + activeYear : '');
-        searchStatus.classList.remove('hidden');
-      } else {
-        searchStatus.classList.add('hidden');
-      }
-    }
-
-    filterButtons.forEach(b => b.addEventListener('click', () => {
-      activeFilter = b.getAttribute('data-filter');
-      filterButtons.forEach(x => x.classList.remove('btn-yellow'));
-      b.classList.add('btn-yellow');
-      applyVisibility();
-    }));
-    yearButtons.forEach(b => b.addEventListener('click', () => {
-      activeYear = b.getAttribute('data-year');
-      yearButtons.forEach(x => { x.classList.remove('bg-brand-yellow'); x.classList.add('hover:bg-brand-yellow/40'); });
-      b.classList.add('bg-brand-yellow');
-      b.classList.remove('hover:bg-brand-yellow/40');
-      applyVisibility();
-    }));
-    topicButtons.forEach(b => b.addEventListener('click', () => {
-      activeTopic = b.getAttribute('data-topic');
-      topicButtons.forEach(x => { x.classList.remove('bg-brand-yellow'); x.classList.add('hover:bg-brand-yellow/40'); });
-      b.classList.add('bg-brand-yellow');
-      b.classList.remove('hover:bg-brand-yellow/40');
-      applyVisibility();
-    }));
-
-    if (searchInput) {
-      searchInput.addEventListener('input', (e) => {
-        activeQuery = e.target.value.trim().toLowerCase();
-        searchClear.style.display = activeQuery ? 'flex' : 'none';
-        applyVisibility();
-      });
-    }
-    if (searchClear) {
-      searchClear.addEventListener('click', () => {
-        searchInput.value = '';
-        activeQuery = '';
-        searchClear.style.display = 'none';
-        applyVisibility();
-        searchInput.focus();
-      });
-    }
-
-    // BibTeX copy buttons — entries are pre-rendered server-side into
-    // data-bibtex (single source of truth, shared with the detail page)
-    document.querySelectorAll('.cite-btn').forEach(btn => {
-      btn.addEventListener('click', async (ev) => {
-        ev.stopPropagation();
-        const bib = btn.getAttribute('data-bibtex') || '';
-        try {
-          await navigator.clipboard.writeText(bib);
-          const orig = btn.innerHTML;
-          btn.innerHTML = '<svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 13l4 4L19 7"/></svg> Copied!';
-          setTimeout(() => { btn.innerHTML = orig; }, 1800);
-        } catch {
-          // Fallback: open a modal showing the BibTeX text
-          window.prompt('Copy BibTeX:', bib);
-        }
-      });
-    });
-
-    // Plain-English (TL;DR) toggles — swap abstract <-> tldr per card
-    document.querySelectorAll('.tldr-toggle').forEach(cb => {
-      cb.addEventListener('change', () => {
-        const wrap = cb.closest('div');
-        const abs = wrap.querySelector('[data-abstract]');
-        const tl  = wrap.querySelector('[data-tldr]');
-        if (!abs || !tl) return;
-        abs.classList.toggle('hidden', cb.checked);
-        tl.classList.toggle('hidden', !cb.checked);
-      });
-      cb.addEventListener('click', e => e.stopPropagation());
-    });
-
-    // G37 perk — "Diligent Refiner": open five different abstracts.
-    (function () {
-      const seen = new Set();
-      function award() {
-        try {
-          const p = JSON.parse(localStorage.getItem('pg_perks_v1') || '{}');
-          if (!p['refined-5']) { p['refined-5'] = true; localStorage.setItem('pg_perks_v1', JSON.stringify(p)); }
-        } catch (e) { /* */ }
-      }
-      document.querySelectorAll('details[data-paper]').forEach(d => {
-        d.addEventListener('toggle', () => {
-          if (d.open) { seen.add(d.id); if (seen.size >= 5) award(); }
-        });
-      });
-    })();
-
-    // ?topic=<tag> deep link (MDR.exe opens the filtered view this way)
-    const qTopic = new URLSearchParams(location.search).get('topic');
-    if (qTopic) {
-      const btn = document.querySelector(`[data-topic="${qTopic}"]`);
-      if (btn) btn.click();
-    }
-
-    // Open paper if URL hash matches
-    if (location.hash) {
-      const el = document.getElementById(location.hash.slice(1));
-      if (el && el.tagName === 'DETAILS') el.setAttribute('open', '');
-    }
-  })();
-</script>

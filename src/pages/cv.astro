@@ -31,7 +31,6 @@ const years = Object.keys(talksByYear).map(Number).sort((a, b) => b - a);
     <div class="no-print flex items-center justify-between flex-wrap gap-3 mb-8 pb-4 border-b border-ink/15 dark:border-cream/15">
       <div>
         <h1 class="font-display text-3xl md:text-4xl font-bold tracking-tight">Curriculum Vitae</h1>
-        <p class="text-xs text-ink/55 dark:text-cream/55 mt-1">Generated from site data — printable.</p>
       </div>
       <div class="flex items-center gap-2 flex-wrap">
         <button onclick="window.print()" class="inline-flex items-center gap-2 text-sm font-semibold px-3 py-1.5 border-2 border-ink dark:border-cream rounded-md bg-brand-yellow hover:bg-brand-yellow/80">
@@ -39,10 +38,7 @@ const years = Object.keys(talksByYear).map(Number).sort((a, b) => b - a);
           Print
         </button>
         <a href="/cv.pdf" target="_blank" rel="noopener" class="inline-flex items-center gap-2 text-sm font-semibold px-3 py-1.5 border-2 border-ink dark:border-cream rounded-md bg-white dark:bg-ink-2 hover:bg-brand-yellow">
-          PDF ↓
-        </a>
-        <a href={site.cv} target="_blank" rel="noopener" class="inline-flex items-center gap-2 text-sm font-semibold px-3 py-1.5 border-2 border-ink dark:border-cream rounded-md bg-white dark:bg-ink-2 hover:bg-brand-yellow">
-          PDF (Drive) ↗
+          PDF
         </a>
       </div>
     </div>
@@ -107,11 +103,11 @@ const years = Object.keys(talksByYear).map(Number).sort((a, b) => b - a);
               <li class="cv-pub">
                 <div class="cv-pub-title">{p.title}</div>
                 <div class="cv-pub-meta">
-                  {p.coauthors.length ? `with ${p.coauthors.join(', ')}` : 'Solo-authored'}
+                  {p.coauthors.length ? `with ${p.coauthors.join(', ')}` : ''}
                   {p.venue ? ` · ${p.venue}` : ''}
                   {p.year ? ` · ${p.year}` : ''}
                 </div>
-                {p.award && <div class="cv-pub-award">★ {p.award.label}</div>}
+                {p.award && <div class="cv-pub-award">{p.award.label}</div>}
               </li>
             ))}
           </ol>
@@ -169,7 +165,7 @@ const years = Object.keys(talksByYear).map(Number).sort((a, b) => b - a);
 
     <!-- TALKS (grouped by year) -->
     <section class="cv-section mb-8">
-      <h3 class="cv-section-title">Talks ({talksSorted.length})</h3>
+      <h3 class="cv-section-title">Talks</h3>
       {years.map(y => (
         <div class="mb-4">
           <h4 class="cv-subhead">{y}</h4>
@@ -213,7 +209,7 @@ const years = Object.keys(talksByYear).map(Number).sort((a, b) => b - a);
     .cv-list, .cv-pub-list, .cv-talk-list { list-style: none; padding: 0; margin: 0; }
     .cv-entry { padding: 0.25rem 0; }
     .cv-entry-detail { font-size: 0.82rem; color: rgba(0,0,0,0.60); margin-top: 0.1rem; }
-    .cv-pub-award { font-size: 0.82rem; font-weight: 600; color: #8a6d00; margin-top: 0.15rem; }
+    .cv-pub-award { font-size: 0.82rem; font-style: italic; color: rgba(0,0,0,0.6); margin-top: 0.15rem; }
     .cv-row {
       display: flex; justify-content: space-between; align-items: baseline;
       padding: 0.25rem 0;

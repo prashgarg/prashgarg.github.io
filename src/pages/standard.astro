@@ -72,7 +72,7 @@ const current = affiliations.filter((a: any) => a.current);
             <strong>{p.title}</strong>
             {p.coauthors.length > 0 && <span> (with {p.coauthors.join(', ')})</span>}
             {p.venue && <span class="meta"> — {p.venue}{p.year ? `, ${p.year}` : ''}</span>}
-            {p.award && <span class="meta"> — ★ {p.award.label}</span>}
+            {p.award && <span class="meta"> — {p.award.label}</span>}
             <br />
             <span class="links">
               {p.links.slice(0, 3).map(l => <a href={l.url}>{l.label}</a>)}
