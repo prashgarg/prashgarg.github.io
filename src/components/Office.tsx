@@ -575,6 +575,7 @@ function CameraRig({ phase, onArrived, onEntryDone }: {
   const tgt    = useRef(CAM_ENTRY_TGT.clone());
   const fromPos = useRef(CAM_IDLE_POS.clone());
   const fromTgt = useRef(CAM_IDLE_TGT.clone());
+  const roamTarget = useRef(new THREE.Vector3());   // composite-desktop mouse-orbit target
   const startedAt       = useRef<number | null>(null);
   const entryStartTime  = useRef<number | null>(null);
   const arrivedFired    = useRef(false);
@@ -643,6 +644,23 @@ function CameraRig({ phase, onArrived, onEntryDone }: {
     }
     // ── on-monitor / booting / desktop ─────────────────────────────────────
     if (phase === 'on-monitor' || phase === 'booting' || phase === 'desktop') {
+      // COMPOSITE desktop: gentle mouse-orbit + idle drift around the
+      // screen so the monitor feels alive in the room and foreground geometry
+      // crosses in front (the composited <Html> skews with perspective and
+      // gets occluded correctly). Kept small so the screen stays readable +
+      // clickable. Boot stays dead-still (text must be stable).
+      if (COMPOSITE && phase === 'desktop') {
+        const ms = state.clock.elapsedTime * 1000;
+        const driftX = Math.sin(ms * 0.00013) * 0.012;
+        const driftY = Math.sin(ms * 0.00017 + 1.3) * 0.008;
+        const rx = mouse.current.x * 0.075 + driftX;
+        const ry = mouse.current.y * 0.05 + driftY;
+        roamTarget.current.set(endPos.x + rx, endPos.y - ry, endPos.z);
+        camera.position.lerp(roamTarget.current, 0.06);
+        tgt.current.lerp(endTgt, 0.08);
+        camera.lookAt(tgt.current);
+        return;
+      }
       camera.position.lerp(endPos, 0.08);
       tgt.current.lerp(endTgt, 0.08);
       camera.lookAt(tgt.current);
@@ -2446,9 +2464,14 @@ function OfficeScene({ phase, onMonitorClick }: {
       {COMPOSITE && phase === 'desktop' && (
         <Html
           transform
-          position={[MONITOR_WORLD.x, MONITOR_WORLD.y + 0.02, MONITOR_WORLD.z + 0.208]}
+          occlude="blending"
+          /* z just in front of the monitor's frontmost face (inner bezel
+             is at +0.214) so the bezel frames the screen from behind and
+             can't occlude it — while real room geometry crossing in front
+             still hides it correctly via blending occlusion. */
+          position={[MONITOR_WORLD.x, MONITOR_WORLD.y + 0.02, MONITOR_WORLD.z + 0.218]}
           rotation={[0, 0, 0]}
-          scale={0.0131}
+          scale={0.0132}
           distanceFactor={undefined}
           zIndexRange={[100, 0]}
           pointerEvents="auto"
