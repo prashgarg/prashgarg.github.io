@@ -12,7 +12,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { PerspectiveCamera, ContactShadows, MeshReflectorMaterial, Environment, RoundedBox, useTexture } from '@react-three/drei';
+import { PerspectiveCamera, ContactShadows, MeshReflectorMaterial, Environment, RoundedBox, useTexture, Html } from '@react-three/drei';
 import { EffectComposer, N8AO, Bloom } from '@react-three/postprocessing';
 import * as THREE from 'three';
 import InnerDesktop from './InnerDesktop';
@@ -148,6 +148,17 @@ const CAM_IDLE_TGT   = new THREE.Vector3(0.25, 1.20, -5.00);
 // visible at the edges for the Heffer-style frame.
 const CAM_MONITOR_POS = new THREE.Vector3(SOUTH_DX + 0.10, 1.05, DESK_Z + 0.13);
 const CAM_MONITOR_TGT = MONITOR_WORLD.clone();
+
+// Composite mode (path C / Henry-style): the screen is a real DOM iframe
+// composited INTO the 3D scene via <Html transform>, so we DON'T dolly
+// until it fills the viewport — we stop further back so the monitor +
+// bezel + a little room stay framed around it. Dead-on (same x/y as the
+// screen centre) so the screen reads square.
+const CAM_COMPOSITE_POS = new THREE.Vector3(MONITOR_WORLD.x, MONITOR_WORLD.y + 0.02, DESK_Z + 0.92);
+const CAM_COMPOSITE_TGT = new THREE.Vector3(MONITOR_WORLD.x, MONITOR_WORLD.y + 0.02, MONITOR_WORLD.z);
+// URL flag — keeps the proven overlay experience as default while the
+// composited monitor is piloted at /?composite=1
+const COMPOSITE = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('composite') === '1';
 
 // Lean-in close-up frame — looks STEEPLY DOWN at the desk so the chair
 // back tucks into the bottom-foreground (not blocking the keyboard +
@@ -607,18 +618,21 @@ function CameraRig({ phase, onArrived, onEntryDone }: {
     // easeInOutCubic gives the camera a gentle launch AND a gentle
     // arrival — feels like a deliberate "lean forward to read" move
     // instead of the easeOutCubic snap-then-crawl we had before.
+    // composite mode frames the monitor instead of filling the viewport
+    const endPos = COMPOSITE ? CAM_COMPOSITE_POS : CAM_MONITOR_POS;
+    const endTgt = COMPOSITE ? CAM_COMPOSITE_TGT : CAM_MONITOR_TGT;
     if (phase === 'dollying') {
       const k = easeInOutCubic(Math.min(1, (performance.now() - (startedAt.current ?? 0)) / DOLLY_MS));
-      camera.position.lerpVectors(fromPos.current, CAM_MONITOR_POS, k);
-      tgt.current.lerpVectors(fromTgt.current, CAM_MONITOR_TGT, k);
+      camera.position.lerpVectors(fromPos.current, endPos, k);
+      tgt.current.lerpVectors(fromTgt.current, endTgt, k);
       camera.lookAt(tgt.current);
       if (!arrivedFired.current && k >= 1) { arrivedFired.current = true; onArrived(); }
       return;
     }
     // ── on-monitor / booting / desktop ─────────────────────────────────────
     if (phase === 'on-monitor' || phase === 'booting' || phase === 'desktop') {
-      camera.position.lerp(CAM_MONITOR_POS, 0.08);
-      tgt.current.lerp(CAM_MONITOR_TGT, 0.08);
+      camera.position.lerp(endPos, 0.08);
+      tgt.current.lerp(endTgt, 0.08);
       camera.lookAt(tgt.current);
       return;
     }
@@ -2412,6 +2426,30 @@ function OfficeScene({ phase, onMonitorClick }: {
           so it's mounted OUTSIDE this group.) */}
       <CrtMonitor phase={phase} onClick={onMonitorClick} />
 
+      {/* PATH C — composited monitor: the desktop is a real DOM iframe
+          (/os) transformed INTO the 3D scene via <Html transform>, so it
+          inherits the room's perspective and stays fully interactive
+          inside its own document coordinate space (Henry pattern). Only
+          mounts on the composite flag once we're at the desktop phase. */}
+      {COMPOSITE && phase === 'desktop' && (
+        <Html
+          transform
+          position={[MONITOR_WORLD.x, MONITOR_WORLD.y + 0.02, MONITOR_WORLD.z + 0.208]}
+          rotation={[0, 0, 0]}
+          scale={0.0131}
+          distanceFactor={undefined}
+          zIndexRange={[100, 0]}
+          pointerEvents="auto"
+          style={{ width: '1040px', height: '795px', overflow: 'hidden', background: '#000' }}
+        >
+          <iframe
+            src="/os"
+            title="prashantgarg.os"
+            style={{ width: '1040px', height: '795px', border: 0, display: 'block', background: '#3e9697' }}
+          />
+        </Html>
+      )}
+
       <group position={[SOUTH_DX, 0, 0]}>
       {/* ── DESK ACCESSORIES — all on the south booth only ──────────
           Local positions kept identical to before; the parent group
@@ -3458,6 +3496,14 @@ export default function Office() {
     try { sessionStorage.removeItem(SS_PHASE); } catch { /* */ }
     setPhase('idle');
   };
+  // Composite mode: the desktop lives in the /os iframe, so its Shut Down
+  // posts a message up to exit back to the room.
+  useEffect(() => {
+    if (!COMPOSITE) return;
+    const onMsg = (e: MessageEvent) => { if (e.data?.type === 'pg-shutdown') handleDesktopClose(); };
+    window.addEventListener('message', onMsg);
+    return () => window.removeEventListener('message', onMsg);
+  }, []); // eslint-disable-line
   // Mount the 3D scene only when it can be seen: on touch, skip it
   // during BIOS (so the models never download unless asked for) and
   // while the fullscreen desktop covers everything.
@@ -3558,7 +3604,7 @@ export default function Office() {
       {phase === 'idle' && <FirstVisitWelcome />}
       {phase === 'splash'  && <BiosScreen onDone={handleBiosDone} />}
       {phase === 'booting' && <BootOverlay onDone={handleBootDone} />}
-      {phase === 'desktop' && <InnerDesktop onClose={handleDesktopClose} embedded />}
+      {phase === 'desktop' && !COMPOSITE && <InnerDesktop onClose={handleDesktopClose} embedded />}
     </div>
   );
 }

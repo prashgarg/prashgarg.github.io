@@ -1,0 +1,24 @@
+---
+// Standalone OS desktop document — loaded in an <iframe> and composited
+// onto the 3D monitor (see Office.tsx composite mode). Its own coordinate
+// space keeps window drags / scrolls / clicks correct under any 3D
+// transform of the outer iframe.
+import '../styles/global.css';
+import OsPage from '../components/OsPage';
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>prashantgarg.os</title>
+    <meta name="robots" content="noindex" />
+    <style>
+      html, body { margin: 0; padding: 0; background: #3e9697; overflow: hidden; height: 100%; }
+    </style>
+  </head>
+  <body>
+    <OsPage client:only="react" />
+  </body>
+</html>
