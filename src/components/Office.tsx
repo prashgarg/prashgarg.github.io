@@ -88,7 +88,157 @@ const C = {
   monitorScreen: '#3A5040',
   clock:     '#F4F2EE',
   door:      '#DCDAD6',
+  // ── Severance / Lumon prop palette (desk set-dressing pass) ──────────
+  lumonShell:  '#E4DFD4',   // molded-plastic terminal shell (warm off-white)
+  lumonChin:   '#B9C9CE',   // pale institutional blue — CRT chin, tissue box
+  lumonPowder: '#AEBFC6',   // glazed ceramic mug
+  keyDark:     '#2F5961',   // alpha keycaps + spacebar (Data General two-tone)
+  keyLight:    '#5BA8B0',   // remaining keycaps
+  coffee:      '#241710',   // coffee surface disc
+  manila:      '#D8C7A2',   // manila folder / index card
+  buff:        '#E4DBC4',   // buff notepad
+  mdrBlue:     '#4A8FA6',   // woven finger-trap reward
+  eraser:      '#C9A99A',   // rubber pencil-eraser reward
+  graphite:    '#2A2A2A',   // pencil lead / muted pen
+  bakelite:    '#141414',   // glossy black phone / rotary
+  chairFabric: '#2C2E30',   // lifted off near-black so the chair reads
 };
+
+/**
+ * ContactDecal — a small radial-gradient shadow laid flat under a prop so
+ * it grounds on the desk. N8AO (screen-space AO) was removed to stop the
+ * floor shimmer, so small props lost their ambient contact darkening; this
+ * cheap multiply decal fakes it back without any per-frame cost. `r` is the
+ * world radius; `y` should sit a hair above the surface to avoid z-fight.
+ */
+const _decalTex: { v: THREE.CanvasTexture | null } = { v: null };
+function getContactDecalTex(): THREE.CanvasTexture | null {
+  if (typeof document === 'undefined') return null;
+  if (_decalTex.v) return _decalTex.v;
+  const s = 128;
+  const cv = document.createElement('canvas'); cv.width = cv.height = s;
+  const ctx = cv.getContext('2d'); if (!ctx) return null;
+  const g = ctx.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2);
+  g.addColorStop(0, 'rgba(0,0,0,0.55)');
+  g.addColorStop(0.55, 'rgba(0,0,0,0.28)');
+  g.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, s, s);
+  const tex = new THREE.CanvasTexture(cv);
+  _decalTex.v = tex;
+  return tex;
+}
+function ContactDecal({ position, r = 0.08, opacity = 0.5 }: {
+  position: [number, number, number]; r?: number; opacity?: number;
+}) {
+  const tex = useMemo(() => getContactDecalTex(), []);
+  if (!tex) return null;
+  return (
+    <mesh position={position} rotation-x={-Math.PI / 2} renderOrder={2}>
+      <planeGeometry args={[r * 2, r * 2]} />
+      {/* black radial-alpha texture, normal-blended = a soft drop shadow */}
+      <meshBasicMaterial map={tex} transparent opacity={opacity} depthWrite={false} />
+    </mesh>
+  );
+}
+
+/**
+ * Engraved-nameplate texture — real readable text on the chrome face, so
+ * the MDR refiner's name tag reads as engraved metal rather than three
+ * fake grey stripes. Cached per label.
+ */
+const _nameTexCache: Record<string, THREE.CanvasTexture> = {};
+function getEngravedTex(label: string): THREE.CanvasTexture | null {
+  if (typeof document === 'undefined') return null;
+  if (_nameTexCache[label]) return _nameTexCache[label];
+  const w = 512, h = 96;
+  const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+  const ctx = cv.getContext('2d'); if (!ctx) return null;
+  ctx.fillStyle = '#BFC0BA'; ctx.fillRect(0, 0, w, h);           // brushed chrome ground
+  ctx.font = '600 52px Inter, Arial, sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = 'rgba(255,255,255,0.6)';                       // engraved highlight
+  ctx.fillText(label, w / 2, h / 2 - 2);
+  ctx.fillStyle = '#2A2E30';                                     // engraved shadow
+  ctx.fillText(label, w / 2, h / 2 + 1);
+  const tex = new THREE.CanvasTexture(cv);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 4;
+  _nameTexCache[label] = tex;
+  return tex;
+}
+
+/** Generated stylized founder-portrait (Kier Eagan) — a warm oil-painting
+ *  bust, so the wall portrait reads as an image instead of a flat blob. */
+const _kierTex: { v: THREE.CanvasTexture | null } = { v: null };
+function getKierPortraitTex(): THREE.CanvasTexture | null {
+  if (typeof document === 'undefined') return null;
+  if (_kierTex.v) return _kierTex.v;
+  const w = 256, h = 352;
+  const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+  const ctx = cv.getContext('2d'); if (!ctx) return null;
+  const bg = ctx.createRadialGradient(w / 2, h * 0.42, 20, w / 2, h * 0.5, h * 0.7);
+  bg.addColorStop(0, '#6B5A44'); bg.addColorStop(1, '#241C14');
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, w, h);
+  ctx.fillStyle = '#2A2118';                              // coat / shoulders
+  ctx.beginPath(); ctx.moveTo(w * 0.10, h); ctx.quadraticCurveTo(w * 0.5, h * 0.60, w * 0.90, h); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#B89A78'; ctx.fillRect(w * 0.42, h * 0.50, w * 0.16, h * 0.12);   // neck
+  ctx.fillStyle = '#C8AB87';                              // head
+  ctx.beginPath(); ctx.ellipse(w / 2, h * 0.40, w * 0.155, h * 0.145, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#ECE8E0';                              // white hair fringe
+  ctx.beginPath(); ctx.ellipse(w / 2, h * 0.30, w * 0.17, h * 0.07, 0, Math.PI, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#EFECE4';                              // beard
+  ctx.beginPath(); ctx.ellipse(w / 2, h * 0.505, w * 0.125, h * 0.085, 0, 0, Math.PI); ctx.fill();
+  ctx.fillStyle = '#3A2E22';                              // eyes
+  ctx.beginPath(); ctx.ellipse(w * 0.435, h * 0.40, 4, 3, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(w * 0.565, h * 0.40, 4, 3, 0, 0, Math.PI * 2); ctx.fill();
+  const tex = new THREE.CanvasTexture(cv);
+  tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
+  _kierTex.v = tex;
+  return tex;
+}
+
+/** Woven Chinese finger-trap — the iconic MDR 25%-reward prop. An open
+ *  lathe tube in signature MDR blue with a faint cross-hatch weave read
+ *  from the segment banding. */
+function FingerTrap({ position, rotation = [0, 0, 0] }: {
+  position: [number, number, number]; rotation?: [number, number, number];
+}) {
+  const profile = useMemo(() => [
+    new THREE.Vector2(0.0150, 0.000),
+    new THREE.Vector2(0.0135, 0.020),
+    new THREE.Vector2(0.0135, 0.060),
+    new THREE.Vector2(0.0150, 0.080),
+  ], []);
+  return (
+    <group position={position} rotation={rotation as any}>
+      <ContactDecal position={[0, 0.0008, 0]} r={0.05} opacity={0.4} />
+      <mesh castShadow rotation-z={Math.PI / 2}>
+        <latheGeometry args={[profile, 16]} />
+        <meshStandardMaterial color={C.mdrBlue} roughness={0.7} side={THREE.DoubleSide} />
+      </mesh>
+    </group>
+  );
+}
+
+/** Fanned paper stack — several thin sheets, slightly offset + rotated, in
+ *  mixed manila/buff/cream, instead of one solid box, with a contact decal. */
+function FannedPaper({ position, rot = 0 }: { position: [number, number, number]; rot?: number }) {
+  const sheets = useMemo(() => {
+    const cols = ['#F0EDE4', C.buff, C.manila, '#ECE7DA', C.buff];
+    return cols.map((c, i) => ({ c, dy: i * 0.0016, dr: rot + (i - 2) * 0.04, dx: (i - 2) * 0.004, dz: (i % 2 ? 1 : -1) * 0.003 }));
+  }, [rot]);
+  return (
+    <group position={position}>
+      <ContactDecal position={[0, 0.0006, 0]} r={0.11} opacity={0.4} />
+      {sheets.map((s, i) => (
+        <mesh key={i} position={[s.dx, 0.004 + s.dy, s.dz]} rotation-y={s.dr}>
+          <boxGeometry args={[0.15, 0.0012, 0.11]} />
+          <meshStandardMaterial color={s.c} roughness={0.92} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
 
 /* ---------- camera rig constants ------------------------------------- */
 const ENTRY_MS = 2400;
@@ -883,9 +1033,17 @@ function CrtMonitor({ phase, onClick }: { phase: Phase; onClick?: () => void }) 
   });
   return (
     <group position={MONITOR_WORLD.toArray()}>
-      {/* WEDGE body — wide flat face, narrows + slopes toward the back */}
+      {/* WEDGE body — wide flat face, narrows + slopes toward the back.
+          Molded-plastic shell: clearcoat gives the soft edge highlight that
+          reads as injection-molded terminal plastic, not flat matte. */}
       <mesh geometry={wedgeBody} castShadow receiveShadow>
-        <meshStandardMaterial {...(plastic as any)} color={C.monitor} roughness={0.55} normalScale={[0.12, 0.12] as any} />
+        <meshPhysicalMaterial {...(plastic as any)} color={C.lumonShell} roughness={0.5} clearcoat={0.22} clearcoatRoughness={0.6} normalScale={[0.12, 0.12] as any} />
+      </mesh>
+      {/* two-tone Lumon chin — pale-blue strip across the bottom front, the
+          canonical Data-General terminal two-tone */}
+      <mesh position={[0, -0.205, 0.2106]}>
+        <boxGeometry args={[0.665, 0.052, 0.004]} />
+        <meshPhysicalMaterial color={C.lumonChin} roughness={0.45} clearcoat={0.25} clearcoatRoughness={0.5} />
       </mesh>
       {/* SIDE VENTS — thin horizontal slits running along the SLOPED sides.
           Front face is ±0.28; back face is ±0.20. Place the slits flush
@@ -1010,14 +1168,29 @@ function LumonTrackball() {
   });
   return (
     <group position={[0.65, -0.39, 0.10]}>
+      <ContactDecal position={[0, -0.0118, 0]} r={0.13} opacity={0.45} />
+      {/* molded-plastic housing — cream shell with a soft clearcoat sheen */}
       <mesh castShadow receiveShadow>
-        <cylinderGeometry args={[0.075, 0.085, 0.025, 20]} />
-        <meshStandardMaterial color={C.monitor} roughness={0.55} />
+        <cylinderGeometry args={[0.075, 0.085, 0.025, 32]} />
+        <meshPhysicalMaterial color={C.lumonShell} roughness={0.5} clearcoat={0.25} clearcoatRoughness={0.6} />
+      </mesh>
+      {/* darkened socket recess so the ball reads as seated, not stuck on */}
+      <mesh position={[0, 0.012, 0]}>
+        <cylinderGeometry args={[0.066, 0.066, 0.006, 32]} />
+        <meshStandardMaterial color="#9A968E" roughness={0.7} />
       </mesh>
       <mesh position={[0, 0.013, 0]}>
-        <torusGeometry args={[0.075, 0.006, 8, 24]} />
+        <torusGeometry args={[0.075, 0.006, 10, 32]} />
         <meshStandardMaterial color="#9E9A92" roughness={0.5} metalness={0.4} />
       </mesh>
+      {/* two rectangular input buttons (per the real Lumon unit) at the
+          front lip, flanking the ball */}
+      {([-1, 1] as const).map((s) => (
+        <RoundedBox key={s} args={[0.034, 0.012, 0.026]} radius={0.004} smoothness={3}
+          position={[s * 0.040, 0.012, 0.062]}>
+          <meshPhysicalMaterial color={C.lumonShell} roughness={0.45} clearcoat={0.25} />
+        </RoundedBox>
+      ))}
       {/* spinning ball + equator mark in one group, so they spin
           together. Pointer events on the ball only. */}
       <group ref={spinRef} position={[0, 0.075, 0]}>
@@ -1026,12 +1199,13 @@ function LumonTrackball() {
           onPointerEnter={() => { setHover(true); document.body.style.cursor = 'pointer'; }}
           onPointerLeave={() => { setHover(false); document.body.style.cursor = 'default'; }}
         >
-          <sphereGeometry args={[0.075, 24, 18]} />
-          <meshStandardMaterial color="#F0EDE6" roughness={0.35} metalness={0.05} />
+          <sphereGeometry args={[0.075, 32, 24]} />
+          {/* glossy phenolic — like a billiard ball, not matte ping-pong */}
+          <meshPhysicalMaterial color="#D9D4C8" roughness={0.12} clearcoat={0.6} clearcoatRoughness={0.15} metalness={0.0} />
         </mesh>
         {/* tiny dark equator mark — makes the spin visible from idle */}
         <mesh position={[0.072, 0, 0]} rotation-z={Math.PI/2}>
-          <cylinderGeometry args={[0.002, 0.002, 0.012, 6]} />
+          <cylinderGeometry args={[0.002, 0.002, 0.012, 8]} />
           <meshStandardMaterial color="#3A3A3A" />
         </mesh>
       </group>
@@ -1178,7 +1352,7 @@ function OfficeChair({ pos }: { pos: [number, number, number] }) {
       >
         <meshStandardMaterial
           {...(fabric as any)}
-          color="#1B1B1B"
+          color={C.chairFabric}
           roughness={0.78}
           normalScale={[0.40, 0.40] as any}
         />
@@ -1207,7 +1381,7 @@ function OfficeChair({ pos }: { pos: [number, number, number] }) {
       >
         <meshStandardMaterial
           {...(fabric as any)}
-          color="#1B1B1B"
+          color={C.chairFabric}
           roughness={0.78}
           normalScale={[0.40, 0.40] as any}
         />
@@ -1283,7 +1457,7 @@ function OfficeChair({ pos }: { pos: [number, number, number] }) {
         >
           <meshStandardMaterial
             {...(fabric as any)}
-            color="#1B1B1B"
+            color={C.chairFabric}
             roughness={0.78}
             normalScale={[0.40, 0.40] as any}
           />
@@ -1400,21 +1574,44 @@ function CoffeeMug() {
     sipUntilRef.current = performance.now() / 1000 + 0.45;
     window.dispatchEvent(new CustomEvent('pg-mug-sip'));
   };
+  // Lathe profile — a TRUE hollow ceramic: base, flared outer wall, over
+  // the rim, down the inner wall to an interior floor. (x = radius, y =
+  // height from base.) 48-segment revolve = a smooth circular rim.
+  const mugProfile = useMemo(() => [
+    new THREE.Vector2(0.000, 0.000),
+    new THREE.Vector2(0.046, 0.000),
+    new THREE.Vector2(0.050, 0.018),
+    new THREE.Vector2(0.052, 0.100),  // outer rim lip
+    new THREE.Vector2(0.046, 0.100),  // over the rim
+    new THREE.Vector2(0.043, 0.020),  // inner wall
+    new THREE.Vector2(0.000, 0.014),  // inner floor
+  ], []);
   return (
     <group ref={groupRef}>
-      <mesh
-        position={[0.65, 0.785, DESK_Z + 0.15]}
-        onPointerEnter={() => { document.body.style.cursor = 'pointer'; }}
-        onPointerLeave={() => { document.body.style.cursor = 'default'; }}
-        onClick={(e) => { e.stopPropagation(); sip(); }}
-      >
-        <cylinderGeometry args={[0.052, 0.046, 0.10, 14]} />
-        <meshStandardMaterial color="#DCDAD6" roughness={0.55} />
-      </mesh>
-      <mesh position={[0.71, 0.785, DESK_Z + 0.15]} rotation-z={Math.PI / 2}>
-        <torusGeometry args={[0.028, 0.008, 6, 10, Math.PI]} />
-        <meshStandardMaterial color="#D8D6D2" roughness={0.55} />
-      </mesh>
+      {/* base group at the mug's foot so the lathe profile sits upright */}
+      <group position={[0.65, 0.735, DESK_Z + 0.15]}>
+        <ContactDecal position={[0, 0.0015, 0]} r={0.085} opacity={0.5} />
+        {/* glazed institutional ceramic — glossy clearcoat, Lumon powder-blue */}
+        <mesh
+          castShadow receiveShadow
+          onPointerEnter={() => { document.body.style.cursor = 'pointer'; }}
+          onPointerLeave={() => { document.body.style.cursor = 'default'; }}
+          onClick={(e) => { e.stopPropagation(); sip(); }}
+        >
+          <latheGeometry args={[mugProfile, 48]} />
+          <meshPhysicalMaterial color={C.lumonPowder} roughness={0.14} clearcoat={0.5} clearcoatRoughness={0.1} side={THREE.DoubleSide} />
+        </mesh>
+        {/* coffee surface disc, set down inside the rim */}
+        <mesh position={[0, 0.090, 0]}>
+          <cylinderGeometry args={[0.041, 0.041, 0.003, 32]} />
+          <meshStandardMaterial color={C.coffee} roughness={0.22} metalness={0.0} />
+        </mesh>
+        {/* handle — same glaze, tapered half-torus */}
+        <mesh position={[0.054, 0.05, 0]} rotation-z={Math.PI / 2}>
+          <torusGeometry args={[0.030, 0.0085, 12, 24, Math.PI]} />
+          <meshPhysicalMaterial color={C.lumonPowder} roughness={0.14} clearcoat={0.5} clearcoatRoughness={0.1} />
+        </mesh>
+      </group>
     </group>
   );
 }
@@ -1541,17 +1738,20 @@ function StationLite({ active = false, variant = 0 }: { active?: boolean; varian
   // paper-stack position, pen colour + tilt, and chair-mat offset so
   // the pod feels occupied by 4 different people. variant=0 is the
   // active south station (still gets distinct accessories below).
+  // Muted, company-issued institutional tones — Severance props are all
+  // Lumon-made and desaturated. The lone muted-yellow mug (variant 2) is
+  // kept as the single 'rebellion' accent.
   const PROPS = [
-    { mug: '#D33A3A', mugX:  0.55, paperX: -0.45, paperRot:  0.10, penColor: '#3E8FB0', matDx: 0.04, matDz: 0.02 },
-    { mug: '#5BA8B0', mugX:  0.42, paperX: -0.32, paperRot: -0.18, penColor: '#D33A3A', matDx: -0.05, matDz: -0.03 },
-    { mug: '#E5B23A', mugX:  0.58, paperX: -0.50, paperRot:  0.22, penColor: '#1A1A1A', matDx: 0.03, matDz: -0.04 },
-    { mug: '#F4F2EE', mugX:  0.48, paperX: -0.40, paperRot: -0.08, penColor: '#E5B23A', matDx: -0.04, matDz: 0.05 },
+    { mug: C.lumonPowder, mugX:  0.55, paperX: -0.45, paperRot:  0.10, penColor: '#3A4A50', matDx: 0.04, matDz: 0.02 },
+    { mug: '#E4DFD4',     mugX:  0.42, paperX: -0.32, paperRot: -0.18, penColor: C.graphite, matDx: -0.05, matDz: -0.03 },
+    { mug: '#D9C27A',     mugX:  0.58, paperX: -0.50, paperRot:  0.22, penColor: C.graphite, matDx: 0.03, matDz: -0.04 },
+    { mug: '#B7C0A8',     mugX:  0.48, paperX: -0.40, paperRot: -0.08, penColor: C.manila, matDx: -0.04, matDz: 0.05 },
   ][variant % 4];
   return (
     <>
       {/* Desk surface — bevelled, subtle wood-grain normal.
           N2: lengthened 1.55→1.95 (wider than deep, like the real MDR desks). */}
-      <RoundedBox args={[1.95, 0.06, 1.25]} radius={0.015} smoothness={3} position={[0, 0.74, DESK_DZ]} castShadow receiveShadow>
+      <RoundedBox args={[1.95, 0.06, 1.25]} radius={0.028} smoothness={4} position={[0, 0.74, DESK_DZ]} castShadow receiveShadow>
         <meshStandardMaterial
           {...(deskNormals as any)}
           color={C.desk}
@@ -1615,34 +1815,50 @@ function StationLite({ active = false, variant = 0 }: { active?: boolean; varian
           the parent renders an active CRT (with shader + click) instead. */}
       {!active && (
         <>
-          <mesh position={[0.10, 1.04, DESK_DZ - 0.35]} castShadow>
-            <boxGeometry args={[0.46, 0.40, 0.34]} />
-            <meshStandardMaterial color={C.monitor} roughness={0.55} />
+          {/* Inactive terminal — same widescreen Lumon silhouette as the
+              hero (cream molded shell + pale-blue chin + dim teal screen +
+              swivel base), so the four-station pod reads as identical refiner
+              desks (Severance's identical-desk motif). */}
+          <RoundedBox args={[0.66, 0.42, 0.34]} radius={0.02} smoothness={3} position={[0.10, 1.05, DESK_DZ - 0.35]} castShadow>
+            <meshPhysicalMaterial color={C.lumonShell} roughness={0.5} clearcoat={0.2} clearcoatRoughness={0.6} />
+          </RoundedBox>
+          {/* pale-blue two-tone chin */}
+          <mesh position={[0.10, 0.885, DESK_DZ - 0.18]}>
+            <boxGeometry args={[0.60, 0.05, 0.006]} />
+            <meshPhysicalMaterial color={C.lumonChin} roughness={0.45} clearcoat={0.2} />
           </mesh>
-          <mesh position={[0.10, 1.05, DESK_DZ - 0.18]}>
-            <planeGeometry args={[0.30, 0.22]} />
-            {/* inactive monitor screens also glow faint teal so the
-                whole MDR pod has 4 illuminated terminals, matching the
-                reference. Brighter than before (#0F1812 0.15 → #1A445A 0.55). */}
-            <meshStandardMaterial color="#0E2230" roughness={0.4} emissive="#1A445A" emissiveIntensity={0.25} />
+          {/* dim screen, recessed slightly */}
+          <mesh position={[0.10, 1.07, DESK_DZ - 0.181]}>
+            <planeGeometry args={[0.54, 0.31]} />
+            <meshStandardMaterial color="#0E2230" roughness={0.4} emissive="#16323A" emissiveIntensity={0.25} />
           </mesh>
-          <mesh position={[0.10, 0.79, DESK_DZ - 0.35]}>
-            <boxGeometry args={[0.26, 0.04, 0.22]} />
-            <meshStandardMaterial color="#BEB9B2" roughness={0.5} />
+          {/* tapered swivel neck + disc base */}
+          <mesh position={[0.10, 0.805, DESK_DZ - 0.35]}>
+            <cylinderGeometry args={[0.05, 0.075, 0.05, 24]} />
+            <meshPhysicalMaterial color={C.lumonShell} roughness={0.5} clearcoat={0.2} />
+          </mesh>
+          <mesh position={[0.10, 0.782, DESK_DZ - 0.35]}>
+            <cylinderGeometry args={[0.13, 0.13, 0.012, 32]} />
+            <meshPhysicalMaterial color={C.lumonShell} roughness={0.5} clearcoat={0.2} />
           </mesh>
           {/* ── PER-STATION INACTIVE PROPS ───────────────────────────
               Distinct mug colour, paper-stack position, and pen tilt
               per `variant` so the 4 booths feel occupied by different
               people instead of being clones. */}
-          {/* mug */}
+          {/* mug — glazed ceramic (smooth rim, clearcoat) */}
           <mesh position={[PROPS.mugX, 0.79, DESK_DZ + 0.20]} castShadow>
-            <cylinderGeometry args={[0.050, 0.044, 0.090, 14]} />
-            <meshStandardMaterial color={PROPS.mug} roughness={0.5} />
+            <cylinderGeometry args={[0.050, 0.044, 0.090, 32]} />
+            <meshPhysicalMaterial color={PROPS.mug} roughness={0.16} clearcoat={0.45} clearcoatRoughness={0.12} />
+          </mesh>
+          {/* coffee surface */}
+          <mesh position={[PROPS.mugX, 0.832, DESK_DZ + 0.20]}>
+            <cylinderGeometry args={[0.040, 0.040, 0.003, 24]} />
+            <meshStandardMaterial color={C.coffee} roughness={0.25} />
           </mesh>
           {/* mug handle */}
-          <mesh position={[PROPS.mugX + 0.06, 0.79, DESK_DZ + 0.20]} rotation-z={Math.PI / 2}>
-            <torusGeometry args={[0.026, 0.007, 6, 10, Math.PI]} />
-            <meshStandardMaterial color={PROPS.mug} roughness={0.5} />
+          <mesh position={[PROPS.mugX + 0.058, 0.79, DESK_DZ + 0.20]} rotation-z={Math.PI / 2}>
+            <torusGeometry args={[0.026, 0.0075, 10, 20, Math.PI]} />
+            <meshPhysicalMaterial color={PROPS.mug} roughness={0.16} clearcoat={0.45} clearcoatRoughness={0.12} />
           </mesh>
           {/* paper stack — small flat pile */}
           <mesh position={[PROPS.paperX, 0.773, DESK_DZ + 0.30]} rotation-y={PROPS.paperRot}>
@@ -1662,38 +1878,64 @@ function StationLite({ active = false, variant = 0 }: { active?: boolean; varian
             <cylinderGeometry args={[0.005, 0.005, 0.13, 8]} />
             <meshStandardMaterial color={PROPS.penColor} roughness={0.5} />
           </mesh>
-          {/* G6: brown leather folder/box accent — ref-severance-1 has one
-              warm brown object on a desk; one station only. */}
+          {/* Manila document folder (was a brown 'leather' box — leather is
+              an outside-world material; buff manila is the on-theme clerical
+              prop). Thin folded body + a slight top flap + a tab. */}
           {variant === 2 && (
-            <mesh position={[-0.72, 0.805, DESK_DZ + 0.18]} rotation-y={0.18} castShadow>
-              <boxGeometry args={[0.28, 0.07, 0.20]} />
-              <meshStandardMaterial color="#6B4A2F" roughness={0.55} />
-            </mesh>
+            <group position={[-0.70, 0.778, DESK_DZ + 0.18]} rotation-y={0.18}>
+              <RoundedBox args={[0.30, 0.018, 0.22]} radius={0.004} smoothness={2} castShadow>
+                <meshStandardMaterial color={C.manila} roughness={0.85} />
+              </RoundedBox>
+              {/* raised top flap edge */}
+              <mesh position={[0, 0.012, -0.005]}>
+                <boxGeometry args={[0.30, 0.004, 0.20]} />
+                <meshStandardMaterial color="#CDBB94" roughness={0.85} />
+              </mesh>
+              {/* tab */}
+              <mesh position={[0.07, 0.011, -0.115]}>
+                <boxGeometry args={[0.07, 0.004, 0.02]} />
+                <meshStandardMaterial color={C.manila} roughness={0.85} />
+              </mesh>
+            </group>
           )}
           {/* G28b: black rotary phone — a show-staple desk prop. Built
               from primitives (no CC0 rotary model in the kit); one
               station only so the pod doesn't read art-directed. */}
           {variant === 1 && (
             <group position={[0.62, 0.772, DESK_DZ + 0.16]} rotation-y={-0.35}>
+              {/* glossy bakelite body */}
               <mesh castShadow position={[0, 0.045, 0]} rotation-x={-0.18}>
                 <boxGeometry args={[0.20, 0.09, 0.18]} />
-                <meshStandardMaterial color="#181818" roughness={0.35} />
+                <meshPhysicalMaterial color={C.bakelite} roughness={0.12} clearcoat={0.8} clearcoatRoughness={0.15} />
               </mesh>
+              {/* rotary dial face */}
               <mesh position={[0, 0.085, 0.045]} rotation-x={Math.PI / 2 - 0.18}>
-                <cylinderGeometry args={[0.055, 0.055, 0.012, 20]} />
-                <meshStandardMaterial color="#2A2A2A" roughness={0.3} />
+                <cylinderGeometry args={[0.055, 0.055, 0.012, 32]} />
+                <meshPhysicalMaterial color="#1C1C1C" roughness={0.18} clearcoat={0.6} />
               </mesh>
+              {/* finger holes — 10 dark insets around the dial ring */}
+              {Array.from({ length: 10 }).map((_, i) => {
+                const a = (i / 10) * Math.PI * 2;
+                return (
+                  <mesh key={i} position={[Math.cos(a) * 0.036, 0.091 + Math.sin(a) * 0.036 * Math.cos(0.18), 0.045 + Math.sin(a) * 0.036 * Math.sin(0.18)]} rotation-x={Math.PI / 2 - 0.18}>
+                    <cylinderGeometry args={[0.007, 0.007, 0.014, 10]} />
+                    <meshStandardMaterial color="#070707" roughness={0.5} />
+                  </mesh>
+                );
+              })}
+              {/* handset bar — glossy bakelite */}
               <mesh position={[0, 0.125, -0.045]} rotation-z={Math.PI / 2}>
-                <cylinderGeometry args={[0.018, 0.018, 0.16, 10]} />
-                <meshStandardMaterial color="#141414" roughness={0.4} />
+                <cylinderGeometry args={[0.018, 0.018, 0.16, 24]} />
+                <meshPhysicalMaterial color={C.bakelite} roughness={0.12} clearcoat={0.8} />
               </mesh>
+              {/* ear/mouth cups */}
               <mesh position={[-0.085, 0.115, -0.045]}>
-                <cylinderGeometry args={[0.030, 0.024, 0.035, 12]} />
-                <meshStandardMaterial color="#141414" roughness={0.4} />
+                <cylinderGeometry args={[0.030, 0.024, 0.035, 20]} />
+                <meshPhysicalMaterial color={C.bakelite} roughness={0.12} clearcoat={0.8} />
               </mesh>
               <mesh position={[0.085, 0.115, -0.045]}>
-                <cylinderGeometry args={[0.030, 0.024, 0.035, 12]} />
-                <meshStandardMaterial color="#141414" roughness={0.4} />
+                <cylinderGeometry args={[0.030, 0.024, 0.035, 20]} />
+                <meshPhysicalMaterial color={C.bakelite} roughness={0.12} clearcoat={0.8} />
               </mesh>
             </group>
           )}
@@ -1733,52 +1975,63 @@ function StationLite({ active = false, variant = 0 }: { active?: boolean; varian
 
 /* ---------- 1980s keyboard + numeric pad ----------------------------- */
 function Keyboard({ pos }: { pos: [number, number, number] }) {
-  // Main alphanumeric block + small numeric pad to the right
-  const KEY_COLOR = '#5BA8B0';      // teal-blue like the references
-  const KEY_DARK  = '#2F5961';
-  // Generate a 4-row × 12-col grid of tiny key bumps for the main board
+  // Data-General two-tone: DARK alpha block + spacebar, LIGHT numpad/accents.
+  const CASE = '#E2DFD7';
+  // 4 rows × 12 cols — but NO escape key (the Severance in-joke): skip the
+  // top-left cap.
   const keys: [number, number][] = [];
   for (let r = 0; r < 4; r++) {
-    for (let c = 0; c < 12; c++) keys.push([r, c]);
+    for (let c = 0; c < 12; c++) {
+      if (r === 0 && c === 0) continue;
+      keys.push([r, c]);
+    }
   }
   return (
     <group position={pos}>
-      {/* Main keyboard body — flat tray */}
-      <mesh position={[0, 0.012, 0]} castShadow>
-        <boxGeometry args={[0.40, 0.024, 0.14]} />
-        <meshStandardMaterial color="#E2DFD7" roughness={0.55} />
+      <ContactDecal position={[0.04, -0.0006, 0]} r={0.34} opacity={0.38} />
+      {/* Main keyboard case — rounded molded tray with a faint sheen */}
+      <RoundedBox args={[0.40, 0.024, 0.14]} radius={0.006} smoothness={3} position={[0, 0.012, 0]} castShadow>
+        <meshPhysicalMaterial color={CASE} roughness={0.5} clearcoat={0.15} clearcoatRoughness={0.6} />
+      </RoundedBox>
+      {/* dark recess under the key grid — fakes inter-key AO */}
+      <mesh position={[-0.005, 0.0242, 0]}>
+        <boxGeometry args={[0.37, 0.001, 0.115]} />
+        <meshStandardMaterial color="#37474B" roughness={0.7} />
       </mesh>
-      {/* Coloured keys: little flat bumps on top */}
+      {/* Sculpted two-tone keycaps (rounded so they catch a highlight) */}
       {keys.map(([r, c]) => (
-        <mesh key={`k-${r}-${c}`} position={[-0.18 + c * 0.0315, 0.027, -0.045 + r * 0.025]}>
-          <boxGeometry args={[0.026, 0.008, 0.020]} />
-          <meshStandardMaterial color={c < 11 ? KEY_COLOR : KEY_DARK} roughness={0.5} />
-        </mesh>
+        <RoundedBox key={`k-${r}-${c}`} args={[0.026, 0.010, 0.020]} radius={0.0016} smoothness={2}
+          position={[-0.18 + c * 0.0315, 0.028, -0.045 + r * 0.025]}>
+          <meshStandardMaterial color={c >= 11 ? C.keyLight : C.keyDark} roughness={0.45} />
+        </RoundedBox>
       ))}
-      {/* spacebar */}
-      <mesh position={[-0.05, 0.027, 0.058]}>
-        <boxGeometry args={[0.14, 0.008, 0.020]} />
-        <meshStandardMaterial color={KEY_COLOR} roughness={0.5} />
-      </mesh>
-      {/* small dial / trackball area to the right of the spacebar */}
-      <mesh position={[0.10, 0.027, 0.058]}>
-        <cylinderGeometry args={[0.015, 0.015, 0.012, 16]} />
+      {/* spacebar — dark */}
+      <RoundedBox args={[0.14, 0.010, 0.020]} radius={0.0016} smoothness={2} position={[-0.05, 0.028, 0.058]}>
+        <meshStandardMaterial color={C.keyDark} roughness={0.45} />
+      </RoundedBox>
+      {/* small dial to the right of the spacebar */}
+      <mesh position={[0.10, 0.028, 0.058]}>
+        <cylinderGeometry args={[0.015, 0.015, 0.012, 24]} />
         <meshStandardMaterial color="#202C32" roughness={0.5} />
       </mesh>
-      {/* Numeric pad block */}
-      <mesh position={[0.27, 0.012, 0]} castShadow>
-        <boxGeometry args={[0.10, 0.024, 0.14]} />
-        <meshStandardMaterial color="#E2DFD7" roughness={0.55} />
-      </mesh>
-      {/* number-pad keys 4×3 */}
+      {/* Numeric pad case */}
+      <RoundedBox args={[0.10, 0.024, 0.14]} radius={0.006} smoothness={3} position={[0.27, 0.012, 0]} castShadow>
+        <meshPhysicalMaterial color={CASE} roughness={0.5} clearcoat={0.15} clearcoatRoughness={0.6} />
+      </RoundedBox>
+      {/* number-pad keys 4×3 — light accent */}
       {Array.from({ length: 4 }).flatMap((_, r) =>
         Array.from({ length: 3 }).map((_, c) => (
-          <mesh key={`n-${r}-${c}`} position={[0.245 + c * 0.025, 0.027, -0.045 + r * 0.025]}>
-            <boxGeometry args={[0.020, 0.008, 0.020]} />
-            <meshStandardMaterial color={KEY_COLOR} roughness={0.5} />
-          </mesh>
+          <RoundedBox key={`n-${r}-${c}`} args={[0.020, 0.010, 0.020]} radius={0.0014} smoothness={2}
+            position={[0.245 + c * 0.025, 0.028, -0.045 + r * 0.025]}>
+            <meshStandardMaterial color={C.keyLight} roughness={0.45} />
+          </RoundedBox>
         ))
       )}
+      {/* cable off the back edge */}
+      <mesh position={[-0.05, 0.006, -0.078]} rotation-x={Math.PI / 2}>
+        <cylinderGeometry args={[0.004, 0.004, 0.05, 8]} />
+        <meshStandardMaterial color="#C9C6BE" roughness={0.6} />
+      </mesh>
     </group>
   );
 }
@@ -1788,41 +2041,60 @@ function DeskLamp({ pos }: { pos: [number, number, number] }) {
   // Toggleable on/off via click. Heffer-style — clicking the shade
   // flicks the light on or off (emissive + pointLight both gated).
   const [on, setOn] = useState(true);
+  const metal = { roughness: 0.35, metalness: 0.5 };
+  // Lathe profile for a real cone/dome task-lamp shade (wide rim at y0,
+  // narrowing to the neck at the top).
+  const shadeProfile = useMemo(() => [
+    new THREE.Vector2(0.060, 0.000),
+    new THREE.Vector2(0.046, 0.022),
+    new THREE.Vector2(0.026, 0.058),
+    new THREE.Vector2(0.012, 0.085),
+  ], []);
   return (
     <group position={pos}>
-      {/* base disc */}
-      <mesh position={[0, 0.018, 0]} castShadow>
-        <cylinderGeometry args={[0.065, 0.075, 0.035, 18]} />
-        <meshStandardMaterial color="#F0EEEA" roughness={0.55} metalness={0.04} />
+      <ContactDecal position={[0, 0.002, 0]} r={0.11} opacity={0.5} />
+      {/* base disc — painted metal sheen */}
+      <mesh position={[0, 0.016, 0]} castShadow>
+        <cylinderGeometry args={[0.062, 0.075, 0.030, 32]} />
+        <meshStandardMaterial color="#EEEDE9" {...metal} />
       </mesh>
-      {/* stem */}
-      <mesh position={[0, 0.16, 0]} castShadow>
-        <cylinderGeometry args={[0.012, 0.012, 0.28, 10]} />
-        <meshStandardMaterial color="#E8E6E2" roughness={0.4} metalness={0.1} />
+      {/* lower arm */}
+      <mesh position={[0, 0.13, 0]} castShadow>
+        <cylinderGeometry args={[0.011, 0.013, 0.23, 16]} />
+        <meshStandardMaterial color="#E8E6E2" {...metal} />
       </mesh>
-      {/* lampshade — clickable; emissive only when on */}
-      <mesh
-        position={[0.05, 0.31, 0]}
-        rotation-z={-0.45}
-        castShadow
-        onPointerEnter={() => { document.body.style.cursor = 'pointer'; }}
-        onPointerLeave={() => { document.body.style.cursor = 'default'; }}
-        onClick={(e) => { e.stopPropagation(); setOn(o => !o); }}
-      >
-        <boxGeometry args={[0.16, 0.07, 0.13]} />
-        {/* G3: cool white task lamp (was warm banker's #FFD8A0) to match
-            the small white desk lamp in the Severance reference. */}
-        <meshStandardMaterial
-          color="#F4F4F2"
-          roughness={0.5}
-          emissive="#EAF1FF"
-          emissiveIntensity={on ? 0.16 : 0.0}
-        />
+      {/* elbow knuckle — articulated joint */}
+      <mesh position={[0, 0.248, 0]}>
+        <sphereGeometry args={[0.018, 16, 12]} />
+        <meshStandardMaterial color="#DAD8D2" roughness={0.3} metalness={0.6} />
       </mesh>
+      {/* upper arm — angled forward toward the desk */}
+      <mesh position={[0.052, 0.272, 0]} rotation-z={-0.95} castShadow>
+        <cylinderGeometry args={[0.010, 0.011, 0.14, 16]} />
+        <meshStandardMaterial color="#E8E6E2" {...metal} />
+      </mesh>
+      {/* lathe shade — clickable; opening points down-forward at the desk */}
+      <group position={[0.108, 0.262, 0]} rotation-z={-2.3}>
+        <mesh
+          castShadow
+          onPointerEnter={() => { document.body.style.cursor = 'pointer'; }}
+          onPointerLeave={() => { document.body.style.cursor = 'default'; }}
+          onClick={(e) => { e.stopPropagation(); setOn(o => !o); }}
+        >
+          <latheGeometry args={[shadeProfile, 32]} />
+          <meshStandardMaterial
+            color="#F2F1ED"
+            {...metal}
+            side={THREE.DoubleSide}
+            emissive="#EAF1FF"
+            emissiveIntensity={on ? 0.20 : 0.0}
+          />
+        </mesh>
+      </group>
       {/* neutral-cool pool of light — only when on */}
       {on && (
         <pointLight
-          position={[0.12, 0.25, 0]}
+          position={[0.13, 0.22, 0]}
           intensity={1.2}
           distance={1.3}
           decay={2}
@@ -2135,6 +2407,9 @@ function MdrPanel({ w, h, fabric }: { w: number; h: number; fabric: any }) {
 function OfficeScene({ phase, onMonitorClick }: {
   phase: Phase; onMonitorClick: () => void;
 }) {
+  // Engraved nameplate texture (real text on the chrome face)
+  const nameTex = useMemo(() => getEngravedTex('P. GARG'), []);
+  const kierTex = useMemo(() => getKierPortraitTex(), []);
   // Wall shader (panel seams) — one instance shared across all 3 walls
   const wallMat = useMemo(() => new THREE.ShaderMaterial({
     uniforms: {
@@ -2438,104 +2713,110 @@ function OfficeScene({ phase, onMonitorClick }: {
       {/* desk lamp — back-left corner */}
       <DeskLamp pos={[-0.55, 0.77, DESK_Z - 0.45]} />
 
-      {/* sticky notes — to the right of keyboard */}
+      {/* sticky notes — manila pad + ONE muted-yellow note (the lone
+          Severance rebellion accent) */}
       <mesh position={[0.50, 0.776, DESK_Z + 0.30]} rotation-y={0.18}>
         <boxGeometry args={[0.10, 0.012, 0.10]} />
-        <meshStandardMaterial color="#F5E68A" roughness={0.85} />
+        <meshStandardMaterial color={C.buff} roughness={0.9} />
       </mesh>
-      <mesh position={[0.51, 0.782, DESK_Z + 0.30]} rotation-y={0.14}>
-        <boxGeometry args={[0.10, 0.005, 0.10]} />
-        <meshStandardMaterial color="#F8EC9A" roughness={0.85} />
+      <mesh position={[0.515, 0.783, DESK_Z + 0.305]} rotation-y={0.14}>
+        <boxGeometry args={[0.095, 0.004, 0.095]} />
+        <meshStandardMaterial color="#E2D58A" roughness={0.9} />
       </mesh>
 
-      {/* stack of papers — far-left front of desk */}
-      <mesh position={[-0.55, 0.775, DESK_Z + 0.45]} rotation-y={-0.12}>
-        <boxGeometry args={[0.16, 0.018, 0.12]} />
-        <meshStandardMaterial color="#F0EDE4" roughness={0.9} />
-      </mesh>
+      {/* stack of papers — far-left front, fanned individual sheets */}
+      <FannedPaper position={[-0.55, 0.766, DESK_Z + 0.45]} rot={-0.12} />
 
       {/* coffee mug — clickable, click triggers a steam-puff burst. */}
       <CoffeeMug />
       <CoffeeSteam origin={[0.65, 0.84, DESK_Z + 0.15]} />
 
-      {/* small framed picture — back-right of desk */}
-      <mesh position={[0.55, 0.81, DESK_Z - 0.45]} rotation-y={-0.20}>
-        <boxGeometry args={[0.13, 0.10, 0.018]} />
-        <meshStandardMaterial color="#3A3632" roughness={0.5} />
-      </mesh>
-      <mesh position={[0.55, 0.81, DESK_Z - 0.441]} rotation-y={-0.20}>
-        <planeGeometry args={[0.10, 0.075]} />
-        <meshStandardMaterial color="#8AA5C8" roughness={0.8} />
-      </mesh>
+      {/* Lumon finger-trap reward (replaces the personal photo — innies keep
+          no outside-world items; a company reward is the on-theme prop). */}
+      <FingerTrap position={[0.55, 0.776, DESK_Z - 0.45]} rotation={[0, -0.2, 0]} />
+      {/* rubber pencil-eraser reward (the 10% incentive) */}
+      <group position={[0.40, 0.773, DESK_Z - 0.40]} rotation-y={0.4}>
+        <ContactDecal position={[0, 0.0006, 0]} r={0.035} opacity={0.4} />
+        <RoundedBox args={[0.05, 0.018, 0.024]} radius={0.004} smoothness={2} castShadow>
+          <meshStandardMaterial color={C.eraser} roughness={0.9} />
+        </RoundedBox>
+      </group>
 
-      {/* tissue box — small white cube on the right-front of desk */}
-      <mesh position={[0.50, 0.83, DESK_Z + 0.45]}>
-        <boxGeometry args={[0.14, 0.10, 0.10]} />
-        <meshStandardMaterial color="#F8F6F2" roughness={0.85} />
-      </mesh>
-      {/* tissue slot — small darker indent on top */}
-      <mesh position={[0.50, 0.885, DESK_Z + 0.45]}>
-        <boxGeometry args={[0.08, 0.006, 0.04]} />
-        <meshStandardMaterial color="#C8C6C2" roughness={0.9} />
-      </mesh>
+      {/* tissue box — rounded Lumon powder-blue with an oval slot + wisp */}
+      <group position={[0.50, 0.83, DESK_Z + 0.45]}>
+        <RoundedBox args={[0.14, 0.10, 0.10]} radius={0.012} smoothness={3} castShadow>
+          <meshPhysicalMaterial color={C.lumonChin} roughness={0.5} clearcoat={0.15} />
+        </RoundedBox>
+        {/* recessed oval opening */}
+        <mesh position={[0, 0.051, 0]} rotation-x={-Math.PI / 2} scale={[1, 0.42, 1]}>
+          <cylinderGeometry args={[0.045, 0.045, 0.012, 24]} />
+          <meshStandardMaterial color="#3A4448" roughness={0.9} />
+        </mesh>
+        {/* wisp of tissue poking out */}
+        <mesh position={[0, 0.062, 0]} rotation-z={0.3}>
+          <icosahedronGeometry args={[0.022, 0]} />
+          <meshStandardMaterial color="#FCFCFA" roughness={0.95} />
+        </mesh>
+      </group>
 
-      {/* pen holder — small cylinder cup beside monitor (static) */}
-      <mesh position={[-0.35, 0.81, DESK_Z - 0.15]}>
-        <cylinderGeometry args={[0.045, 0.04, 0.10, 14]} />
-        <meshStandardMaterial color="#3A3C3E" roughness={0.6} />
-      </mesh>
-      {/* pens poking out of holder — wrapped in LivingProp so they
-          wobble slightly (someone bumped the cup). */}
+      {/* pen cup — hollow lathe cup holding two muted pens */}
+      <group position={[-0.35, 0.76, DESK_Z - 0.15]}>
+        <ContactDecal position={[0, 0.0015, 0]} r={0.07} opacity={0.45} />
+        <mesh castShadow>
+          <latheGeometry args={[[
+            new THREE.Vector2(0.000, 0.000),
+            new THREE.Vector2(0.044, 0.000),
+            new THREE.Vector2(0.046, 0.100),
+            new THREE.Vector2(0.041, 0.100),
+            new THREE.Vector2(0.039, 0.012),
+            new THREE.Vector2(0.000, 0.010),
+          ], 32]} />
+          <meshStandardMaterial color="#9FA3A0" roughness={0.5} metalness={0.2} side={THREE.DoubleSide} />
+        </mesh>
+      </group>
       <LivingProp speed={0.42} ampY={0.0008} ampRot={0.08}>
         <mesh position={[-0.35, 0.91, DESK_Z - 0.15]} rotation-z={0.08}>
-          <cylinderGeometry args={[0.005, 0.005, 0.10, 6]} />
-          <meshStandardMaterial color="#5BA8B0" />
+          <cylinderGeometry args={[0.005, 0.005, 0.13, 16]} />
+          <meshStandardMaterial color={C.graphite} roughness={0.45} />
         </mesh>
         <mesh position={[-0.36, 0.90, DESK_Z - 0.14]} rotation-z={-0.12} rotation-x={0.08}>
-          <cylinderGeometry args={[0.005, 0.005, 0.10, 6]} />
-          <meshStandardMaterial color="#D33A3A" />
+          <cylinderGeometry args={[0.005, 0.005, 0.13, 16]} />
+          <meshStandardMaterial color={C.manila} roughness={0.45} />
         </mesh>
       </LivingProp>
 
-      {/* in-tray with a small stack of papers — back-centre of desk */}
-      <mesh position={[-0.10, 0.78, DESK_Z - 0.45]}>
-        <boxGeometry args={[0.20, 0.025, 0.16]} />
-        <meshStandardMaterial color="#8E8C88" roughness={0.4} metalness={0.3} />
-      </mesh>
-      <mesh position={[-0.10, 0.80, DESK_Z - 0.45]}>
-        <boxGeometry args={[0.17, 0.015, 0.13]} />
-        <meshStandardMaterial color="#F0EDE4" roughness={0.9} />
-      </mesh>
-      <mesh position={[-0.09, 0.812, DESK_Z - 0.45]}>
-        <boxGeometry args={[0.17, 0.005, 0.13]} />
-        <meshStandardMaterial color="#E8E4DA" roughness={0.9} />
-      </mesh>
+      {/* in-tray — real letter tray with a floor + low walls */}
+      <group position={[-0.10, 0.77, DESK_Z - 0.45]}>
+        <mesh position={[0, 0.008, 0]}>
+          <boxGeometry args={[0.22, 0.006, 0.17]} />
+          <meshStandardMaterial color="#9C9A95" roughness={0.4} metalness={0.35} />
+        </mesh>
+        {[[0, 0.025, -0.082, 0.22, 0.05, 0.008], [0, 0.025, 0.082, 0.22, 0.05, 0.008],
+          [-0.107, 0.025, 0, 0.008, 0.05, 0.17], [0.107, 0.025, 0, 0.008, 0.05, 0.17]
+        ].map((w, i) => (
+          <mesh key={i} position={[w[0], w[1], w[2]]}>
+            <boxGeometry args={[w[3], w[4], w[5]]} />
+            <meshStandardMaterial color="#9C9A95" roughness={0.4} metalness={0.35} />
+          </mesh>
+        ))}
+        {/* small fanned stack inside */}
+        <FannedPaper position={[0, 0.014, 0.01]} rot={0.04} />
+      </group>
 
-      {/* small pen — long thin cylinder on top of the papers stack */}
-      <mesh position={[-0.10, 0.83, DESK_Z - 0.40]} rotation-z={Math.PI/2} rotation-x={0.15}>
-        <cylinderGeometry args={[0.005, 0.005, 0.14, 8]} />
-        <meshStandardMaterial color="#1A1A1A" roughness={0.55} />
-      </mesh>
-      {/* DESK NAMEPLATE — small dark plaque sitting on the desk edge
-          facing the chair, like the engraved name tags MDR refiners
-          have at their stations. */}
+      {/* DESK NAMEPLATE — engraved metal name tag facing the chair, like
+          the MDR refiner station tags. */}
       <group position={[0.08, 0.77, DESK_Z + 0.55]}>
         <mesh castShadow>
           <boxGeometry args={[0.22, 0.05, 0.04]} />
           <meshStandardMaterial color="#2A241F" roughness={0.45} metalness={0.3} />
         </mesh>
-        {/* small chrome face on the plaque */}
-        <mesh position={[0, 0.001, 0.021]}>
-          <planeGeometry args={[0.20, 0.035]} />
-          <meshStandardMaterial color="#C8C6C0" roughness={0.4} metalness={0.7} />
+        {/* chrome face with real engraved text */}
+        <mesh position={[0, 0.002, 0.0205]}>
+          <planeGeometry args={[0.20, 0.034]} />
+          {nameTex
+            ? <meshStandardMaterial map={nameTex} roughness={0.4} metalness={0.6} />
+            : <meshStandardMaterial color="#C8C6C0" roughness={0.4} metalness={0.7} />}
         </mesh>
-        {/* faux engraved name — three thin dark lines */}
-        {[-0.05, 0, 0.05].map((dx, i) => (
-          <mesh key={i} position={[dx, 0.002, 0.023]}>
-            <planeGeometry args={[0.025, 0.012]} />
-            <meshStandardMaterial color="#1F1F1F" roughness={0.6} />
-          </mesh>
-        ))}
       </group>
       </group>{/* end SOUTH_DX accessories group */}
 
@@ -2587,19 +2868,21 @@ function OfficeScene({ phase, onMonitorClick }: {
           <meshStandardMaterial color="#1F1B17" roughness={0.55} />
         </mesh>
         {/* cream mat inside frame */}
-        <mesh position={[0, 0, 0.018]}>
+        <mesh position={[0, 0, 0.016]}>
           <planeGeometry args={[0.70, 0.97]} />
           <meshStandardMaterial color="#EFEAD8" roughness={0.85} />
         </mesh>
-        {/* dark portrait silhouette — head + shoulders oval */}
-        <mesh position={[0, 0.10, 0.020]}>
-          <circleGeometry args={[0.16, 32]} />
-          <meshStandardMaterial color="#3B342E" roughness={0.7} />
+        {/* gilt inner-mat fillet */}
+        <mesh position={[0, 0.04, 0.018]}>
+          <planeGeometry args={[0.52, 0.70]} />
+          <meshStandardMaterial color="#8A6E3A" roughness={0.5} metalness={0.6} />
         </mesh>
-        {/* shoulders block */}
-        <mesh position={[0, -0.20, 0.020]}>
-          <planeGeometry args={[0.42, 0.30]} />
-          <meshStandardMaterial color="#3B342E" roughness={0.7} />
+        {/* the painted portrait itself (generated texture) */}
+        <mesh position={[0, 0.04, 0.020]}>
+          <planeGeometry args={[0.48, 0.66]} />
+          {kierTex
+            ? <meshStandardMaterial map={kierTex} roughness={0.8} />
+            : <meshStandardMaterial color="#3B342E" roughness={0.8} />}
         </mesh>
         {/* thin gold name plate at bottom */}
         <mesh position={[0, -0.46, 0.022]}>
