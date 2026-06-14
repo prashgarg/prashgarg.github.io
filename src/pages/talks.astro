@@ -22,7 +22,7 @@ const yearsDesc = Object.keys(byYear).map(Number).sort((a, b) => b - a);
     {yearsDesc.map(y => (
       <section class="mb-8">
         <h2 class="font-display text-xl font-bold mb-3 pb-1 border-b border-ink/20 dark:border-cream/20">{y}</h2>
-        <ul class="space-y-2 text-sm text-ink/85 dark:text-cream/85">
+        <ul class="space-y-2.5 text-sm text-ink/85 dark:text-cream/85 leading-relaxed">
           {byYear[y].map(t => (
             <li>
               <span class="text-ink/55 dark:text-cream/55">{t.date}</span> —

@@ -2976,7 +2976,10 @@ function BootOverlay({ onDone }: { onDone: () => void }) {
     window.addEventListener('keydown', onKey);
     return () => { cancelled = true; window.removeEventListener('keydown', onKey); };
   }, []);
-  useEffect(() => { if (!done) return; const t = setTimeout(onDone, 380); return () => clearTimeout(t); }, [done, onDone]);
+  // Let "welcome." linger before the desktop appears — the review found
+  // the boot's final beat exited too quickly. (Skipped boots still feel
+  // instant because `done` fires immediately on keypress.)
+  useEffect(() => { if (!done) return; const t = setTimeout(onDone, skipped.current ? 240 : 720); return () => clearTimeout(t); }, [done, onDone]);
   return (
     <div
       onClick={() => { skipped.current = true; setDone(true); }}
