@@ -13,7 +13,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { PerspectiveCamera, ContactShadows, MeshReflectorMaterial, Environment, RoundedBox, useTexture, Html } from '@react-three/drei';
-import { EffectComposer, N8AO, Bloom } from '@react-three/postprocessing';
+import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import * as THREE from 'three';
 import InnerDesktop from './InnerDesktop';
 
@@ -158,9 +158,14 @@ const CAM_MONITOR_TGT = MONITOR_WORLD.clone();
 // screen. Smaller = bigger screen / less room (sliver of bezel); larger =
 // more 'monitor in a room'. Tunable via ?cz= during the pilot.
 const _COMPOSITE_CZ = (() => {
-  if (typeof window === 'undefined') return 0.18;
+  if (typeof window === 'undefined') return 0.23;
   const v = parseFloat(new URLSearchParams(window.location.search).get('cz') || '');
-  return Number.isFinite(v) ? v : 0.115;  // zoom in: turquoise screen fills the frame (height-fit), thin bezel sliver
+  // Frame the monitor as an OBJECT IN THE ROOM (Henry-style) — screen ≈ 68% of
+  // the viewport with a clear room margin all around. The margin is what you
+  // click to step back out (see the wrapper onPointerDown), and it's where the
+  // now-slim bezel is visible. (Earlier this was 0.115 = screen fills the whole
+  // frame, but that left nothing outside the monitor to click.)
+  return Number.isFinite(v) ? v : 0.23;
 })();
 const CAM_COMPOSITE_POS = new THREE.Vector3(MONITOR_WORLD.x, MONITOR_WORLD.y + 0.02, DESK_Z + _COMPOSITE_CZ);
 const CAM_COMPOSITE_TGT = new THREE.Vector3(MONITOR_WORLD.x, MONITOR_WORLD.y + 0.02, MONITOR_WORLD.z);
@@ -535,10 +540,10 @@ const CARPET_FRAG = `
 function CrtScreenProjector() {
   const { camera, size } = useThree();
   // Screen plane lives at MONITOR_WORLD + local offset [0, 0.02, 0.207],
-  // size 0.34 × 0.26 (see CrtMonitor). Four corners in world space:
+  // size 0.42 × 0.321 (see CrtMonitor). Four corners in world space:
   const corners = useMemo(() => {
     const cx = MONITOR_WORLD.x, cy = MONITOR_WORLD.y + 0.02, cz = MONITOR_WORLD.z + 0.207;
-    const hw = 0.17, hh = 0.13;
+    const hw = 0.21, hh = 0.1605;
     return [
       new THREE.Vector3(cx - hw, cy - hh, cz),
       new THREE.Vector3(cx + hw, cy - hh, cz),
@@ -575,7 +580,6 @@ function CameraRig({ phase, onArrived, onEntryDone }: {
   const tgt    = useRef(CAM_ENTRY_TGT.clone());
   const fromPos = useRef(CAM_IDLE_POS.clone());
   const fromTgt = useRef(CAM_IDLE_TGT.clone());
-  const roamTarget = useRef(new THREE.Vector3());   // composite-desktop mouse-orbit target
   const startedAt       = useRef<number | null>(null);
   const entryStartTime  = useRef<number | null>(null);
   const arrivedFired    = useRef(false);
@@ -644,22 +648,13 @@ function CameraRig({ phase, onArrived, onEntryDone }: {
     }
     // ── on-monitor / booting / desktop ─────────────────────────────────────
     if (phase === 'on-monitor' || phase === 'booting' || phase === 'desktop') {
-      // COMPOSITE desktop: a VERY gentle PAN (not a skew). The earlier roam
-      // translated the camera while lookAt stayed locked, which rotated the
-      // screen plane in view = the "unstable rotating" the screen reads
-      // wrong. Now the target orbits with the camera (≈0.6×) so the move is
-      // a near-pure pan: the screen stays square + readable, just a hair of
-      // life. Heavily damped + slow-lerped so it settles (no AO shimmer).
-      if (COMPOSITE && phase === 'desktop') {
-        const ms = state.clock.elapsedTime * 1000;
-        const rx = mouse.current.x * 0.016 + Math.sin(ms * 0.00011) * 0.004;
-        const ry = mouse.current.y * 0.011 + Math.sin(ms * 0.00015 + 1.3) * 0.003;
-        roamTarget.current.set(endPos.x + rx, endPos.y - ry, endPos.z);
-        camera.position.lerp(roamTarget.current, 0.04);
-        tgt.current.lerp(new THREE.Vector3(endTgt.x + rx * 0.6, endTgt.y - ry * 0.6, endTgt.z), 0.05);
-        camera.lookAt(tgt.current);
-        return;
-      }
+      // COMPOSITE desktop: hold the camera DEAD STILL on the framed monitor.
+      // (We tried a gentle mouse-driven pan here, but hovering near a screen
+      // edge nudged the framing toward that edge — it read as an unwanted
+      // zoom/pan into the corner. The desktop must sit rock-steady so reading
+      // and the returning-visitor experience stay calm.) Plain damped lerp to
+      // the fixed framing; once it arrives the lerp converges and the view
+      // stops moving entirely — no mouse input, no drift.
       camera.position.lerp(endPos, 0.08);
       tgt.current.lerp(endTgt, 0.08);
       camera.lookAt(tgt.current);
@@ -915,15 +910,16 @@ function CrtMonitor({ phase, onClick }: { phase: Phase; onClick?: () => void }) 
           <meshStandardMaterial color="#6E6A62" roughness={0.6} />
         </mesh>
       ))}
-      {/* front BEZEL — chunky inset frame around the screen on the
-          full-size front face, gives the Lumon-prop chunky-front read. */}
-      <mesh position={[0, 0.005, 0.211]}>
-        <boxGeometry args={[0.50, 0.40, 0.006]} />
+      {/* front BEZEL — thin inset frame around the (now larger) screen on
+          the full-size front face. Reaches close to the body edge so the
+          cream surround reads as a slim frame, not a chunky border. */}
+      <mesh position={[0, 0.02, 0.211]}>
+        <boxGeometry args={[0.52, 0.40, 0.006]} />
         <meshStandardMaterial color="#E2DED6" roughness={0.55} />
       </mesh>
-      {/* inner bezel — slightly darker recess just around the screen */}
+      {/* inner bezel — slim darker recess hugging the screen edge */}
       <mesh position={[0, 0.020, 0.214]}>
-        <boxGeometry args={[0.40, 0.32, 0.004]} />
+        <boxGeometry args={[0.45, 0.35, 0.004]} />
         <meshStandardMaterial color="#CFCBC3" roughness={0.55} />
       </mesh>
       {/* small Lumon-style branding plate below screen, off-centre right */}
@@ -964,7 +960,7 @@ function CrtMonitor({ phase, onClick }: { phase: Phase; onClick?: () => void }) 
         }}
         onPointerLeave={() => { setHovered(false); document.body.style.cursor = 'default'; }}
       >
-        <planeGeometry args={[0.34, 0.26]} />
+        <planeGeometry args={[0.42, 0.321]} />
         <primitive object={crtMat} attach="material" />
       </mesh>
       {/* subtle screen glow light — teal/blue to match the new CRT colour */}
@@ -2283,6 +2279,7 @@ function OfficeScene({ phase, onMonitorClick }: {
           rectangle on the new bright green. */}
       <ContactShadows
         position={[0.3, 0.012, DESK_Z + 0.7]}
+        frames={1}
         opacity={0.45}
         scale={7.0}
         blur={3.2}
@@ -2396,7 +2393,10 @@ function OfficeScene({ phase, onMonitorClick }: {
              still hides it correctly via blending occlusion. */
           position={[MONITOR_WORLD.x, MONITOR_WORLD.y + 0.02, MONITOR_WORLD.z + 0.218]}
           rotation={[0, 0, 0]}
-          scale={0.0132}
+          /* scale calibrated so the 1040×795 iframe fills the screen plane
+             exactly. Screen grew 0.34→0.42 wide, so scale grows by the same
+             ratio: 0.0132 × (0.42/0.34) ≈ 0.0163. */
+          scale={0.0163}
           distanceFactor={undefined}
           zIndexRange={[100, 0]}
           pointerEvents="auto"
@@ -3322,89 +3322,42 @@ function HudOverlay({ muted, onMuteToggle }: { muted: boolean; onMuteToggle: () 
   );
 }
 
-/* ---------- tap hint -------------------------------------------------- */
+/* ---------- start hint ------------------------------------------------ */
 /**
- * First-visit welcome card. Shown ONCE per browser (localStorage
- * flag); fades in 4 s after entry, sits in the upper-right of the
- * scene with a brief explainer. Dismisses on click or after 14 s.
- * Heffer-style — gives visitors who land on the 3D scene cold a hint
- * about what to do.
+ * The only onboarding cue: a single quiet "Click monitor to start" chip
+ * pinned to the bottom-centre, styled to match the bottom-left HUD name
+ * chip (same dark-sage ground, cream mono type). It pulses gently so it
+ * reads as a call to action, and disappears on the first click. (Replaces
+ * the old verbose top-right "Welcome to the workstation…" card, which was
+ * too much to read.)
  */
-function FirstVisitWelcome() {
-  const KEY = 'pg_seen_welcome_v1';
-  const [show, setShow] = useState(false);
-  const [closing, setClosing] = useState(false);
-  useEffect(() => {
-    try {
-      if (localStorage.getItem(KEY) === '1') return;
-    } catch { /* ignore */ }
-    const t = setTimeout(() => setShow(true), 4000);
-    return () => clearTimeout(t);
-  }, []);
-  useEffect(() => {
-    if (!show) return;
-    const t = setTimeout(() => { setClosing(true); setTimeout(() => setShow(false), 400); }, 14000);
-    return () => clearTimeout(t);
-  }, [show]);
-  const dismiss = () => {
-    setClosing(true);
-    try { localStorage.setItem(KEY, '1'); } catch { /* ignore */ }
-    setTimeout(() => setShow(false), 400);
-  };
-  if (!show) return null;
-  return (
-    <div
-      onClick={dismiss}
-      style={{
-        position: 'fixed', top: '7%', right: '6%', maxWidth: 280,
-        padding: '12px 14px 10px',
-        background: 'rgba(31, 47, 39, 0.92)',
-        border: '1px solid rgba(199, 213, 195, 0.30)',
-        color: '#E8EEDF',
-        fontFamily: "ui-monospace,'SF Mono',Menlo,Consolas,monospace",
-        fontSize: 12, lineHeight: 1.5,
-        backdropFilter: 'blur(6px)' as any,
-        zIndex: 11, pointerEvents: 'auto', cursor: 'pointer',
-        boxShadow: '0 8px 24px rgba(0,0,0,0.45)',
-        opacity: closing ? 0 : 1,
-        transition: 'opacity 0.4s ease',
-        animation: closing ? 'none' : 'pg-welcome-in 0.5s cubic-bezier(0.16,1,0.3,1) both',
-      }}
-    >
-      <div style={{ fontSize: 10, opacity: 0.55, letterSpacing: '0.12em', marginBottom: 4 }}>
-        WELCOME
-      </div>
-      <div style={{ marginBottom: 6 }}>
-        Welcome to the workstation. {typeof window !== 'undefined' && window.matchMedia('(hover: none)').matches ? 'Tap' : 'Click'} the monitor to step inside and open the desktop. The objects on the desk respond to you.
-      </div>
-      <div style={{ fontSize: 10, opacity: 0.55, marginTop: 8, textAlign: 'right' }}>
-        {typeof window !== 'undefined' && window.matchMedia('(hover: none)').matches ? 'tap' : 'click'} to dismiss
-      </div>
-      <style>{`@keyframes pg-welcome-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }`}</style>
-    </div>
-  );
-}
-
 function TapHint({ isTouch }: { isTouch: boolean }) {
-  // Touch users get the hint immediately; desktop users only after ~3 s
-  // of idle (visitors land on the corner-quarter view and might not
-  // realise the small CRT is the click target).
+  // Touch users get the cue immediately; desktop users after a short beat.
   const [visible, setVisible] = useState(isTouch);
   useEffect(() => {
-    let showT: any, hideT: any;
-    if (!isTouch) showT = setTimeout(() => setVisible(true), 3200);
-    hideT = setTimeout(() => setVisible(false), isTouch ? 4500 : 9000);
-    const off = () => { setVisible(false); clearTimeout(showT); clearTimeout(hideT); };
+    let showT: any;
+    if (!isTouch) showT = setTimeout(() => setVisible(true), 1400);
+    const off = () => { setVisible(false); clearTimeout(showT); };
     window.addEventListener('pointerdown', off, { once: true });
-    return () => { clearTimeout(showT); clearTimeout(hideT); window.removeEventListener('pointerdown', off); };
+    return () => { clearTimeout(showT); window.removeEventListener('pointerdown', off); };
   }, [isTouch]);
   if (!visible) return null;
-  const label = isTouch ? 'tap the monitor' : 'click the monitor';
+  const label = isTouch ? 'Tap monitor to start' : 'Click monitor to start';
   return (
-    <div style={{ position: 'fixed', bottom: '22%', left: 0, right: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, pointerEvents: 'none', zIndex: 10 }}>
-      <div style={{ width: 44, height: 44, borderRadius: '50%', border: '1.5px solid rgba(164,217,197,0.55)', animation: 'tap-pulse 1.6s ease-out infinite' }} />
-      <span style={{ fontFamily: "ui-monospace,'SF Mono',Menlo,monospace", fontSize: 11, color: 'rgba(164,217,197,0.75)', letterSpacing: '0.08em', animation: 'tap-fade 1.6s ease-in-out infinite' }}>{label}</span>
-      <style>{`@keyframes tap-pulse{0%{transform:scale(0.85);opacity:0.7}60%{transform:scale(1.25);opacity:0.15}100%{transform:scale(0.85);opacity:0.7}}@keyframes tap-fade{0%,100%{opacity:0.5}50%{opacity:0.9}}`}</style>
+    <div style={{ position: 'fixed', bottom: 22, left: 0, right: 0, display: 'flex', justifyContent: 'center', pointerEvents: 'none', zIndex: 9 }}>
+      <div style={{
+        background: 'rgba(31, 47, 39, 0.78)',                              // same dark-sage as the HUD name chip
+        color: '#E8EEDF',
+        fontFamily: "ui-monospace,'SF Mono',Menlo,Consolas,monospace",
+        fontSize: 12, lineHeight: '18px',
+        padding: '5px 14px',
+        letterSpacing: '0.10em',
+        whiteSpace: 'nowrap',
+        border: '1px solid rgba(199, 213, 195, 0.18)',
+        backdropFilter: 'blur(4px)' as any,
+        animation: 'pg-hint-pulse 2.2s ease-in-out infinite',
+      }}>{label}</div>
+      <style>{`@keyframes pg-hint-pulse{0%,100%{opacity:0.62}50%{opacity:1}}`}</style>
     </div>
   );
 }
@@ -3535,7 +3488,17 @@ export default function Office() {
           DIM the 3D scene to ~30 % brightness so the bright teal/cream
           desktop window doesn't fight the green carpet/cubicle bezel
           showing around its edges — keeps the eye on the inner site. */}
-      {mount3d && <div style={{
+      {mount3d && <div
+        onPointerDown={() => {
+          // COMPOSITE desktop: clicking the room AROUND the monitor steps back
+          // out to the office. The composited desktop is a same-origin <iframe>
+          // whose clicks fire inside its OWN document and never reach the parent
+          // — so any pointerdown that bubbles up to this wrapper is, by
+          // construction, a click outside the screen (canvas / drei container /
+          // 3D room). That makes "click outside the monitor → exit" a one-liner.
+          if (COMPOSITE && phase === 'desktop') handleDesktopClose();
+        }}
+        style={{
         position: 'absolute', inset: 0,
         // The overlay desktop dims the room to ~30% so the bright HTML
         // window doesn't fight the scene behind it. In COMPOSITE mode the
@@ -3558,16 +3521,17 @@ export default function Office() {
           <CameraRig phase={phase} onArrived={handleArrived} onEntryDone={handleEntryDone} />
           <CrtScreenProjector />
           <OfficeScene phase={phase} onMonitorClick={handleClick} />
-          {/* Post-processing: N8AO for ambient occlusion (grime in corners
-              where geometry meets), Bloom for soft halo around the CRT
-              + bright ceiling panels. */}
-          <EffectComposer multisampling={0} disableNormalPass={false}>
-            <N8AO aoRadius={0.5} intensity={1.4} aoSamples={16} denoiseSamples={4} color="black" />
+          {/* Post-processing: Bloom only. N8AO (screen-space AO) was the
+              source of the floor "flicker in various places" — as the camera
+              parallaxes/breathes, the denoised SSAO samples crawl across the
+              big flat carpet and shimmer. The room is evenly/clinically lit
+              and the ceiling coffers already carry baked vertex-AO, so dropping
+              SSAO costs almost nothing visually and kills the shimmer. With no
+              AO pass we no longer need the normal pass either. */}
+          <EffectComposer multisampling={0} disableNormalPass={true}>
             {/* Stronger bloom — Severance MDR is shot bright/overexposed,
-                ceiling panels glow into the surrounding cells. */}
-            {/* G2 pass-2: with the big shallow panels the old threshold
-                bloomed the whole upper frame into fog — tighter threshold +
-                lower intensity keeps the glow ON the panels. */}
+                ceiling panels glow into the surrounding cells. Tight threshold
+                + low intensity keeps the glow ON the panels, not the frame. */}
             <Bloom intensity={0.26} luminanceThreshold={0.96} luminanceSmoothing={0.45} mipmapBlur />
           </EffectComposer>
         </Canvas>
@@ -3584,7 +3548,6 @@ export default function Office() {
         <HudOverlay muted={muted} onMuteToggle={() => setMuted(m => !m)} />
       )}
       {(phase === 'idle' || phase === 'entering') && <TapHint isTouch={isTouch} />}
-      {phase === 'idle' && <FirstVisitWelcome />}
       {phase === 'splash'  && <BiosScreen onDone={handleBiosDone} />}
       {phase === 'booting' && <BootOverlay onDone={handleBootDone} />}
       {phase === 'desktop' && !COMPOSITE && <InnerDesktop onClose={handleDesktopClose} embedded />}
