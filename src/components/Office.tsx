@@ -160,7 +160,7 @@ const CAM_MONITOR_TGT = MONITOR_WORLD.clone();
 const _COMPOSITE_CZ = (() => {
   if (typeof window === 'undefined') return 0.18;
   const v = parseFloat(new URLSearchParams(window.location.search).get('cz') || '');
-  return Number.isFinite(v) ? v : 0.18;   // ≈64% of viewport — big screen, sliver of bezel
+  return Number.isFinite(v) ? v : 0.115;  // zoom in: turquoise screen fills the frame (height-fit), thin bezel sliver
 })();
 const CAM_COMPOSITE_POS = new THREE.Vector3(MONITOR_WORLD.x, MONITOR_WORLD.y + 0.02, DESK_Z + _COMPOSITE_CZ);
 const CAM_COMPOSITE_TGT = new THREE.Vector3(MONITOR_WORLD.x, MONITOR_WORLD.y + 0.02, MONITOR_WORLD.z);
@@ -3565,7 +3565,10 @@ export default function Office() {
           showing around its edges — keeps the eye on the inner site. */}
       {mount3d && <div style={{
         position: 'absolute', inset: 0,
-        filter: (phase === 'desktop' || phase === 'booting')
+        // The overlay desktop dims the room to ~30% so the bright HTML
+        // window doesn't fight the scene behind it. In COMPOSITE mode the
+        // room IS the frame (the screen is inside it), so keep it bright.
+        filter: (!COMPOSITE && (phase === 'desktop' || phase === 'booting'))
           ? 'contrast(1.03) saturate(0.98) hue-rotate(-2deg) brightness(0.32)'
           : 'contrast(1.03) saturate(0.98) hue-rotate(-2deg)',
         transition: 'filter 0.55s ease-out',
