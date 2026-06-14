@@ -81,7 +81,7 @@ const C = {
   ceiling:   '#D2D4D6',
   desk:      '#E3E4E3',   // neutral white — was warm cream #E4E2DC (G22: desks green/warm-washed)
   deskLeg:   '#DBDCDB',
-  partition: '#27443A',   // deep forest green — show divider samples #1F3F34 (G3)
+  partition: '#1F3A30',   // deep forest green — pre-darkened so it holds saturation under the flood (review)
   chair:     '#1C1C1C',
   chairMetal:'#3A3A3A',
   monitor:   '#E2DED6',   // Lumon terminal off-white (cleaner, brighter than beige)
@@ -408,8 +408,8 @@ function CofferedCeiling() {
     // opening verts darker, apex verts lighter → gradient toward the light.
     // F1: lifted toward white so the ceiling reads luminous (not grey) even
     // at grazing angles in the wide idle shot.
-    const cOpen = [0.88, 0.90, 0.88];
-    const cApex = [0.98, 0.99, 0.98];
+    const cOpen = [0.89, 0.91, 0.92];   // cool (B≥G), was green-tinted
+    const cApex = [0.97, 0.99, 1.00];
     const col = new Float32Array([
       ...cOpen, ...cOpen, ...cOpen, ...cOpen,
       ...cApex, ...cApex, ...cApex, ...cApex,
@@ -432,7 +432,7 @@ function CofferedCeiling() {
       {/* Slab + grid webbing — near-white pale green (the crisp grid lines). */}
       <mesh rotation-x={Math.PI / 2} position={[0, ROOM_H, 0]}>
         <primitive object={slabGeo} attach="geometry" />
-        <meshStandardMaterial color="#E8EEE8" roughness={0.9} side={THREE.DoubleSide} />
+        <meshStandardMaterial color="#E6EDEE" roughness={0.9} side={THREE.DoubleSide} />
       </mesh>
       {positions.map(([x, z, lit], i) => (
         <group key={i} position={[x, ROOM_H, z]}>
@@ -440,7 +440,7 @@ function CofferedCeiling() {
               recesses read as mostly-dark pyramids (G25) */}
           <mesh>
             <primitive object={cofferGeo} attach="geometry" />
-            <meshStandardMaterial color={lit ? '#E2E9E2' : '#B6C0B6'} vertexColors roughness={0.9} side={THREE.DoubleSide} />
+            <meshStandardMaterial color={lit ? '#E6EDEE' : '#AEBABA'} vertexColors roughness={0.9} side={THREE.DoubleSide} />
           </mesh>
           {/* apex cap closes the frustum (matte, never emissive) */}
           <mesh position={[0, COFFER_DEPTH - 0.002, 0]} rotation-x={Math.PI / 2}>
@@ -453,8 +453,8 @@ function CofferedCeiling() {
               <planeGeometry args={[PANEL_W, PANEL_D]} />
               <meshStandardMaterial
                 color="#FFFFFF"
-                emissive="#FFFFFF"
-                emissiveIntensity={1.6}
+                emissive="#F4FAFF"
+                emissiveIntensity={2.4}
                 side={THREE.DoubleSide}
                 toneMapped={false}
               />
@@ -698,7 +698,10 @@ function CameraRig({ phase, onArrived, onEntryDone }: {
     const parallaxScale = 1 - leanK * 0.55;
     const wx = basePosX + driftX - mx * 0.34 * parallaxScale;
     const wy = basePosY + driftY + my * 0.20 * parallaxScale * (1 - leanK * 0.8);
-    const wz = basePosZ;
+    // slow clinical "breath" — ~22s-period ±9cm forward/back creep, the
+    // show's signature unsettling dolly; yields to the lean-in.
+    const breath = Math.sin(ms * 0.000045) * 0.09 * (1 - leanK);
+    const wz = basePosZ + breath;
     // smooth lerp toward target — slightly faster lerp during lean for
     // responsiveness, slower at idle for stillness
     const lerpK = 0.05 + leanK * 0.04;
@@ -861,7 +864,7 @@ function CrtMonitor({ phase, onClick }: { phase: Phase; onClick?: () => void }) 
   // CRT shader material — teal-blue terminal (matches the reference)
   const crtMat = useMemo(() => new THREE.ShaderMaterial({
     uniforms: {
-      uColor:     { value: new THREE.Color('#6CB8E0') },
+      uColor:     { value: new THREE.Color('#7FB8CC') },   // muted cool-grey-blue (was bright #6CB8E0)
       uIntensity: { value: 1.2 },
       uTime:      { value: 0 },
     },
@@ -871,10 +874,12 @@ function CrtMonitor({ phase, onClick }: { phase: Phase; onClick?: () => void }) 
   // Smoothly lerp the CRT brightness on hover instead of snapping.
   // Snapping reads as a bug; a smooth lerp reads as the phosphor
   // physically responding to "you're looking at me". 4 Hz time-constant.
-  const crtTargetRef = useRef(1.85);
+  const crtTargetRef = useRef(1.35);
   useFrame((state, dt) => {
     crtMat.uniforms.uTime.value = state.clock.elapsedTime;
-    const target = clickable ? (hovered ? 2.85 : 1.85) : 0.12;
+    // dimmed so the CRT reads as a calm recessed panel, not the brightest
+    // thing in frame (was 1.85/2.85) — the ceiling is the hero now.
+    const target = clickable ? (hovered ? 2.0 : 1.35) : 0.12;
     crtTargetRef.current += (target - crtTargetRef.current) * Math.min(1, dt * 6);
     crtMat.uniforms.uIntensity.value = crtTargetRef.current;
   });
@@ -915,12 +920,12 @@ function CrtMonitor({ phase, onClick }: { phase: Phase; onClick?: () => void }) 
           full-size front face, gives the Lumon-prop chunky-front read. */}
       <mesh position={[0, 0.005, 0.211]}>
         <boxGeometry args={[0.50, 0.40, 0.006]} />
-        <meshStandardMaterial color="#D4D0C8" roughness={0.55} />
+        <meshStandardMaterial color="#E2DED6" roughness={0.55} />
       </mesh>
       {/* inner bezel — slightly darker recess just around the screen */}
       <mesh position={[0, 0.020, 0.214]}>
         <boxGeometry args={[0.40, 0.32, 0.004]} />
-        <meshStandardMaterial color="#A8A4A0" roughness={0.55} />
+        <meshStandardMaterial color="#CFCBC3" roughness={0.55} />
       </mesh>
       {/* small Lumon-style branding plate below screen, off-centre right */}
       <mesh position={[0.13, -0.165, 0.213]}>
@@ -1557,12 +1562,12 @@ function StationLite({ active = false, variant = 0 }: { active?: boolean; varian
           normalScale={[0.18, 0.18] as any}
         />
       </RoundedBox>
-      {/* Desk modesty panel — only spans the gap BETWEEN the two pedestals
-          (pedestals are at x=±0.50, width 0.66 → inner edges at ±0.17).
-          Recessed inward so the two pedestals visually pop out as separate
-          boxy volumes from the wider idle camera. */}
-      <mesh position={[0, 0.50, DESK_DZ + 0.50]}>
-        <boxGeometry args={[0.34, 0.40, 0.03]} />
+      {/* Desk modesty valance — SHALLOW now (height 0.14, tucked just
+          under the desktop) so green carpet shows through between + under
+          the two pedestals: the defining floating-top MDR desk silhouette
+          (review). Was a 0.40-tall panel that read as solid-to-floor. */}
+      <mesh position={[0, 0.63, DESK_DZ + 0.50]}>
+        <boxGeometry args={[0.34, 0.14, 0.03]} />
         <meshStandardMaterial {...(deskNormals as any)} color={C.deskLeg} roughness={0.55} normalScale={[0.15, 0.15] as any} />
       </mesh>
       {/* LEFT pedestal — bevelled, subtle normal */}
@@ -1621,7 +1626,7 @@ function StationLite({ active = false, variant = 0 }: { active?: boolean; varian
             {/* inactive monitor screens also glow faint teal so the
                 whole MDR pod has 4 illuminated terminals, matching the
                 reference. Brighter than before (#0F1812 0.15 → #1A445A 0.55). */}
-            <meshStandardMaterial color="#0E2230" roughness={0.4} emissive="#1A445A" emissiveIntensity={0.55} />
+            <meshStandardMaterial color="#0E2230" roughness={0.4} emissive="#1A445A" emissiveIntensity={0.25} />
           </mesh>
           <mesh position={[0.10, 0.79, DESK_DZ - 0.35]}>
             <boxGeometry args={[0.26, 0.04, 0.22]} />
@@ -1717,11 +1722,11 @@ function StationLite({ active = false, variant = 0 }: { active?: boolean; varian
             (#5F8E72 vs #67A36F) — ours rendered #A6AB97, a bright blob.
             Dark grey tint + matte + lower opacity = subtle grey veil. */}
         <meshStandardMaterial
-          color="#55665C"
-          roughness={0.55}
+          color="#6E7D72"
+          roughness={0.4}
           metalness={0.0}
           transparent
-          opacity={0.45}
+          opacity={0.24}
         />
       </mesh>
     </>
@@ -2071,7 +2076,7 @@ function usePartitionFabricProps(repeatX = 8, repeatY = 2) {
 }
 
 /**
- * One framed sage-green fabric panel — used 4× by MdrDividerCluster.
+ * One framed forest-green fabric divider panel — used 4× around the pod.
  * Built per the Severance MDR prop: chrome frame on all 4 edges, sage
  * fabric in the middle, sits on 2 small white pedestal feet that lift
  * it off the floor.
@@ -2127,93 +2132,6 @@ function MdrPanel({ w, h, fabric }: { w: number; h: number; fabric: any }) {
   );
 }
 
-/**
- * The 4-panel + cluster at the centre of the pinwheel pod. Each panel
- * sits in one half-arm and separates ONE pair of adjacent stations.
- * They meet at a small WHITE CENTRAL COLUMN that hides the panel ends.
- *
- *      ┌──┐ ┌──┐      panels:  N-half NS,  E-half EW
- *      │NW│ │NE│              S-half NS,  W-half EW
- *      ├──┼─┼──┤   centre column at (cx, _, cz)
- *      │SW│ │SE│
- *      └──┘ └──┘
- *
- * Panel height ≈ 1.10 m, panel width ≈ 1.30 m, panel base at y=0.50 so
- * worker monitors clear underneath but seated face is covered.
- */
-function MdrDividerCluster({ cx, cz, fabric }: { cx: number; cz: number; fabric: any }) {
-  const PANEL_H   = 1.05;
-  const PANEL_W   = 1.25;
-  const PANEL_BASE_Y = 0.52;        // bottom of panel (foot top is below)
-  const HALF_GAP  = 0.06;           // half-width of the central column
-  const COL_W     = 0.34;
-  const COL_H     = 1.70;
-  // Each half-arm panel is centred at HALF_GAP + PANEL_W/2 from the +.
-  const PANEL_OFFSET = HALF_GAP + PANEL_W / 2;
-  return (
-    <group position={[cx, 0, cz]}>
-      {/* CENTRAL WHITE COLUMN — hides the 4 panel ends + acts as the
-          junction post the panels visually attach to. */}
-      <mesh position={[0, COL_H / 2, 0]} castShadow receiveShadow>
-        <boxGeometry args={[COL_W, COL_H, COL_W]} />
-        <meshStandardMaterial color={C.desk} roughness={0.50} metalness={0.02} />
-      </mesh>
-      {/* small dark sensor / safety box ON TOP of the column. Severance
-          MDR has these little electronic units crowning the dividers
-          — surveillance / fire alarm / intercom suggestion. */}
-      <mesh position={[0, COL_H + 0.07, 0]} castShadow>
-        <boxGeometry args={[0.18, 0.14, 0.18]} />
-        <meshStandardMaterial color="#2A2A2A" roughness={0.55} metalness={0.3} />
-      </mesh>
-      {/* tiny red LED on the sensor box */}
-      <mesh position={[0, COL_H + 0.04, 0.092]}>
-        <sphereGeometry args={[0.008, 8, 6]} />
-        <meshStandardMaterial color="#FF3030" emissive="#FF1010" emissiveIntensity={2.0} />
-      </mesh>
-      {/* small black sensor / cable port detail near the top */}
-      <mesh position={[0, COL_H * 0.72, COL_W / 2 + 0.001]}>
-        <boxGeometry args={[0.06, 0.04, 0.005]} />
-        <meshStandardMaterial color="#181818" roughness={0.5} />
-      </mesh>
-      {/* small chrome LUMON branding plate at chest height — gives the
-          central column a clear corporate identity marker. Shown on
-          all 4 sides so it reads from any angle around the pod. */}
-      {([0, Math.PI/2, Math.PI, -Math.PI/2] as const).map((rot, i) => (
-        <group key={i} rotation-y={rot}>
-          <mesh position={[0, COL_H * 0.42, COL_W / 2 + 0.002]}>
-            <boxGeometry args={[0.14, 0.05, 0.005]} />
-            <meshStandardMaterial color="#9C9C9C" roughness={0.4} metalness={0.7} />
-          </mesh>
-          {/* engraved 5 dark "letter" marks suggesting LUMON */}
-          {[-0.045, -0.022, 0, 0.022, 0.045].map((dx, j) => (
-            <mesh key={j} position={[dx, COL_H * 0.42, COL_W / 2 + 0.005]}>
-              <boxGeometry args={[0.013, 0.020, 0.002]} />
-              <meshStandardMaterial color="#1F1F1F" roughness={0.55} />
-            </mesh>
-          ))}
-        </group>
-      ))}
-
-      {/* EW arm — WEST half (between SW and NW) — runs along x. */}
-      <group position={[-PANEL_OFFSET, PANEL_BASE_Y, 0]}>
-        <MdrPanel w={PANEL_W} h={PANEL_H} fabric={fabric} />
-      </group>
-      {/* EW arm — EAST half (between SE and NE). */}
-      <group position={[+PANEL_OFFSET, PANEL_BASE_Y, 0]}>
-        <MdrPanel w={PANEL_W} h={PANEL_H} fabric={fabric} />
-      </group>
-      {/* NS arm — SOUTH half (between SW and SE) — runs along z, so the
-          panel local +x maps to world +z after a 90° y-rotation. */}
-      <group position={[0, PANEL_BASE_Y, +PANEL_OFFSET]} rotation-y={Math.PI / 2}>
-        <MdrPanel w={PANEL_W} h={PANEL_H} fabric={fabric} />
-      </group>
-      {/* NS arm — NORTH half (between NW and NE). */}
-      <group position={[0, PANEL_BASE_Y, -PANEL_OFFSET]} rotation-y={Math.PI / 2}>
-        <MdrPanel w={PANEL_W} h={PANEL_H} fabric={fabric} />
-      </group>
-    </group>
-  );
-}
 
 /* ---------- main 3-D scene ------------------------------------------- */
 function OfficeScene({ phase, onMonitorClick }: {
@@ -2244,16 +2162,21 @@ function OfficeScene({ phase, onMonitorClick }: {
     fragmentShader: CARPET_FRAG,
   }), []);
 
-  // Fluorescent ceiling lights — wider grid for the bigger room
+  // Fluorescent ceiling flood — 4 wide lights instead of 16. With
+  // decay=2/distance=26 the old grid already overlapped into a uniform
+  // wash, so 4 looks ~identical while THREE.js loops far fewer lights per
+  // fragment across ~146 lit materials (the real Heffernan-style perf win
+  // without a bake pipeline). Ambient/hemisphere carry the even base.
   const lightGrid: [number, number][] = [
-    [-12, -16], [-4, -16], [4, -16], [12, -16],
-    [-12,  -6], [-4,  -6], [4,  -6], [12,  -6],
-    [-12,   4], [-4,   4], [4,   4], [12,   4],
-    [-12,  14], [-4,  14], [4,  14], [12,  14],
+    [-9, -11], [9, -11], [-9, 11], [9, 11],
   ];
 
   return (
     <>
+      {/* faint cool fog so the far walls + back booths recede — buys the
+          show's clinical 'vastness' without moving any camera constant.
+          Density kept low so the bright register survives. */}
+      <fogExp2 attach="fog" args={['#D2E0DC', 0.020]} />
       {/* ── LIGHTING ─────────────────────────────────────────────────── */}
       {/* Image-based ambient lighting + reflections — soft "lobby" preset
           gives the scene proper environmental cues so metallic + glossy
@@ -2261,7 +2184,7 @@ function OfficeScene({ phase, onMonitorClick }: {
       {/* G22 (goal_12jun26): the lobby preset is WARM — at 0.62 it pushed
           every white surface cream (#E9E9D1 ceiling, B-channel ~24 under
           R). Halved; the cooled ambient below compensates brightness. */}
-      <Environment preset="lobby" background={false} environmentIntensity={0.30} />
+      <Environment preset="lobby" background={false} environmentIntensity={0.20} />
 
       {/* Single dominant SHADOW caster — angled "sun"-style directional.
           All nine ceiling pointLights provide flat fluorescent flood
@@ -2277,10 +2200,10 @@ function OfficeScene({ phase, onMonitorClick }: {
         color="#FFFFFF"
         castShadow
         shadow-mapSize={[2048, 2048]}
-        shadow-camera-left={-15}
-        shadow-camera-right={15}
-        shadow-camera-top={15}
-        shadow-camera-bottom={-15}
+        shadow-camera-left={-8}
+        shadow-camera-right={8}
+        shadow-camera-top={8}
+        shadow-camera-bottom={-8}
         shadow-camera-near={0.5}
         shadow-camera-far={30}
         shadow-bias={-0.0004}
@@ -2303,8 +2226,11 @@ function OfficeScene({ phase, onMonitorClick }: {
       {/* G22: cooled + slightly raised (compensates the env cut). The old
           hemisphere GROUND '#B6CCB2' bounced green onto walls/desks —
           neutralized toward cool grey. */}
-      <ambientLight intensity={2.0} color="#E4F0FA" />
-      <hemisphereLight args={['#EFF7FD', '#A8B4AE', 0.8]} />
+      {/* cooler, less flooded so the dark forest dividers keep saturation;
+          the white-point lift (exposure) keeps the room from going dim.
+          Ground term neutral grey (was sage #A8B4AE → green bounce). */}
+      <ambientLight intensity={1.6} color="#E6F1F7" />
+      <hemisphereLight args={['#EFF7FD', '#B8BEBE', 0.6]} />
 
       {/* DESK POOL spotlight — a focused down-light right above the
           active SW station's desk surface. Penumbra creates a soft
@@ -2331,7 +2257,7 @@ function OfficeScene({ phase, onMonitorClick }: {
         <pointLight
           key={i}
           position={[x, ROOM_H - 0.25, z]}
-          intensity={6.0}
+          intensity={9.0}
           distance={26}
           decay={2}
           color="#F5F8FF"
@@ -3162,7 +3088,7 @@ function VignetteOverlay() {
         background:
           // G1: softened — the show is FLAT clinical light; the old 0.32-corner
           // vignette darkened the carpet/walls we're trying to brighten.
-          'radial-gradient(ellipse 115% 115% at 50% 50%, transparent 55%, rgba(0,0,0,0.06) 80%, rgba(0,0,0,0.18) 100%)',
+          'radial-gradient(ellipse 115% 115% at 50% 50%, transparent 52%, rgba(0,0,0,0.08) 78%, rgba(0,0,0,0.28) 100%)',
       }}
     />
   );
@@ -3610,8 +3536,8 @@ export default function Office() {
         // window doesn't fight the scene behind it. In COMPOSITE mode the
         // room IS the frame (the screen is inside it), so keep it bright.
         filter: (!COMPOSITE && (phase === 'desktop' || phase === 'booting'))
-          ? 'contrast(1.03) saturate(0.98) hue-rotate(-2deg) brightness(0.32)'
-          : 'contrast(1.03) saturate(0.98) hue-rotate(-2deg)',
+          ? 'contrast(1.03) saturate(1.02) brightness(0.32)'
+          : 'contrast(1.03) saturate(1.02)',
         transition: 'filter 0.55s ease-out',
       }}>
         <Canvas
@@ -3620,7 +3546,7 @@ export default function Office() {
           gl={{
             antialias: true,
             toneMapping: THREE.ACESFilmicToneMapping,
-            toneMappingExposure: 1.45,
+            toneMappingExposure: 1.62,
           }}
         >
           <PerspectiveCamera makeDefault position={[CAM_ENTRY_POS.x, CAM_ENTRY_POS.y, CAM_ENTRY_POS.z]} fov={54} />
@@ -3637,7 +3563,7 @@ export default function Office() {
             {/* G2 pass-2: with the big shallow panels the old threshold
                 bloomed the whole upper frame into fog — tighter threshold +
                 lower intensity keeps the glow ON the panels. */}
-            <Bloom intensity={0.35} luminanceThreshold={0.92} luminanceSmoothing={0.5} mipmapBlur />
+            <Bloom intensity={0.26} luminanceThreshold={0.96} luminanceSmoothing={0.45} mipmapBlur />
           </EffectComposer>
         </Canvas>
       </div>}
