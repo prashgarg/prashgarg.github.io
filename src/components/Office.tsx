@@ -164,9 +164,13 @@ const _COMPOSITE_CZ = (() => {
 })();
 const CAM_COMPOSITE_POS = new THREE.Vector3(MONITOR_WORLD.x, MONITOR_WORLD.y + 0.02, DESK_Z + _COMPOSITE_CZ);
 const CAM_COMPOSITE_TGT = new THREE.Vector3(MONITOR_WORLD.x, MONITOR_WORLD.y + 0.02, MONITOR_WORLD.z);
-// URL flag — keeps the proven overlay experience as default while the
-// composited monitor is piloted at /?composite=1
-const COMPOSITE = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('composite') === '1';
+// Composited monitor is the DEFAULT on pointer devices. Escape hatch:
+// ?composite=0 forces the legacy fullscreen-overlay desktop. Touch
+// devices always use the overlay (composite is a desktop-GPU experience;
+// phones get the fullscreen desktop via the G7 skip path).
+const COMPOSITE = typeof window !== 'undefined'
+  && new URLSearchParams(window.location.search).get('composite') !== '0'
+  && !window.matchMedia('(hover: none) and (pointer: coarse)').matches;
 
 // Lean-in close-up frame — looks STEEPLY DOWN at the desk so the chair
 // back tucks into the bottom-foreground (not blocking the keyboard +
@@ -2450,11 +2454,25 @@ function OfficeScene({ phase, onMonitorClick }: {
           pointerEvents="auto"
           style={{ width: '1040px', height: '795px', overflow: 'hidden', background: '#000' }}
         >
-          <iframe
-            src="/os"
-            title="prashantgarg.os"
-            style={{ width: '1040px', height: '795px', border: 0, display: 'block', background: '#3e9697' }}
-          />
+          <div style={{ position: 'relative', width: '1040px', height: '795px' }}>
+            <iframe
+              src={'/os' + (typeof window !== 'undefined' ? window.location.search.replace(/[?&]composite=[^&]*/,'').replace(/[?&]cz=[^&]*/,'').replace(/^&/,'?') : '')}
+              title="prashantgarg.os"
+              style={{ width: '1040px', height: '795px', border: 0, display: 'block', background: '#3e9697' }}
+            />
+            {/* CRT glass realism (rides the screen's 3D transform; never
+                blocks clicks): scanlines + soft corner vignette + a faint
+                top-left glare so the flat DOM reads as curved glass. */}
+            <div style={{
+              position: 'absolute', inset: 0, pointerEvents: 'none', mixBlendMode: 'multiply',
+              backgroundImage: 'repeating-linear-gradient(to bottom, rgba(0,0,0,0.10) 0px, rgba(0,0,0,0.10) 1px, transparent 1px, transparent 3px)',
+            }} />
+            <div style={{
+              position: 'absolute', inset: 0, pointerEvents: 'none',
+              background: 'radial-gradient(120% 120% at 28% 18%, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0) 42%), radial-gradient(130% 130% at 50% 50%, rgba(0,0,0,0) 60%, rgba(0,0,0,0.28) 100%)',
+              boxShadow: 'inset 0 0 22px 6px rgba(0,0,0,0.30)',
+            }} />
+          </div>
         </Html>
       )}
 
