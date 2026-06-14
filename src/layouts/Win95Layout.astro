@@ -518,6 +518,14 @@ const paletteIndex = [
     <script is:inline>
       /* ----- ambient audio + mute toggle (mirrors StudyAudio in Study.tsx) ----- */
       (function ambientAudio() {
+        // When this page is shown INSIDE a window on the composited desktop
+        // (a nested iframe), the parent room (Office.tsx StudyAudio) already
+        // owns the soundtrack. Starting our OWN copy here makes the music
+        // "repeat" — a fresh track every time a file/window is opened. Only
+        // the top-level document plays ambient audio. (If we can't read
+        // window.top it's cross-origin = definitely embedded → stay silent.)
+        try { if (window.self !== window.top) return; } catch (e) { return; }
+
         var SS_MUTED = 'pg_muted';
         var muted = false;
         try { muted = sessionStorage.getItem(SS_MUTED) === '1'; } catch(e) {}

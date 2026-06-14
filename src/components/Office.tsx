@@ -158,14 +158,14 @@ const CAM_MONITOR_TGT = MONITOR_WORLD.clone();
 // screen. Smaller = bigger screen / less room (sliver of bezel); larger =
 // more 'monitor in a room'. Tunable via ?cz= during the pilot.
 const _COMPOSITE_CZ = (() => {
-  if (typeof window === 'undefined') return 0.23;
+  if (typeof window === 'undefined') return 0.39;
   const v = parseFloat(new URLSearchParams(window.location.search).get('cz') || '');
-  // Frame the monitor as an OBJECT IN THE ROOM (Henry-style) — screen ≈ 68% of
+  // Frame the monitor as an OBJECT IN THE ROOM (Henry-style) — screen ≈ 70% of
   // the viewport with a clear room margin all around. The margin is what you
-  // click to step back out (see the wrapper onPointerDown), and it's where the
-  // now-slim bezel is visible. (Earlier this was 0.115 = screen fills the whole
-  // frame, but that left nothing outside the monitor to click.)
-  return Number.isFinite(v) ? v : 0.23;
+  // click to step back out (see the wrapper onPointerDown). Pulled back from
+  // 0.23 because the screen plane was widened (0.42→0.62) — at 0.23 the wider
+  // panel would overflow the frame and leave nothing outside to click.
+  return Number.isFinite(v) ? v : 0.39;
 })();
 const CAM_COMPOSITE_POS = new THREE.Vector3(MONITOR_WORLD.x, MONITOR_WORLD.y + 0.02, DESK_Z + _COMPOSITE_CZ);
 const CAM_COMPOSITE_TGT = new THREE.Vector3(MONITOR_WORLD.x, MONITOR_WORLD.y + 0.02, MONITOR_WORLD.z);
@@ -540,10 +540,10 @@ const CARPET_FRAG = `
 function CrtScreenProjector() {
   const { camera, size } = useThree();
   // Screen plane lives at MONITOR_WORLD + local offset [0, 0.02, 0.207],
-  // size 0.42 × 0.321 (see CrtMonitor). Four corners in world space:
+  // size 0.62 × 0.3875 (see CrtMonitor). Four corners in world space:
   const corners = useMemo(() => {
     const cx = MONITOR_WORLD.x, cy = MONITOR_WORLD.y + 0.02, cz = MONITOR_WORLD.z + 0.207;
-    const hw = 0.21, hh = 0.1605;
+    const hw = 0.31, hh = 0.19375;
     return [
       new THREE.Vector3(cx - hw, cy - hh, cz),
       new THREE.Vector3(cx + hw, cy - hh, cz),
@@ -824,8 +824,12 @@ function CrtMonitor({ phase, onClick }: { phase: Phase; onClick?: () => void }) 
   // Gives the silhouette of the Lumon terminal / Compaq-portable CRT
   // instead of a generic chamfered shoebox.
   const wedgeBody = useMemo(() => {
-    const FW = 0.56, FH = 0.46;       // front face: w × h
-    const BW = 0.40, BH = 0.30;       // back face: w × h (narrower + shorter)
+    // WIDESCREEN reshape: widened the front + back faces (was 0.56/0.40) so
+    // the monitor reads as a rectangular widescreen panel, not a boxy 4:3
+    // CRT. Heights + depth kept so the bottom stays anchored on the stand
+    // and the sloped top vent maths still line up.
+    const FW = 0.70, FH = 0.46;       // front face: w × h
+    const BW = 0.52, BH = 0.30;       // back face: w × h (narrower + shorter)
     const D  = 0.42;                  // depth
     const fy0 = -FH / 2, fy1 = +FH / 2;
     const by0 = -FH / 2, by1 = by0 + BH;     // keep bottom flat
@@ -890,8 +894,8 @@ function CrtMonitor({ phase, onClick }: { phase: Phase; onClick?: () => void }) 
         [0.08, 0.02, -0.04].map((y, i) => (
           <mesh
             key={`vent-${side}-${i}`}
-            position={[side * 0.245, y, 0]}
-            rotation-y={side * 0.18}        // slight angle to match the slope
+            position={[side * 0.305, y, 0]}
+            rotation-y={side * 0.21}        // slight angle to match the (wider) slope
           >
             <boxGeometry args={[0.006, 0.012, 0.34]} />
             <meshStandardMaterial color="#6E6A62" roughness={0.6} />
@@ -910,27 +914,26 @@ function CrtMonitor({ phase, onClick }: { phase: Phase; onClick?: () => void }) 
           <meshStandardMaterial color="#6E6A62" roughness={0.6} />
         </mesh>
       ))}
-      {/* front BEZEL — thin inset frame around the (now larger) screen on
-          the full-size front face. Reaches close to the body edge so the
-          cream surround reads as a slim frame, not a chunky border. */}
+      {/* front BEZEL — slim inset frame around the widescreen panel, reaching
+          close to the body edge so the cream surround is a thin lip. */}
       <mesh position={[0, 0.02, 0.211]}>
-        <boxGeometry args={[0.52, 0.40, 0.006]} />
+        <boxGeometry args={[0.665, 0.41, 0.006]} />
         <meshStandardMaterial color="#E2DED6" roughness={0.55} />
       </mesh>
       {/* inner bezel — slim darker recess hugging the screen edge */}
       <mesh position={[0, 0.020, 0.214]}>
-        <boxGeometry args={[0.45, 0.35, 0.004]} />
+        <boxGeometry args={[0.64, 0.40, 0.004]} />
         <meshStandardMaterial color="#CFCBC3" roughness={0.55} />
       </mesh>
       {/* small Lumon-style branding plate below screen, off-centre right */}
-      <mesh position={[0.13, -0.165, 0.213]}>
+      <mesh position={[0.18, -0.205, 0.213]}>
         <boxGeometry args={[0.10, 0.018, 0.005]} />
         <meshStandardMaterial color="#8E8C86" roughness={0.5} metalness={0.4} />
       </mesh>
-      {/* power LED — tiny green dot below screen, pulses softly */}
-      <PowerLed position={[0.16, -0.18, 0.21]} />
+      {/* power LED — tiny green dot in the bottom chin, pulses softly */}
+      <PowerLed position={[0.25, -0.205, 0.21]} />
       {/* power button */}
-      <mesh position={[0.20, -0.18, 0.21]}>
+      <mesh position={[0.30, -0.205, 0.21]}>
         <boxGeometry args={[0.03, 0.012, 0.005]} />
         <meshStandardMaterial color="#9E9A92" roughness={0.5} />
       </mesh>
@@ -960,7 +963,7 @@ function CrtMonitor({ phase, onClick }: { phase: Phase; onClick?: () => void }) 
         }}
         onPointerLeave={() => { setHovered(false); document.body.style.cursor = 'default'; }}
       >
-        <planeGeometry args={[0.42, 0.321]} />
+        <planeGeometry args={[0.62, 0.3875]} />
         <primitive object={crtMat} attach="material" />
       </mesh>
       {/* subtle screen glow light — teal/blue to match the new CRT colour */}
@@ -2393,20 +2396,20 @@ function OfficeScene({ phase, onMonitorClick }: {
              still hides it correctly via blending occlusion. */
           position={[MONITOR_WORLD.x, MONITOR_WORLD.y + 0.02, MONITOR_WORLD.z + 0.218]}
           rotation={[0, 0, 0]}
-          /* scale calibrated so the 1040×795 iframe fills the screen plane
-             exactly. Screen grew 0.34→0.42 wide, so scale grows by the same
-             ratio: 0.0132 × (0.42/0.34) ≈ 0.0163. */
-          scale={0.0163}
+          /* scale calibrated so the 1280×800 (16:10) iframe fills the wider
+             screen plane (0.62 world) exactly: 0.0163 × (0.62/0.42) / (1280/1040)
+             ≈ 0.0196. Re-verified empirically via probe-composite. */
+          scale={0.0196}
           distanceFactor={undefined}
           zIndexRange={[100, 0]}
           pointerEvents="auto"
-          style={{ width: '1040px', height: '795px', overflow: 'hidden', background: '#000' }}
+          style={{ width: '1280px', height: '800px', overflow: 'hidden', background: '#000' }}
         >
-          <div style={{ position: 'relative', width: '1040px', height: '795px' }}>
+          <div style={{ position: 'relative', width: '1280px', height: '800px' }}>
             <iframe
               src={'/os' + (typeof window !== 'undefined' ? window.location.search.replace(/[?&]composite=[^&]*/,'').replace(/[?&]cz=[^&]*/,'').replace(/^&/,'?') : '')}
               title="prashantgarg.os"
-              style={{ width: '1040px', height: '795px', border: 0, display: 'block', background: '#3e9697' }}
+              style={{ width: '1280px', height: '800px', border: 0, display: 'block', background: '#3e9697' }}
             />
             {/* CRT glass realism (rides the screen's 3D transform; never
                 blocks clicks): scanlines + soft corner vignette + a faint

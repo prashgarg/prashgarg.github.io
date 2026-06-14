@@ -1336,7 +1336,7 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
   // deep-link auto-open sizes windows correctly even before the
   // ResizeObserver fires — otherwise windows clamp to a tiny 662px
   // (research opened undersized in the monitor).
-  const [containerSize, setContainerSize] = useState({ w: 1040, h: 795 });
+  const [containerSize, setContainerSize] = useState({ w: 1280, h: 800 });
   useEffect(() => {
     const measure = () => {
       const el = containerRef.current;
@@ -1372,21 +1372,23 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
 
   // ── Multi-window management ──────────────────────────────────────
 
-  // Default cascade geometry for a new window. Cascade origin is RIGHT
-  // of the desktop-icon column (icons live at left:14, width:84) so
-  // windows don't cover the icons. Successive windows step down+right.
-  const defaultGeo = useCallback((app: AppDef) => {
-    const iconColWidth = 110;     // icons + padding
-    const margin = 14;
-    const startX = iconColWidth + margin;
-    const startY = margin;
-    const maxW = Math.max(360, containerSize.w - startX - margin);
-    const maxH = Math.max(280, containerSize.h - margin - 30 /* taskbar */);
-    const w = Math.min(app.defW, maxW);
-    const h = Math.min(app.defH, maxH);
-    const stepX = 32, stepY = 26;
-    const x = startX + ((app.cascadeIdx * stepX) % Math.max(40, maxW - w));
-    const y = startY + ((app.cascadeIdx * stepY) % Math.max(40, maxH - h));
+  // Default geometry for a new window: LARGE + CENTERED. Each app opens at
+  // ~90% of the desktop, centered, with a thin border of desktop showing
+  // around it — the user asked for this over the old icon-dodging cascade
+  // (which opened smallish windows that overflowed the right edge). A tiny
+  // per-window step keeps stacked windows from being pixel-identical.
+  const defaultGeo = useCallback((_app: AppDef) => {
+    const taskbar = 30;
+    const availW = containerSize.w;
+    const availH = containerSize.h - taskbar;
+    const w = Math.round(Math.min(availW - 24, availW * 0.90));
+    const h = Math.round(Math.min(availH - 24, availH * 0.90));
+    const step = 18;
+    const off = (_app.cascadeIdx * step) % (step * 3);   // 0,18,36 then wrap
+    let x = Math.round((availW - w) / 2) + off;
+    let y = Math.round((availH - h) / 2) + off;
+    x = Math.max(8, Math.min(x, availW - w - 8));
+    y = Math.max(8, Math.min(y, availH - h - 8));
     return { x, y, w, h };
   }, [containerSize]);
 
