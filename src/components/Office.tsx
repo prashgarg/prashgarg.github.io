@@ -92,7 +92,7 @@ const C = {
 
 /* ---------- camera rig constants ------------------------------------- */
 const ENTRY_MS = 2400;
-const DOLLY_MS = 2200;
+const DOLLY_MS = 1600;
 function easeOutExpo(t: number) { return t >= 1 ? 1 : 1 - Math.pow(2, -10 * t); }
 function easeOutCubic(t: number) { return 1 - Math.pow(1 - t, 3); }
 // easeInOutCubic — smooth acceleration AND smooth deceleration, used
@@ -644,20 +644,19 @@ function CameraRig({ phase, onArrived, onEntryDone }: {
     }
     // ── on-monitor / booting / desktop ─────────────────────────────────────
     if (phase === 'on-monitor' || phase === 'booting' || phase === 'desktop') {
-      // COMPOSITE desktop: gentle mouse-orbit + idle drift around the
-      // screen so the monitor feels alive in the room and foreground geometry
-      // crosses in front (the composited <Html> skews with perspective and
-      // gets occluded correctly). Kept small so the screen stays readable +
-      // clickable. Boot stays dead-still (text must be stable).
+      // COMPOSITE desktop: a VERY gentle PAN (not a skew). The earlier roam
+      // translated the camera while lookAt stayed locked, which rotated the
+      // screen plane in view = the "unstable rotating" the screen reads
+      // wrong. Now the target orbits with the camera (≈0.6×) so the move is
+      // a near-pure pan: the screen stays square + readable, just a hair of
+      // life. Heavily damped + slow-lerped so it settles (no AO shimmer).
       if (COMPOSITE && phase === 'desktop') {
         const ms = state.clock.elapsedTime * 1000;
-        const driftX = Math.sin(ms * 0.00013) * 0.012;
-        const driftY = Math.sin(ms * 0.00017 + 1.3) * 0.008;
-        const rx = mouse.current.x * 0.075 + driftX;
-        const ry = mouse.current.y * 0.05 + driftY;
+        const rx = mouse.current.x * 0.016 + Math.sin(ms * 0.00011) * 0.004;
+        const ry = mouse.current.y * 0.011 + Math.sin(ms * 0.00015 + 1.3) * 0.003;
         roamTarget.current.set(endPos.x + rx, endPos.y - ry, endPos.z);
-        camera.position.lerp(roamTarget.current, 0.06);
-        tgt.current.lerp(endTgt, 0.08);
+        camera.position.lerp(roamTarget.current, 0.04);
+        tgt.current.lerp(new THREE.Vector3(endTgt.x + rx * 0.6, endTgt.y - ry * 0.6, endTgt.z), 0.05);
         camera.lookAt(tgt.current);
         return;
       }
@@ -2199,15 +2198,15 @@ function OfficeScene({ phase, onMonitorClick }: {
         intensity={0.75}
         color="#FFFFFF"
         castShadow
-        shadow-mapSize={[2048, 2048]}
-        shadow-camera-left={-8}
-        shadow-camera-right={8}
-        shadow-camera-top={8}
-        shadow-camera-bottom={-8}
+        shadow-mapSize={[4096, 4096]}
+        shadow-camera-left={-12}
+        shadow-camera-right={12}
+        shadow-camera-top={12}
+        shadow-camera-bottom={-12}
         shadow-camera-near={0.5}
         shadow-camera-far={30}
         shadow-bias={-0.0004}
-        shadow-normalBias={0.02}
+        shadow-normalBias={0.06}
       />
 
       {/* Ambient + hemisphere TURNED DOWN. Previously the room was
@@ -2968,7 +2967,7 @@ function BootOverlay({ onDone }: { onDone: () => void }) {
       { line: '> booting workstation  [ ok ]',                  typeMs: 8,  pauseMs: 140 },
       { line: '> mounting research, talks, library  [ ok ]',    typeMs: 8,  pauseMs: 220 },
       { line: '',                                                typeMs: 0,  pauseMs: 80  },
-      { line: 'welcome.',                                        typeMs: 40, pauseMs: 360 },
+      { line: 'welcome.',                                        typeMs: 32, pauseMs: 180 },
     ];
     let cancelled = false, buf = '';
     async function run() {
@@ -2992,7 +2991,7 @@ function BootOverlay({ onDone }: { onDone: () => void }) {
   // Let "welcome." linger before the desktop appears — the review found
   // the boot's final beat exited too quickly. (Skipped boots still feel
   // instant because `done` fires immediately on keypress.)
-  useEffect(() => { if (!done) return; const t = setTimeout(onDone, skipped.current ? 240 : 720); return () => clearTimeout(t); }, [done, onDone]);
+  useEffect(() => { if (!done) return; const t = setTimeout(onDone, skipped.current ? 160 : 280); return () => clearTimeout(t); }, [done, onDone]);
   return (
     <div
       onClick={() => { skipped.current = true; setDone(true); }}
@@ -3454,6 +3453,12 @@ export default function Office() {
   const handleClick        = () => { if (phase === 'idle') setPhase('dollying'); };
   const handleArrived      = () => setPhase('booting');
   const handleBootDone     = () => setPhase('desktop');
+  // Persist 'desktop' for ALL visitors (was touch-only) so that returning
+  // within the session lands straight on the monitor — no replayed
+  // BIOS/entry/dolly/boot. Cleared on shutdown (handleDesktopClose).
+  useEffect(() => {
+    if (phase === 'desktop') { try { sessionStorage.setItem(SS_PHASE, 'desktop'); } catch { /* */ } }
+  }, [phase]);
   // G7: on touch devices the 3D room was a mandatory ~5 MB download
   // whose only purpose was one ~25 px tap target. After the BIOS START
   // tap, go straight to the fullscreen desktop; the room stays

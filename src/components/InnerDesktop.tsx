@@ -1332,7 +1332,11 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
   const containerRef = useRef<HTMLDivElement>(null);
   // Container size — recomputed on resize. Used so the cascade window
   // defaults size sensibly in the embedded CRT viewport vs full-screen.
-  const [containerSize, setContainerSize] = useState({ w: 800, h: 600 });
+  // Default matches the composited /os viewport (1040×795) so the
+  // deep-link auto-open sizes windows correctly even before the
+  // ResizeObserver fires — otherwise windows clamp to a tiny 662px
+  // (research opened undersized in the monitor).
+  const [containerSize, setContainerSize] = useState({ w: 1040, h: 795 });
   useEffect(() => {
     const measure = () => {
       const el = containerRef.current;
@@ -1500,8 +1504,10 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
   // G30: '?app=research&paper=<slug>' query params work as a shareable
   // alias for the path form (handy when the path is owned by the boot
   // flow, e.g. linking someone straight into a windowed paper).
+  const didAutoOpen = useRef(false);
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined' || didAutoOpen.current) return;
+    didAutoOpen.current = true;   // once; containerSize is sane by now
     const q = new URLSearchParams(window.location.search);
     const qApp = q.get('app');
     if (qApp && APP_BY_ID[qApp as AppId]) {
@@ -1517,7 +1523,7 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
       openApp(app.id, undefined, overridePath);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [containerSize]);
 
   // G29: startup chime — once per browser session, right after the
   // desktop first mounts (the boot sequence's payoff note).
@@ -1655,7 +1661,14 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
   useEffect(() => {
     // When embedded inside the 3D scene the parent owns the audio
     // (Office.tsx's StudyAudio) — skip our own loop to avoid double playback.
-    if (embedded) return;
+    // The composited desktop is the /os document rendered with embedded=false
+    // inside the room's <iframe>, so the `embedded` flag is NOT set there;
+    // detect the iframe case directly so the parent's StudyAudio stays the
+    // single ambient source. (UI click sounds use a separate context and are
+    // unaffected.)
+    const insideParentRoom =
+      typeof window !== 'undefined' && window.parent !== window;
+    if (embedded || insideParentRoom) return;
     const audio = new Audio('/audio/ambient.mp3');
     audio.loop   = true;
     audio.volume = 0.32;
