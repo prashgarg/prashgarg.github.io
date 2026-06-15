@@ -36,15 +36,46 @@ const canonical  = Astro.site ? new URL(path === '/' ? '/' : `${path}/`, Astro.s
     <style>
       html, body { margin: 0; padding: 0; background: #13100B; color: #E8DBB6; overscroll-behavior: none; }
       body { overflow: hidden; }
-      #fallback {
-        position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
-        font-family: ui-monospace, Menlo, monospace; font-size: 13px;
-        color: rgba(232,219,182,0.6); pointer-events: none;
+      /* Server-rendered entry layer: the instant first paint (before the
+         ~1MB 3D bundle hydrates), the crawlable content + link graph, and
+         the no-JS / no-WebGL fallback. Once <Office> mounts, its opaque
+         fixed root (later in the DOM) paints over this. */
+      #entry {
+        position: fixed; inset: 0;
+        display: flex; align-items: center; justify-content: center;
+        padding: 7vh 24px; box-sizing: border-box; overflow-y: auto;
+        font-family: ui-monospace, 'SF Mono', Menlo, Monaco, Consolas, monospace;
       }
+      #entry .ef { max-width: 620px; }
+      #entry h1 { font-size: 22px; letter-spacing: 0.02em; margin: 0 0 4px; color: #E8DBB6; font-weight: 600; }
+      #entry .ef-tag { font-size: 13px; line-height: 1.5; color: rgba(232,219,182,0.62); margin: 0 0 18px; }
+      #entry .ef-bio { font-size: 13.5px; line-height: 1.7; color: rgba(232,219,182,0.88); margin: 0 0 20px; }
+      #entry .ef-links { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 0 0 18px; }
+      #entry .ef-links a { color: #A4D9C5; text-decoration: none; font-size: 13px; border-bottom: 1px solid rgba(164,217,197,0.38); padding-bottom: 1px; }
+      #entry .ef-links a:hover { color: #E8EEDF; border-color: #E8EEDF; }
+      #entry .ef-foot { margin: 0; font-size: 13px; }
+      #entry .ef-foot a { color: #E8DBB6; }
     </style>
   </head>
   <body>
-    <div id="fallback">loading the library…</div>
+    <!-- Crawlable, no-JS, instant-paint entry layer (covered by the 3D
+         scene once it hydrates). See #entry styles above. -->
+    <div id="entry">
+      <div class="ef">
+        <h1>Prashant Garg</h1>
+        <p class="ef-tag">{site.tagline}</p>
+        <p class="ef-bio">{site.bio}</p>
+        <nav class="ef-links" aria-label="Sections">
+          <a href="/research/">Research</a>
+          <a href="/talks/">Talks</a>
+          <a href="/library/">Library</a>
+          <a href="/now/">Now</a>
+          <a href="/cv/">CV</a>
+          <a href={site.scholar}>Google Scholar</a>
+        </nav>
+        <p class="ef-foot"><a href="/standard/">Plain-text version →</a></p>
+      </div>
+    </div>
     <slot />
   </body>
 </html>
