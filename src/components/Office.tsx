@@ -746,6 +746,9 @@ function CameraRig({ phase, onArrived, onEntryDone }: {
     camera.updateProjectionMatrix();
   }, [size, camera]);
 
+  // (Deep-link / returning-visitor framing is handled by the pinned desktop
+  // branch in useFrame below — see the M1 note there.)
+
   useEffect(() => {
     if (phase === 'entering') { entryStartTime.current = null; entryFired.current = false; }
     if (phase === 'dollying') {
@@ -799,15 +802,17 @@ function CameraRig({ phase, onArrived, onEntryDone }: {
     }
     // ── on-monitor / booting / desktop ─────────────────────────────────────
     if (phase === 'on-monitor' || phase === 'booting' || phase === 'desktop') {
-      // COMPOSITE desktop: hold the camera DEAD STILL on the framed monitor.
-      // (We tried a gentle mouse-driven pan here, but hovering near a screen
-      // edge nudged the framing toward that edge — it read as an unwanted
-      // zoom/pan into the corner. The desktop must sit rock-steady so reading
-      // and the returning-visitor experience stay calm.) Plain damped lerp to
-      // the fixed framing; once it arrives the lerp converges and the view
-      // stops moving entirely — no mouse input, no drift.
-      camera.position.lerp(endPos, 0.08);
-      tgt.current.lerp(endTgt, 0.08);
+      // Hold DEAD STILL on the framed monitor. PIN with copy() rather than a
+      // damped lerp: the dolly already delivers the camera to endPos in the
+      // click-through flow (so there's no jump), and on a deep-link /
+      // returning visit (phase starts at 'desktop') this lands the view
+      // framed on frame 1 instead of slowly creeping in from the doorway.
+      // A partial lerp couldn't achieve that — <PerspectiveCamera> re-applies
+      // its CAM_ENTRY_POS position prop on re-renders, and the 0.08 lerp kept
+      // losing ground to it, so the deep-link view never converged (M1).
+      // (Also fixes the earlier mouse-pan-into-corner: there's no parallax.)
+      camera.position.copy(endPos);
+      tgt.current.copy(endTgt);
       camera.lookAt(tgt.current);
       return;
     }
@@ -3655,6 +3660,25 @@ function TapHint({ isTouch }: { isTouch: boolean }) {
   );
 }
 
+/* ---------- exit hint (composite desktop) ---------------------------- */
+// Quiet, persistent cue so a visitor who has zoomed into the monitor knows
+// how to get back out (clicking the room, or Esc). Mirrors the entry hint;
+// the opposite of feeling trapped inside the screen (M22).
+function ExitHint() {
+  return (
+    <div style={{
+      position: 'fixed', left: '50%', bottom: 14, transform: 'translateX(-50%)',
+      zIndex: 60, pointerEvents: 'none',
+      fontFamily: "ui-monospace,'SF Mono',Menlo,Monaco,Consolas,monospace",
+      fontSize: 11, letterSpacing: '0.04em', color: 'rgba(255,255,255,0.7)',
+      background: 'rgba(16,26,26,0.5)', border: '1px solid rgba(255,255,255,0.16)',
+      borderRadius: 4, padding: '4px 10px', whiteSpace: 'nowrap',
+    }}>
+      Click the room to step out · Esc
+    </div>
+  );
+}
+
 /* ================================================================
    TOP-LEVEL COMPONENT
    ================================================================ */
@@ -3726,10 +3750,29 @@ export default function Office() {
   // posts a message up to exit back to the room.
   useEffect(() => {
     if (!COMPOSITE) return;
-    const onMsg = (e: MessageEvent) => { if (e.data?.type === 'pg-shutdown') handleDesktopClose(); };
+    const onMsg = (e: MessageEvent) => {
+      if (e.origin !== window.location.origin) return;  // trust only our own /os iframe
+      if (e.data?.type === 'pg-shutdown') handleDesktopClose();
+    };
     window.addEventListener('message', onMsg);
     return () => window.removeEventListener('message', onMsg);
   }, []); // eslint-disable-line
+  // Esc steps back out of the composite desktop to the room — mirrors the
+  // click-the-room affordance and gives keyboard users a way out (M22).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && COMPOSITE && phase === 'desktop') handleDesktopClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [phase]);
+  // Once the React app runs, hide the server-rendered #entry layer
+  // (Three.astro) so its links leave the tab order behind the 3D canvas.
+  useEffect(() => {
+    const el = document.getElementById('entry');
+    if (el) el.style.display = 'none';
+    return () => { if (el) el.style.display = ''; };
+  }, []);
   // Mount the 3D scene only when it can be seen: on touch, skip it
   // during BIOS (so the models never download unless asked for) and
   // while the fullscreen desktop covers everything.
@@ -3843,6 +3886,7 @@ export default function Office() {
       {phase !== 'splash' && (
         <HudOverlay muted={muted} onMuteToggle={() => setMuted(m => !m)} />
       )}
+      {COMPOSITE && phase === 'desktop' && <ExitHint />}
       {(phase === 'idle' || phase === 'entering') && <TapHint isTouch={isTouch} />}
       {phase === 'splash'  && <BiosScreen onDone={handleBiosDone} />}
       {phase === 'booting' && <BootOverlay onDone={handleBootDone} />}
