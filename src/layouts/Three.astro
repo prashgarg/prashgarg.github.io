@@ -1,27 +1,38 @@
 ---
 import '../styles/global.css';
+import { site } from '../data/site';
+import PersonJsonLd from '../components/PersonJsonLd.astro';
 interface Props { title?: string; description?: string }
-const { title = 'Prashant Garg', description = 'Personal site of Prashant Garg, economist.' } = Astro.props;
+const { title = 'Prashant Garg — Economist', description = site.tagline } = Astro.props;
 const path = Astro.url.pathname.replace(/\/$/, '') || '/';
 const ogPath = path === '/' ? '/og/index.png' : `/og${path}.png`;
 const ogImageUrl = Astro.site ? new URL(ogPath, Astro.site).toString() : ogPath;
-const canonical  = Astro.site ? new URL(path, Astro.site).toString() : path;
+const canonical  = Astro.site ? new URL(path === '/' ? '/' : `${path}/`, Astro.site).toString() : path;
 ---
 <!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>{title}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
+    <link rel="alternate" type="application/atom+xml" title="Papers — Prashant Garg" href="/papers.xml" />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Prashant Garg" />
     <meta property="og:image" content={ogImageUrl} />
+    <meta property="og:image:alt" content={title} />
+    <meta property="og:url" content={canonical} />
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content={site.twitterHandle} />
+    <meta name="twitter:creator" content={site.twitterHandle} />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={ogImageUrl} />
+    <PersonJsonLd />
     <style>
       html, body { margin: 0; padding: 0; background: #13100B; color: #E8DBB6; overscroll-behavior: none; }
       body { overflow: hidden; }

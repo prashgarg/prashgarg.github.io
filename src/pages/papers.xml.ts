@@ -17,9 +17,13 @@ const sorted = [...papers].sort((a, b) => {
 
 const SITE_URL = site.origin;
 const FEED_URL = `${SITE_URL}/papers.xml`;
-// Use the most-recent paper's year as the feed's updated stamp.
-// Atom 1.0 requires ISO-8601 datetime; fall back to first of January.
-const feedUpdated = new Date(`${sorted[0]?.year || new Date().getFullYear()}-01-01T00:00:00Z`).toISOString();
+// Feed <updated>: the most recent REAL publication year (sorted desc, so
+// the first paper that has a year). Undated working/forthcoming papers
+// don't drive this — we fall back to build time rather than fabricating a
+// January-1 date that implies a publication that hasn't happened (M21).
+const buildNow = new Date().toISOString();
+const latestYear = sorted.find(p => typeof p.year === 'number')?.year;
+const feedUpdated = latestYear ? new Date(`${latestYear}-01-01T00:00:00Z`).toISOString() : buildNow;
 
 function esc(s: string): string {
   return s
@@ -32,15 +36,18 @@ export const GET: APIRoute = () => {
   const entries = sorted.map(p => {
     const url      = `${SITE_URL}/research/${p.slug}`;
     const venue    = p.venue || 'Working paper';
-    const yearStr  = p.year ? String(p.year) : String(new Date().getFullYear());
-    const updated  = new Date(`${yearStr}-01-01T00:00:00Z`).toISOString();
+    const hasYear  = typeof p.year === 'number';
+    // Only papers with a real publication year get a <published> date and
+    // a year-based <updated>. Undated working/forthcoming papers use build
+    // time and omit <published> — never fabricate a publication date (M21).
+    const updated  = hasYear ? new Date(`${p.year}-01-01T00:00:00Z`).toISOString() : buildNow;
+    const publishedTag = hasYear ? `\n    <published>${updated}</published>` : '';
     const authors  = ['Prashant Garg', ...p.coauthors];
     return `  <entry>
     <id>${url}</id>
     <title>${esc(p.title)}</title>
     <link rel="alternate" type="text/html" href="${url}"/>
-    <updated>${updated}</updated>
-    <published>${updated}</published>
+    <updated>${updated}</updated>${publishedTag}
     <category term="${esc(p.status)}"/>
     ${authors.map(a => `<author><name>${esc(a)}</name></author>`).join('\n    ')}
     <summary type="html">${esc(`${venue}${p.year ? ' · ' + p.year : ''}. ${p.blurb.slice(0, 500)}${p.blurb.length > 500 ? '…' : ''}`)}</summary>

@@ -1,17 +1,11 @@
 import { OGImageRoute } from 'astro-og-canvas';
-import { papers, site as siteData } from '../../data/site';
+import { papers, pageMeta } from '../../data/site';
 
 type Page = { title: string; description: string };
 
-const pages: Record<string, Page> = {
-  'index':    { title: 'Prashant Garg', description: siteData.tagline },
-  'research': { title: 'Research', description: 'Papers, projects, and the questions behind them.' },
-  'talks':    { title: 'Talks', description: 'Each paper, and where it has gone.' },
-  'library':  { title: 'Library', description: 'Code, notes, and the occasional essay.' },
-  'now':      { title: 'Now', description: 'What I am thinking about right now.' },
-  'cv':       { title: 'CV — Prashant Garg', description: 'Curriculum vitae and academic record.' },
-  'standard': { title: 'Prashant Garg', description: siteData.tagline },
-};
+// Page descriptions come from the shared pageMeta map (src/data/site.ts)
+// so the OG card and the HTML meta description stay in lockstep.
+const pages: Record<string, Page> = { ...pageMeta };
 
 for (const p of papers) {
   pages[`research/${p.slug}`] = { title: p.title, description: p.blurb };

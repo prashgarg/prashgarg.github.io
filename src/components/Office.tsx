@@ -3124,7 +3124,6 @@ function BiosScreen({ onDone }: { onDone: () => void }) {
 
   const LINES = [
     { text: 'prashantgarg.org  v1.0',                                          type: 'header' },
-    { text: 'Economist · Cambridge · Imperial · LSE',                         type: 'sub'    },
     { text: '',                                                                 type: 'blank'  },
     { text: '> initializing workstation',                                      type: 'check'  },
     { text: '> mounting research archives',                                    type: 'check'  },
@@ -3133,7 +3132,7 @@ function BiosScreen({ onDone }: { onDone: () => void }) {
     { text: '',                                                                 type: 'blank'  },
     { text: `Press any key to skip · DEL to enter SETUP · ${new Date().getFullYear()}`, type: 'footer' },
   ] as const;
-  const DELAYS = [0, 130, 280, 420, 560, 700, 840, 960, 1060];
+  const DELAYS = [0, 280, 420, 560, 700, 840, 960, 1060];
 
   useEffect(() => {
     const timers: ReturnType<typeof setTimeout>[] = [];

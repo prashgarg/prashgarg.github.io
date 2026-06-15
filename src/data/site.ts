@@ -21,6 +21,20 @@ export const site = {
   github: 'https://github.com/prashgarg',
 };
 
+// Per-page meta — single source of truth shared by the OG image route
+// (og/[...route].ts) and the HTML <title>/<meta description> in the
+// layouts, so the social card and the SERP snippet can't disagree (each
+// inner page previously inherited the identical site tagline).
+export const pageMeta: Record<string, { title: string; description: string }> = {
+  index:    { title: site.name,            description: site.tagline },
+  research: { title: 'Research',           description: 'Papers, projects, and the questions behind them.' },
+  talks:    { title: 'Talks',              description: 'Each paper, and where it has gone.' },
+  library:  { title: 'Library',            description: 'Code, notes, and the occasional essay.' },
+  now:      { title: 'Now',                description: 'What I am thinking about right now.' },
+  cv:       { title: 'CV — Prashant Garg', description: 'Curriculum vitae and academic record.' },
+  standard: { title: site.name,            description: site.tagline },
+};
+
 export const affiliations = [
   {
     role: 'Research Associate',

@@ -49,7 +49,9 @@ function bibName(full: string): string {
   const parts = full.trim().split(/\s+/);
   return parts.length < 2 ? full : `${parts[parts.length - 1]}, ${parts.slice(0, -1).join(' ')}`;
 }
-const bibKey = `garg${paper.year || ''}${paper.slug.split('-')[0]}`;
+// Key off the full (unique) slug so two papers sharing a first word + year
+// can't collide (e.g. ai-production-networks vs ai-health-advice).
+const bibKey = `garg_${paper.slug.replace(/-/g, '_')}`;
 const bibEntryType = paper.venue && /journal|review|economics|nature|science|letters/i.test(paper.venue) ? 'article' : 'misc';
 const bibAuthor = ['Prashant Garg', ...paper.coauthors].map(bibName).join(' and ');
 const natureId = paper.links.map(l => l.url.match(/nature\.com\/articles\/([a-z0-9.-]+)/i)?.[1]).find(Boolean);

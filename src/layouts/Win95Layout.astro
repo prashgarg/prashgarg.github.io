@@ -7,7 +7,8 @@
  * portfolio-inner-site (MIT). All CSS and markup original.
  */
 import '../styles/global.css';
-import { papers, talks } from '../data/site';
+import { site, papers, talks, pageMeta } from '../data/site';
+import PersonJsonLd from '../components/PersonJsonLd.astro';
 
 interface Props {
   title?: string;
@@ -16,14 +17,20 @@ interface Props {
 }
 const {
   title = 'Prashant Garg',
-  description = 'Economist working on science, innovation, production, and media using machine learning, causal inference, and network science.',
+  description,
   current = '',
 } = Astro.props;
 
 const path = Astro.url.pathname.replace(/\/$/, '') || '/';
+// Distinct per-page description (falls back to the shared pageMeta map,
+// then the site tagline) so inner pages no longer share one description.
+const desc = description ?? pageMeta[current]?.description ?? site.tagline;
 const ogPath  = path === '/' ? '/og/index.png' : `/og${path}.png`;
 const ogImageUrl = Astro.site ? new URL(ogPath, Astro.site).toString() : ogPath;
-const canonical  = Astro.site ? new URL(path, Astro.site).toString() : path;
+// Canonical matches the served directory URL (trailing slash) so it agrees
+// with the sitemap's trailing-slash entries.
+const canonicalPath = path === '/' ? '/' : `${path}/`;
+const canonical  = Astro.site ? new URL(canonicalPath, Astro.site).toString() : canonicalPath;
 
 // EMBED MODE is detected CLIENT-SIDE (see bootstrap script at the
 // bottom of <body>). Static-site build can't read request URLs at
@@ -67,22 +74,30 @@ const paletteIndex = [
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;700&family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
     <meta name="generator" content={Astro.generator} />
     <title>{title}</title>
-    <meta name="description" content={description} />
+    <meta name="description" content={desc} />
     <link rel="canonical" href={canonical} />
+    <link rel="alternate" type="application/atom+xml" title="Papers — Prashant Garg" href="/papers.xml" />
     <meta property="og:title" content={title} />
-    <meta property="og:description" content={description} />
+    <meta property="og:description" content={desc} />
     <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Prashant Garg" />
     <meta property="og:image" content={ogImageUrl} />
+    <meta property="og:image:alt" content={title} />
     <meta property="og:url" content={canonical} />
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content={site.twitterHandle} />
+    <meta name="twitter:creator" content={site.twitterHandle} />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={desc} />
     <meta name="twitter:image" content={ogImageUrl} />
+    <PersonJsonLd />
   </head>
 
   <style is:global>
@@ -557,7 +572,9 @@ const paletteIndex = [
 
         var btn = document.getElementById('w95-mute');
         if (btn) {
-          btn.addEventListener('mousedown', function() {
+          // 'click' (not 'mousedown') so keyboard activation (Enter/Space)
+          // can toggle mute too — WCAG 1.4.2 / keyboard operability.
+          btn.addEventListener('click', function() {
             muted = !muted;
             audio.muted = muted;
             try { sessionStorage.setItem(SS_MUTED, muted ? '1' : '0'); } catch(e) {}

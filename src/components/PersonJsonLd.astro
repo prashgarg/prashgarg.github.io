@@ -1,0 +1,28 @@
+---
+/**
+ * schema.org/Person JSON-LD for the site owner — the single highest-value
+ * structured-data item for an academic (Google knowledge panel, Scholar
+ * author linkage). Emitted on the crawlable surfaces (home, /standard) and
+ * the inner-page layout. Uses a stable @id so Google dedupes across pages.
+ */
+import { site, affiliations } from '../data/site';
+
+const current = affiliations.filter((a: any) => a.current);
+const alumni = affiliations.filter((a: any) => !a.current && !a.incoming);
+
+const personJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Person',
+  '@id': `${site.origin}/#person`,
+  name: site.name,
+  url: site.origin,
+  jobTitle: 'Economist',
+  description: site.bio,
+  email: `mailto:${site.email}`,
+  image: `${site.origin}/photo.jpg`,
+  affiliation: current.map((a: any) => ({ '@type': 'Organization', name: a.org, url: a.url })),
+  alumniOf: alumni.map((a: any) => ({ '@type': 'Organization', name: a.org, url: a.url })),
+  sameAs: [site.scholar, site.github, site.twitter, site.bluesky],
+};
+---
+<script type="application/ld+json" is:inline set:html={JSON.stringify(personJsonLd)} />

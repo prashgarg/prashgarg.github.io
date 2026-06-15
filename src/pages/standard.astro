@@ -4,6 +4,7 @@
 // chrome, no client JS required. The insurance policy for hiring
 // committees in a hurry (and the accessibility/no-WebGL story).
 import { site, papers, talks, affiliations, statusMeta, education, awards, datasets, type PaperStatus } from '../data/site';
+import PersonJsonLd from '../components/PersonJsonLd.astro';
 
 // G43: press clippings grouped by paper (all coverage with article URLs).
 const pressGroups = papers
@@ -30,7 +31,19 @@ const current = affiliations.filter((a: any) => a.current);
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Prashant Garg — Economist</title>
   <meta name="description" content="Prashant Garg — economist. Papers, talks, CV, contact. Plain version." />
-  <link rel="canonical" href={`${site.origin}/standard`} />
+  <link rel="canonical" href={`${site.origin}/standard/`} />
+  <link rel="alternate" type="application/atom+xml" title="Papers — Prashant Garg" href="/papers.xml" />
+  <meta property="og:title" content="Prashant Garg" />
+  <meta property="og:description" content={site.tagline} />
+  <meta property="og:type" content="profile" />
+  <meta property="og:site_name" content="Prashant Garg" />
+  <meta property="og:url" content={`${site.origin}/standard/`} />
+  <meta property="og:image" content={`${site.origin}/og/standard.png`} />
+  <meta property="og:image:alt" content="Prashant Garg — Economist" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:site" content={site.twitterHandle} />
+  <meta name="twitter:image" content={`${site.origin}/og/standard.png`} />
+  <PersonJsonLd />
   <style>
     body { font-family: Georgia, 'Times New Roman', serif; max-width: 44rem; margin: 0 auto; padding: 2.5rem 1.25rem 4rem; color: #1a1a1a; background: #fffdf8; line-height: 1.55; }
     h1 { font-size: 1.9rem; margin: 0 0 0.25rem; }
