@@ -23,6 +23,10 @@ pnpm-debug.log*
 # jetbrains setting folder
 .idea/
 
+# screenshot scratch output — the verification harness writes here; these
+# are debug artifacts, not source, and were bloating the repo (~500MB).
+shots/
+
 # reference forks (kept locally, not part of this repo)
 portfolio-inner-site/
 portfolio-website/

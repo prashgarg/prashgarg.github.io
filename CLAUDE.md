@@ -24,13 +24,17 @@ A personal academic website for Prashant Garg.
 
 - **Stack:** Astro + React Three Fiber + drei + Tailwind. Static site,
   deployed via GitHub Pages from `main`.
-- **Home page** (`/`) is a 3D scene built in `src/components/Room.tsx` —
-  a chibi cottage assembled from CC0 Quaternius models that we
-  texture-strip + recolour to a pastel palette. Click the door →
-  camera dollies → boot terminal types → navigates to `/research`.
-- **Inside pages** (`/research`, `/talks`, `/library`, `/now`) use the
-  v1 Astro layout (`src/layouts/Layout.astro`) with the nav linking
-  back to "← Outside".
+- **Home page** (`/`) is a 3D scene built in `src/components/Office.tsx` —
+  a "Severance"-style office. Press Enter / click the monitor → camera
+  dollies in → the monitor screen is a real composited DOM `<iframe>` of
+  the Win95-style desktop (`/os`, `src/components/OsPage.tsx` +
+  `InnerDesktop.tsx`) via drei `<Html transform>`. Click the room to exit.
+  Touch devices / `?composite=0` get a fullscreen desktop overlay instead.
+- **Inside pages** (`/research`, `/talks`, `/library`, `/now`, `/cv`) use
+  `src/layouts/Win95Layout.astro` (Win95 window chrome). `/standard` is a
+  plain, no-JS, server-rendered fallback. (The old cottage `Room.tsx` /
+  `Study.tsx`, `public/models/`, and the v1 `Layout.astro` / `Nav.astro` /
+  `Footer.astro` were removed in the 2026-06-15 review pass.)
 - Branches: `main` is live, `v1-astro-archive` is the pre-3D version.
 
 ## Norms (the distilled Superpowers bits)
