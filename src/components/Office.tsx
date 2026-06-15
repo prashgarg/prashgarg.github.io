@@ -2458,7 +2458,11 @@ function OfficeScene({ phase, onMonitorClick }: {
       {/* G22 (goal_12jun26): the lobby preset is WARM — at 0.62 it pushed
           every white surface cream (#E9E9D1 ceiling, B-channel ~24 under
           R). Halved; the cooled ambient below compensates brightness. */}
-      <Environment preset="lobby" background={false} environmentIntensity={0.20} />
+      {/* Self-hosted HDR (vendored from pmndrs/drei-assets, CC0) — the
+          `preset="lobby"` form hotlinked a 1.5MB HDR from raw.githack.com
+          on the lighting critical path (off-origin SPOF + hidden weight).
+          Same image, now served from our own origin (H2). */}
+      <Environment files="/hdri/lobby.hdr" background={false} environmentIntensity={0.20} />
 
       {/* Single dominant SHADOW caster — angled "sun"-style directional.
           All nine ceiling pointLights provide flat fluorescent flood
@@ -3826,7 +3830,10 @@ export default function Office() {
         </Canvas>
       </div>}
       {phase !== 'splash' && mount3d && <VignetteOverlay />}
-      {phase !== 'splash' && mount3d && <GrainOverlay />}
+      {/* Grain pauses during the composite desktop phase — it's invisible
+          behind the near-fullscreen iframe there, so the per-frame RNG
+          canvas redraw (setInterval) is wasted main-thread work. */}
+      {phase !== 'splash' && phase !== 'desktop' && mount3d && <GrainOverlay />}
       <PhaseFlash phase={phase} />
       <StudyAudio
         active={audioActive}
