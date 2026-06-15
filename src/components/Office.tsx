@@ -310,12 +310,13 @@ const CAM_MONITOR_TGT = MONITOR_WORLD.clone();
 const _COMPOSITE_CZ = (() => {
   if (typeof window === 'undefined') return 0.39;
   const v = parseFloat(new URLSearchParams(window.location.search).get('cz') || '');
-  // Frame the monitor as an OBJECT IN THE ROOM (Henry-style) — screen ≈ 70% of
-  // the viewport with a clear room margin all around. The margin is what you
-  // click to step back out (see the wrapper onPointerDown). Pulled back from
-  // 0.23 because the screen plane was widened (0.42→0.62) — at 0.23 the wider
-  // panel would overflow the frame and leave nothing outside to click.
-  return Number.isFinite(v) ? v : 0.39;
+  // Frame the monitor as an OBJECT IN THE ROOM (Henry-style). Pushed IN from
+  // 0.39 → 0.32 so the screen fills ~85% of the viewport (was ~70%) — the
+  // inner site + fonts read clearly — while still leaving a clickable room
+  // margin all around to step back out (see the wrapper onPointerDown). Don't
+  // go below ~0.30 or the widened 0.62 panel overflows and there's nothing
+  // outside to click.
+  return Number.isFinite(v) ? v : 0.32;
 })();
 const CAM_COMPOSITE_POS = new THREE.Vector3(MONITOR_WORLD.x, MONITOR_WORLD.y + 0.02, DESK_Z + _COMPOSITE_CZ);
 const CAM_COMPOSITE_TGT = new THREE.Vector3(MONITOR_WORLD.x, MONITOR_WORLD.y + 0.02, MONITOR_WORLD.z);
@@ -2687,16 +2688,17 @@ function OfficeScene({ phase, onMonitorClick }: {
               style={{ width: '1280px', height: '800px', border: 0, display: 'block', background: '#3e9697' }}
             />
             {/* CRT glass realism (rides the screen's 3D transform; never
-                blocks clicks): scanlines + soft corner vignette + a faint
-                top-left glare so the flat DOM reads as curved glass. */}
+                blocks clicks): scanlines + soft corner vignette only. The
+                top-left white glare was distracting over the content, so it's
+                dropped — the vignette alone still reads as curved glass. */}
             <div style={{
               position: 'absolute', inset: 0, pointerEvents: 'none', mixBlendMode: 'multiply',
               backgroundImage: 'repeating-linear-gradient(to bottom, rgba(0,0,0,0.10) 0px, rgba(0,0,0,0.10) 1px, transparent 1px, transparent 3px)',
             }} />
             <div style={{
               position: 'absolute', inset: 0, pointerEvents: 'none',
-              background: 'radial-gradient(120% 120% at 28% 18%, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0) 42%), radial-gradient(130% 130% at 50% 50%, rgba(0,0,0,0) 60%, rgba(0,0,0,0.28) 100%)',
-              boxShadow: 'inset 0 0 22px 6px rgba(0,0,0,0.30)',
+              background: 'radial-gradient(130% 130% at 50% 50%, rgba(0,0,0,0) 64%, rgba(0,0,0,0.24) 100%)',
+              boxShadow: 'inset 0 0 22px 6px rgba(0,0,0,0.26)',
             }} />
           </div>
         </Html>
@@ -2774,16 +2776,18 @@ function OfficeScene({ phase, onMonitorClick }: {
           <meshStandardMaterial color="#9FA3A0" roughness={0.5} metalness={0.2} side={THREE.DoubleSide} />
         </mesh>
       </group>
-      <LivingProp speed={0.42} ampY={0.0008} ampRot={0.08}>
-        <mesh position={[-0.35, 0.91, DESK_Z - 0.15]} rotation-z={0.08}>
-          <cylinderGeometry args={[0.005, 0.005, 0.13, 16]} />
-          <meshStandardMaterial color={C.graphite} roughness={0.45} />
-        </mesh>
-        <mesh position={[-0.36, 0.90, DESK_Z - 0.14]} rotation-z={-0.12} rotation-x={0.08}>
-          <cylinderGeometry args={[0.005, 0.005, 0.13, 16]} />
-          <meshStandardMaterial color={C.manila} roughness={0.45} />
-        </mesh>
-      </LivingProp>
+      {/* Pens — STATIC, seated in the cup. (Were wrapped in a LivingProp
+          whose z-rotation pivoted around the world origin, so the ~5° sway
+          arced them ~8 cm and they drifted out of the cup.) Lowered so the
+          bottoms rest in the cup and only the tips poke above the rim. */}
+      <mesh position={[-0.35, 0.855, DESK_Z - 0.15]} rotation-z={0.06}>
+        <cylinderGeometry args={[0.005, 0.005, 0.13, 16]} />
+        <meshStandardMaterial color={C.graphite} roughness={0.45} />
+      </mesh>
+      <mesh position={[-0.357, 0.85, DESK_Z - 0.145]} rotation-z={-0.09} rotation-x={0.06}>
+        <cylinderGeometry args={[0.005, 0.005, 0.13, 16]} />
+        <meshStandardMaterial color={C.manila} roughness={0.45} />
+      </mesh>
 
       {/* in-tray — real letter tray with a floor + low walls */}
       <group position={[-0.10, 0.77, DESK_Z - 0.45]}>

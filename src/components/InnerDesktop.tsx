@@ -253,48 +253,62 @@ const WIN95_STYLE = `
 .win95-home {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  align-items: stretch;
+  justify-content: flex-start;
   height: 100%;
-  padding: 32px 40px;
+  padding: 30px 38px;
   box-sizing: border-box;
   overflow-y: auto;
+  gap: 18px;
 }
+/* masthead — photo on the SIDE (bigger), text to its right, left-aligned.
+   Fills the panel width so there's no dead whitespace down the sides. */
 .win95-home-header {
-  text-align: center;
-  max-width: 640px;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 30px;
+  text-align: left;
 }
-/* portrait — white-matted print taped to the cream panel */
+.win95-home-headtext { flex: 1; min-width: 0; }
+/* portrait — bigger white-matted print, sits on the left, doesn't shrink */
 .win95-home-photo {
-  width: 110px;
+  width: 210px;
   height: auto;
+  flex-shrink: 0;
   display: block;
-  margin: 0 auto 16px;
-  padding: 5px;
+  padding: 6px;
   background: #fff;
   box-shadow: inset 0 0 0 1px #c3c6ca, 1px 2px 0 rgba(0,0,0,0.25);
 }
-/* prose bio under the masthead (mirrors the old site's bio) */
+/* prose bio (mirrors the old site's bio) — left-aligned, fills column */
 .win95-home-bio {
   font-family: Millennium, 'Times New Roman', serif;
   font-size: 14px;
-  line-height: 1.6;
+  line-height: 1.55;
   color: #333;
-  text-align: center;
-  max-width: 600px;
-  margin: 16px auto 0;
+  text-align: left;
+  max-width: none;
+  margin: 14px 0 0;
 }
 .win95-home-name {
   font-family: 'Cormorant Garamond', Georgia, serif;
-  font-size: 44px;
-  line-height: 1.0;
+  font-size: 52px;
+  line-height: 0.98;
   color: #1a1a1a;
   margin-bottom: 6px;
 }
 .win95-home-subtitle {
   font-family: Millennium, 'Times New Roman', serif;
-  font-size: 15px;
+  font-size: 16px;
   color: #555;
+}
+/* narrow panel (beside the icon column on small monitors) — stack the
+   masthead so the photo doesn't crowd the text */
+@media (max-width: 640px) {
+  .win95-home-header { flex-direction: column; align-items: center; text-align: center; gap: 14px; }
+  .win95-home-photo { width: 150px; }
+  .win95-home-bio { text-align: center; }
 }
 
 /* CONTACT strip — plain old-site text-link row (no buttons, no glyphs) */
@@ -526,8 +540,8 @@ const WIN95_STYLE = `
   position: absolute;
   top: 14px; left: 14px;
   display: grid;
-  grid-template-columns: 84px;
-  gap: 8px 0;
+  grid-template-columns: 104px;   /* wider so the bigger icons fit */
+  gap: 10px 0;
   z-index: 1;       /* below windows but above background */
 }
 .win95-desktop.embedded .win95-icons { top: 8px; left: 8px; }
@@ -537,7 +551,7 @@ const WIN95_STYLE = `
    panel right of the icon column, centred, scrollable if cramped. */
 .win95-desktop-home {
   position: absolute;
-  left: 118px; right: 16px; top: 8px; bottom: 38px;
+  left: 140px; right: 16px; top: 8px; bottom: 38px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -555,7 +569,7 @@ const WIN95_STYLE = `
               2px 3px 0 rgba(0,0,0,0.28);
 }
 @media (max-width: 700px) {
-  .win95-desktop-home { left: 104px; right: 8px; }
+  .win95-desktop-home { left: 126px; right: 8px; }
   /* shrink the masthead so the panel reads cleanly in the narrow
      column beside the icons */
   .win95-desktop-home .win95-home { padding: 16px 14px 14px; }
@@ -565,20 +579,22 @@ const WIN95_STYLE = `
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  padding: 6px 4px 4px;
-  width: 84px;
+  gap: 5px;
+  padding: 7px 4px 5px;
+  width: 104px;
   cursor: pointer;
   user-select: none;
   border: 1px solid transparent;
 }
 .win95-icon-img {
-  width: 32px; height: 32px;
+  width: 46px; height: 46px;
   display: flex; align-items: center; justify-content: center;
 }
+/* the icon SVGs are authored at 32px — let them scale to the larger box */
+.win95-icon-img svg { width: 100%; height: 100%; }
 .win95-icon-label {
   font-family: MSSerif, Arial, sans-serif;
-  font-size: 11px;
+  font-size: 12px;
   color: #fff;
   text-align: center;
   line-height: 1.2;
@@ -2410,13 +2426,15 @@ function HomeContent({ openApp }: { openApp: (id: AppId, fp?: { x: number; y: nu
     <div className="win95-home">
       <div className="win95-home-header">
         <img className="win95-home-photo" src="/photo.jpg" alt="Prashant Garg" />
-        <div className="win95-home-name">Prashant Garg</div>
-        <div className="win95-home-subtitle">
-          Economist · Research Associate at Cambridge
+        <div className="win95-home-headtext">
+          <div className="win95-home-name">Prashant Garg</div>
+          <div className="win95-home-subtitle">
+            Economist · Research Associate at Cambridge
+          </div>
+          <p className="win95-home-bio">{site.bio}</p>
         </div>
-        <p className="win95-home-bio">{site.bio}</p>
-        <ContactStrip />
       </div>
+      <ContactStrip />
     </div>
   );
 }
