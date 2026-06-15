@@ -9,6 +9,8 @@ const pages: Record<string, Page> = {
   'talks':    { title: 'Talks', description: 'Each paper, and where it has gone.' },
   'library':  { title: 'Library', description: 'Code, notes, and the occasional essay.' },
   'now':      { title: 'Now', description: 'What I am thinking about right now.' },
+  'cv':       { title: 'CV — Prashant Garg', description: 'Curriculum vitae and academic record.' },
+  'standard': { title: 'Prashant Garg', description: siteData.tagline },
 };
 
 for (const p of papers) {

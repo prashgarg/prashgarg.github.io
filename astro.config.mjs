@@ -20,5 +20,7 @@ export default defineConfig({
   build: {
     format: 'directory',
   },
-  integrations: [sitemap(), react()]
+  // Exclude the iframe-only desktop shell (/os) from the sitemap — it is
+  // noindex and not content. Everything else is included.
+  integrations: [sitemap({ filter: (page) => !page.includes('/os/') }), react()]
 });

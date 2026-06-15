@@ -8,6 +8,7 @@
   "scripts": {
     "predev": "node scripts/check-node.mjs",
     "dev": "astro dev",
+    "prebuild": "node scripts/check-node.mjs",
     "build": "astro build",
     "preview": "astro preview",
     "serve": "python3 -m http.server 4321 --directory dist",
