@@ -15,7 +15,7 @@
  *   - minimize to taskbar button (click _ or the taskbar chip)
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { papers, talks, affiliations, site } from '../data/site';
+import { papers, talks, site } from '../data/site';
 
 
 /* ---------- Win95 CSS injected once ----------------------------------- */
@@ -1904,7 +1904,9 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
 
       {/* ───────────── desktop icons ───────────── */}
       <div className="win95-icons" onMouseDown={e => e.stopPropagation()}>
-        {APPS.map(app => (
+        {/* (declutter) Home dropped from the icon column — the home panel is
+            permanently on the desktop and the taskbar Home button shows it. */}
+        {APPS.filter(a => a.id !== 'home').map(app => (
           <div
             key={app.id}
             className={`win95-icon${selectedIcon === app.id ? ' selected' : ''}`}
@@ -1924,7 +1926,7 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
       {/* ───────────── home content ON the desktop ───────────── */}
       <div className="win95-desktop-home">
         <div className="win95-desktop-home-inner" onMouseDown={e => e.stopPropagation()}>
-          <HomeContent openApp={openApp} />
+          <HomeContent />
         </div>
       </div>
 
@@ -2002,7 +2004,7 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
             {/* content area — inline HOME, or iframe */}
             <div className="win95-content">
               {w.id === 'home' ? (
-                <HomeContent openApp={openApp} />
+                <HomeContent />
               ) : (
                 /* When the window has a sub-path override (e.g. a paper
                    detail under /research/...), the iframe loads that
@@ -2105,7 +2107,7 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
         <div className="win95-startmenu" onMouseDown={e => e.stopPropagation()}>
           <div className="win95-startmenu-spine"><span><b>prashant</b>garg.os</span></div>
           <div className="win95-startmenu-list">
-            {APPS.map(app => (
+            {APPS.filter(a => a.id !== 'home').map(app => (
               <div
                 key={app.id}
                 className="win95-startmenu-item"
@@ -2130,28 +2132,11 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
               </div>
               Run…
             </div>
-            <div
-              className="win95-startmenu-item"
-              onMouseDown={() => playUiClick('down', 'menu')}
-              onMouseUp={() => playUiClick('up', 'menu')}
-              onClick={() => { setStartOpen(false); setDialog('wellness'); }}
-            >
-              <div className="win95-startmenu-icon">
-                <svg width="20" height="20" viewBox="0 0 20 20"><path d="M10 16s-6-3.6-6-8a3.4 3.4 0 016-2.2A3.4 3.4 0 0116 8c0 4.4-6 8-6 8z" fill="none" stroke="#2b6b4f" strokeWidth="1.6"/></svg>
-              </div>
-              Wellness Session
-            </div>
-            <div
-              className="win95-startmenu-item"
-              onMouseDown={() => playUiClick('down', 'menu')}
-              onMouseUp={() => playUiClick('up', 'menu')}
-              onClick={() => { setStartOpen(false); setDialog('sysprops'); }}
-            >
-              <div className="win95-startmenu-icon">
-                <svg width="20" height="20" viewBox="0 0 20 20"><rect x="3" y="3" width="14" height="11" fill="#9CB0D8" stroke="#2b2b2b" strokeWidth="1.5"/><rect x="7" y="16" width="6" height="1.6" fill="#2b2b2b"/></svg>
-              </div>
-              System Properties
-            </div>
+            {/* (declutter) Wellness Session + System Properties removed from the
+                always-visible Start menu — demoted to the Run command (type
+                "wellness" / "properties"). Wellness copy is still DRAFT, so it
+                should not sit at-rest in the menu. Run… kept: it's the genuine
+                launcher and the mechanism the two are demoted into. */}
             <div
               className="win95-startmenu-item"
               onMouseDown={() => playUiClick('down', 'menu')}
@@ -2213,13 +2198,8 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
               playUiClick('down');
             }}
           >Refresh</div>
-          <div className="win95-context-sep" />
-          <div className="win95-context-item disabled">
-            Arrange Icons <span className="win95-context-chevron">▶</span>
-          </div>
-          <div className="win95-context-item disabled">
-            New <span className="win95-context-chevron">▶</span>
-          </div>
+          {/* (declutter) removed the 3 greyed dead stubs — Arrange Icons,
+              New, Properties — only real actions remain. */}
           <div className="win95-context-sep" />
           <div
             className="win95-context-item"
@@ -2229,8 +2209,6 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
             className="win95-context-item"
             onClick={() => { setCtxMenu(null); onClose(); }}
           >Back to Study…</div>
-          <div className="win95-context-sep" />
-          <div className="win95-context-item disabled">Properties</div>
         </div>
       )}
       {refreshFlash && (
@@ -2421,7 +2399,7 @@ function WellnessDialog({ onClose }: { onClose: () => void }) {
   );
 }
 
-function HomeContent({ openApp }: { openApp: (id: AppId, fp?: { x: number; y: number }, pathOverride?: string) => void }) {
+function HomeContent() {
   return (
     <div className="win95-home">
       <div className="win95-home-header">

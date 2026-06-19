@@ -347,14 +347,18 @@ export const papers: Paper[] = [
   },
 ];
 
-export const statusMeta: Record<PaperStatus, { label: string; badge: string }> = {
-  published: { label: 'Published', badge: 'badge-red' },
+// (declutter) Dropped the per-status `badge` colour field — colored status
+// pills were removed from the rendered pages, so this had zero consumers
+// (only `label` is read). Removing it + the orphaned `.badge-*` CSS keeps
+// the pills from quietly returning.
+export const statusMeta: Record<PaperStatus, { label: string }> = {
+  published: { label: 'Published' },
   // 'accepted' renders as Forthcoming — matches how the old site (and
   // the discipline) frames accepted-but-unpublished journal papers.
-  accepted:  { label: 'Forthcoming', badge: 'badge-blue' },
-  rr:        { label: 'R&R',       badge: 'badge-yellow' },
-  working:   { label: 'Working',   badge: 'badge-cream' },
-  other:     { label: 'Essay',     badge: 'badge-teal' },
+  accepted:  { label: 'Forthcoming' },
+  rr:        { label: 'R&R' },
+  working:   { label: 'Working' },
+  other:     { label: 'Essay' },
 };
 
 export interface Tool {

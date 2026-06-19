@@ -33,8 +33,7 @@ const years = Object.keys(talksByYear).map(Number).sort((a, b) => b - a);
         <h1 class="font-display text-3xl md:text-4xl font-bold tracking-tight">Curriculum Vitae</h1>
       </div>
       <div class="flex items-center gap-2 flex-wrap">
-        <button onclick="window.print()" class="inline-flex items-center gap-2 text-sm font-semibold px-3 py-1.5 border-2 border-ink dark:border-cream rounded-md bg-brand-yellow hover:bg-brand-yellow/80">
-          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v8H6z"/></svg>
+        <button onclick="window.print()" class="inline-flex items-center text-sm font-semibold px-3 py-1.5 border-2 border-ink dark:border-cream rounded-md bg-brand-yellow hover:bg-brand-yellow/80">
           Print
         </button>
         <a href="/cv.pdf" target="_blank" rel="noopener" class="inline-flex items-center gap-2 text-sm font-semibold px-3 py-1.5 border-2 border-ink dark:border-cream rounded-md bg-white dark:bg-ink-2 hover:bg-brand-yellow">

@@ -328,6 +328,14 @@ const COMPOSITE = typeof window !== 'undefined'
   && new URLSearchParams(window.location.search).get('composite') !== '0'
   && !window.matchMedia('(hover: none) and (pointer: coarse)').matches;
 
+// OS-level "reduce motion" preference. Combined with the BIOS "Reduced
+// motion" toggle in the Office component; gates the 3D scene's continuous
+// camera motion (breath/drift/parallax) and the pulsing entry hint so they
+// don't run for motion-sensitive visitors (WCAG 2.3.3, H3).
+const PREFERS_REDUCED_MOTION = typeof window !== 'undefined'
+  && typeof window.matchMedia === 'function'
+  && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
 // Lean-in close-up frame — looks STEEPLY DOWN at the desk so the chair
 // back tucks into the bottom-foreground (not blocking the keyboard +
 // monitor). Camera is high enough that the chair-top is well below
@@ -723,8 +731,8 @@ function CrtScreenProjector() {
   return null;
 }
 
-function CameraRig({ phase, onArrived, onEntryDone }: {
-  phase: Phase; onArrived: () => void; onEntryDone: () => void;
+function CameraRig({ phase, onArrived, onEntryDone, reducedMotion }: {
+  phase: Phase; onArrived: () => void; onEntryDone: () => void; reducedMotion: boolean;
 }) {
   const { camera, size } = useThree();
   const mouse  = useRef({ x: 0, y: 0 });
@@ -813,6 +821,15 @@ function CameraRig({ phase, onArrived, onEntryDone }: {
       // (Also fixes the earlier mouse-pan-into-corner: there's no parallax.)
       camera.position.copy(endPos);
       tgt.current.copy(endTgt);
+      camera.lookAt(tgt.current);
+      return;
+    }
+    // ── reduced motion: hold a still idle framing ───────────────────────
+    // No breath, drift, parallax, or lean-in — settle to the idle pose and
+    // stop (WCAG 2.3.3). The user-initiated dolly still runs on click.
+    if (reducedMotion) {
+      camera.position.lerp(idlePos.current, 0.1);
+      tgt.current.lerp(idleTgt.current, 0.1);
       camera.lookAt(tgt.current);
       return;
     }
@@ -1884,67 +1901,9 @@ function StationLite({ active = false, variant = 0 }: { active?: boolean; varian
             <cylinderGeometry args={[0.005, 0.005, 0.13, 8]} />
             <meshStandardMaterial color={PROPS.penColor} roughness={0.5} />
           </mesh>
-          {/* Manila document folder (was a brown 'leather' box — leather is
-              an outside-world material; buff manila is the on-theme clerical
-              prop). Thin folded body + a slight top flap + a tab. */}
-          {variant === 2 && (
-            <group position={[-0.70, 0.778, DESK_DZ + 0.18]} rotation-y={0.18}>
-              <RoundedBox args={[0.30, 0.018, 0.22]} radius={0.004} smoothness={2} castShadow>
-                <meshStandardMaterial color={C.manila} roughness={0.85} />
-              </RoundedBox>
-              {/* raised top flap edge */}
-              <mesh position={[0, 0.012, -0.005]}>
-                <boxGeometry args={[0.30, 0.004, 0.20]} />
-                <meshStandardMaterial color="#CDBB94" roughness={0.85} />
-              </mesh>
-              {/* tab */}
-              <mesh position={[0.07, 0.011, -0.115]}>
-                <boxGeometry args={[0.07, 0.004, 0.02]} />
-                <meshStandardMaterial color={C.manila} roughness={0.85} />
-              </mesh>
-            </group>
-          )}
-          {/* G28b: black rotary phone — a show-staple desk prop. Built
-              from primitives (no CC0 rotary model in the kit); one
-              station only so the pod doesn't read art-directed. */}
-          {variant === 1 && (
-            <group position={[0.62, 0.772, DESK_DZ + 0.16]} rotation-y={-0.35}>
-              {/* glossy bakelite body */}
-              <mesh castShadow position={[0, 0.045, 0]} rotation-x={-0.18}>
-                <boxGeometry args={[0.20, 0.09, 0.18]} />
-                <meshPhysicalMaterial color={C.bakelite} roughness={0.12} clearcoat={0.8} clearcoatRoughness={0.15} />
-              </mesh>
-              {/* rotary dial face */}
-              <mesh position={[0, 0.085, 0.045]} rotation-x={Math.PI / 2 - 0.18}>
-                <cylinderGeometry args={[0.055, 0.055, 0.012, 32]} />
-                <meshPhysicalMaterial color="#1C1C1C" roughness={0.18} clearcoat={0.6} />
-              </mesh>
-              {/* finger holes — 10 dark insets around the dial ring */}
-              {Array.from({ length: 10 }).map((_, i) => {
-                const a = (i / 10) * Math.PI * 2;
-                return (
-                  <mesh key={i} position={[Math.cos(a) * 0.036, 0.091 + Math.sin(a) * 0.036 * Math.cos(0.18), 0.045 + Math.sin(a) * 0.036 * Math.sin(0.18)]} rotation-x={Math.PI / 2 - 0.18}>
-                    <cylinderGeometry args={[0.007, 0.007, 0.014, 10]} />
-                    <meshStandardMaterial color="#070707" roughness={0.5} />
-                  </mesh>
-                );
-              })}
-              {/* handset bar — glossy bakelite */}
-              <mesh position={[0, 0.125, -0.045]} rotation-z={Math.PI / 2}>
-                <cylinderGeometry args={[0.018, 0.018, 0.16, 24]} />
-                <meshPhysicalMaterial color={C.bakelite} roughness={0.12} clearcoat={0.8} />
-              </mesh>
-              {/* ear/mouth cups */}
-              <mesh position={[-0.085, 0.115, -0.045]}>
-                <cylinderGeometry args={[0.030, 0.024, 0.035, 20]} />
-                <meshPhysicalMaterial color={C.bakelite} roughness={0.12} clearcoat={0.8} />
-              </mesh>
-              <mesh position={[0.085, 0.115, -0.045]}>
-                <cylinderGeometry args={[0.030, 0.024, 0.035, 20]} />
-                <meshPhysicalMaterial color={C.bakelite} roughness={0.12} clearcoat={0.8} />
-              </mesh>
-            </group>
-          )}
+          {/* (declutter) Rotary phone (variant 1) + manila folder (variant 2)
+              removed from the 3 inactive booths — invisible from the idle
+              camera, pure geometry spend. Booths keep the cheap mug/paper/pen. */}
         </>
       )}
       {/* Office chair — rotated 180° so the seated USER faces the desk
@@ -2724,51 +2683,21 @@ function OfficeScene({ phase, onMonitorClick }: {
       {/* desk lamp — back-left corner */}
       <DeskLamp pos={[-0.55, 0.77, DESK_Z - 0.45]} />
 
-      {/* sticky notes — manila pad + ONE muted-yellow note (the lone
-          Severance rebellion accent) */}
-      <mesh position={[0.50, 0.776, DESK_Z + 0.30]} rotation-y={0.18}>
-        <boxGeometry args={[0.10, 0.012, 0.10]} />
-        <meshStandardMaterial color={C.buff} roughness={0.9} />
-      </mesh>
-      <mesh position={[0.515, 0.783, DESK_Z + 0.305]} rotation-y={0.14}>
-        <boxGeometry args={[0.095, 0.004, 0.095]} />
-        <meshStandardMaterial color="#E2D58A" roughness={0.9} />
-      </mesh>
+      {/* (declutter) sticky-note pad + yellow note removed — let the
+          right-front quadrant breathe (Severance clinical emptiness). */}
 
-      {/* stack of papers — far-left front, fanned individual sheets */}
+      {/* stack of papers — far-left front, fanned individual sheets (the
+          ONE paper object on the desk; the in-tray's second pile was cut) */}
       <FannedPaper position={[-0.55, 0.766, DESK_Z + 0.45]} rot={-0.12} />
 
       {/* coffee mug — clickable, click triggers a steam-puff burst. */}
       <CoffeeMug />
       <CoffeeSteam origin={[0.65, 0.84, DESK_Z + 0.15]} />
 
-      {/* Lumon finger-trap reward (replaces the personal photo — innies keep
-          no outside-world items; a company reward is the on-theme prop). */}
-      <FingerTrap position={[0.55, 0.776, DESK_Z - 0.45]} rotation={[0, -0.2, 0]} />
-      {/* rubber pencil-eraser reward (the 10% incentive) */}
-      <group position={[0.40, 0.773, DESK_Z - 0.40]} rotation-y={0.4}>
-        <ContactDecal position={[0, 0.0006, 0]} r={0.035} opacity={0.4} />
-        <RoundedBox args={[0.05, 0.018, 0.024]} radius={0.004} smoothness={2} castShadow>
-          <meshStandardMaterial color={C.eraser} roughness={0.9} />
-        </RoundedBox>
-      </group>
-
-      {/* tissue box — rounded Lumon powder-blue with an oval slot + wisp */}
-      <group position={[0.50, 0.83, DESK_Z + 0.45]}>
-        <RoundedBox args={[0.14, 0.10, 0.10]} radius={0.012} smoothness={3} castShadow>
-          <meshPhysicalMaterial color={C.lumonChin} roughness={0.5} clearcoat={0.15} />
-        </RoundedBox>
-        {/* recessed oval opening */}
-        <mesh position={[0, 0.051, 0]} rotation-x={-Math.PI / 2} scale={[1, 0.42, 1]}>
-          <cylinderGeometry args={[0.045, 0.045, 0.012, 24]} />
-          <meshStandardMaterial color="#3A4448" roughness={0.9} />
-        </mesh>
-        {/* wisp of tissue poking out */}
-        <mesh position={[0, 0.062, 0]} rotation-z={0.3}>
-          <icosahedronGeometry args={[0.022, 0]} />
-          <meshStandardMaterial color="#FCFCFA" roughness={0.95} />
-        </mesh>
-      </group>
+      {/* (declutter) Removed the desk trinkets — Lumon finger-trap, rubber
+          eraser, and powder-blue tissue box. The real Severance desk is
+          near-bare; these read domestic/joke, not clinical. Hero props kept:
+          terminal, keyboard, lamp, mug, pen cup, nameplate, one paper stack. */}
 
       {/* pen cup — hollow lathe cup holding two muted pens */}
       <group position={[-0.35, 0.76, DESK_Z - 0.15]}>
@@ -2798,23 +2727,9 @@ function OfficeScene({ phase, onMonitorClick }: {
         <meshStandardMaterial color={C.manila} roughness={0.45} />
       </mesh>
 
-      {/* in-tray — real letter tray with a floor + low walls */}
-      <group position={[-0.10, 0.77, DESK_Z - 0.45]}>
-        <mesh position={[0, 0.008, 0]}>
-          <boxGeometry args={[0.22, 0.006, 0.17]} />
-          <meshStandardMaterial color="#9C9A95" roughness={0.4} metalness={0.35} />
-        </mesh>
-        {[[0, 0.025, -0.082, 0.22, 0.05, 0.008], [0, 0.025, 0.082, 0.22, 0.05, 0.008],
-          [-0.107, 0.025, 0, 0.008, 0.05, 0.17], [0.107, 0.025, 0, 0.008, 0.05, 0.17]
-        ].map((w, i) => (
-          <mesh key={i} position={[w[0], w[1], w[2]]}>
-            <boxGeometry args={[w[3], w[4], w[5]]} />
-            <meshStandardMaterial color="#9C9A95" roughness={0.4} metalness={0.35} />
-          </mesh>
-        ))}
-        {/* small fanned stack inside */}
-        <FannedPaper position={[0, 0.014, 0.01]} rot={0.04} />
-      </group>
+      {/* (declutter) in-tray + its nested second paper pile removed — two
+          paper stacks read as additive clutter; the front-left stack is the
+          single calm paper object now. */}
 
       {/* DESK NAMEPLATE — engraved metal name tag facing the chair, like
           the MDR refiner station tags. */}
@@ -3593,9 +3508,9 @@ function HudOverlay({ muted, onMuteToggle }: { muted: boolean; onMuteToggle: () 
       <button
         onMouseEnter={() => setMuteHovering(true)}
         onMouseLeave={() => { setMuteHovering(false); setMuteActive(false); }}
-        onMouseDown={e => { e.stopPropagation(); setMuteActive(true); onMuteToggle(); }}
+        onClick={e => { e.stopPropagation(); onMuteToggle(); }}
+        onMouseDown={() => setMuteActive(true)}
         onMouseUp={() => setMuteActive(false)}
-        onTouchStart={e => { e.stopPropagation(); onMuteToggle(); }}
         aria-label={muted ? 'Unmute' : 'Mute'}
         style={{
           width: 32, height: 32,                              // smaller, matches the toned-down HUD
@@ -3629,7 +3544,7 @@ function HudOverlay({ muted, onMuteToggle }: { muted: boolean; onMuteToggle: () 
  * the old verbose top-right "Welcome to the workstation…" card, which was
  * too much to read.)
  */
-function TapHint({ isTouch }: { isTouch: boolean }) {
+function TapHint({ isTouch, reducedMotion }: { isTouch: boolean; reducedMotion: boolean }) {
   // Touch users get the cue immediately; desktop users after a short beat.
   const [visible, setVisible] = useState(isTouch);
   useEffect(() => {
@@ -3653,7 +3568,7 @@ function TapHint({ isTouch }: { isTouch: boolean }) {
         whiteSpace: 'nowrap',
         border: '1px solid rgba(199, 213, 195, 0.18)',
         backdropFilter: 'blur(4px)' as any,
-        animation: 'pg-hint-pulse 2.2s ease-in-out infinite',
+        animation: reducedMotion ? 'none' : 'pg-hint-pulse 2.2s ease-in-out infinite',
       }}>{label}</div>
       <style>{`@keyframes pg-hint-pulse{0%,100%{opacity:0.62}50%{opacity:1}}`}</style>
     </div>
@@ -3707,6 +3622,10 @@ export default function Office() {
   // decide whether the 3D canvas mounts at all.
   const [isTouch] = useState(() =>
     typeof window !== 'undefined' && window.matchMedia('(hover: none) and (pointer: coarse)').matches);
+  // Reduced-motion: the OS preference OR the BIOS "Reduced motion" toggle.
+  const [reducedMotion] = useState(() => {
+    try { return PREFERS_REDUCED_MOTION || getBiosCfg().reducedMotion; } catch { return PREFERS_REDUCED_MOTION; }
+  });
 
   // WebGL probe — without it the 3D room can never render and the user
   // would be stranded at "click the monitor" with no monitor. Render a
@@ -3766,13 +3685,18 @@ export default function Office() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [phase]);
-  // Once the React app runs, hide the server-rendered #entry layer
-  // (Three.astro) so its links leave the tab order behind the 3D canvas.
+  // Keyboard entry: at idle, Enter/Space dollies into the monitor — the
+  // mouse path is a 3D mesh click, which isn't keyboard-reachable (M11).
+  // (The server-rendered #entry layer is intentionally LEFT in the DOM so
+  // screen readers and crawlers keep the bio + section links; the opaque
+  // canvas covers it for sighted users.)
   useEffect(() => {
-    const el = document.getElementById('entry');
-    if (el) el.style.display = 'none';
-    return () => { if (el) el.style.display = ''; };
-  }, []);
+    const onKey = (e: KeyboardEvent) => {
+      if (phase === 'idle' && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); handleClick(); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [phase]);
   // Mount the 3D scene only when it can be seen: on touch, skip it
   // during BIOS (so the models never download unless asked for) and
   // while the fullscreen desktop covers everything.
@@ -3854,7 +3778,7 @@ export default function Office() {
           }}
         >
           <PerspectiveCamera makeDefault position={[CAM_ENTRY_POS.x, CAM_ENTRY_POS.y, CAM_ENTRY_POS.z]} fov={54} />
-          <CameraRig phase={phase} onArrived={handleArrived} onEntryDone={handleEntryDone} />
+          <CameraRig phase={phase} onArrived={handleArrived} onEntryDone={handleEntryDone} reducedMotion={reducedMotion} />
           <CrtScreenProjector />
           <OfficeScene phase={phase} onMonitorClick={handleClick} />
           {/* Post-processing: Bloom only. N8AO (screen-space AO) was the
@@ -3887,7 +3811,7 @@ export default function Office() {
         <HudOverlay muted={muted} onMuteToggle={() => setMuted(m => !m)} />
       )}
       {COMPOSITE && phase === 'desktop' && <ExitHint />}
-      {(phase === 'idle' || phase === 'entering') && <TapHint isTouch={isTouch} />}
+      {(phase === 'idle' || phase === 'entering') && <TapHint isTouch={isTouch} reducedMotion={reducedMotion} />}
       {phase === 'splash'  && <BiosScreen onDone={handleBiosDone} />}
       {phase === 'booting' && <BootOverlay onDone={handleBootDone} />}
       {phase === 'desktop' && !COMPOSITE && <InnerDesktop onClose={handleDesktopClose} embedded />}
