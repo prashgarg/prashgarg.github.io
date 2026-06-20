@@ -55,6 +55,19 @@ const canonical  = Astro.site ? new URL(path === '/' ? '/' : `${path}/`, Astro.s
       #entry .ef-links a:hover { color: #E8EEDF; border-color: #E8EEDF; }
       #entry .ef-foot { margin: 0; font-size: 13px; }
       #entry .ef-foot a { color: #E8DBB6; }
+      /* Always-visible escape hatch to the plain-text version. Sits ON TOP
+         of the 3D canvas (the #entry copy gets painted over once Office
+         mounts), so an impatient or touch visitor always has a door to the
+         content. Bottom-right corner — clear of the bottom-left HUD chips. */
+      #text-version {
+        position: fixed; right: 14px; bottom: 12px; z-index: 9999;
+        font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+        font-size: 12px; letter-spacing: 0.04em; color: rgba(232,219,182,0.6);
+        text-decoration: none; padding: 4px 9px;
+        border: 1px solid rgba(232,219,182,0.18);
+        background: rgba(19,16,11,0.38); backdrop-filter: blur(3px);
+      }
+      #text-version:hover { color: #E8DBB6; border-color: rgba(232,219,182,0.45); }
     </style>
   </head>
   <body>
@@ -77,5 +90,6 @@ const canonical  = Astro.site ? new URL(path === '/' ? '/' : `${path}/`, Astro.s
       </div>
     </div>
     <slot />
+    <a id="text-version" href="/standard/">Text version →</a>
   </body>
 </html>

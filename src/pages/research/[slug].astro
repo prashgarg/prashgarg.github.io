@@ -86,7 +86,18 @@ const bibTeX = [
       {paper.award && <span> · {paper.award.url ? <a href={paper.award.url} target="_blank" rel="noopener" class="hover:underline">{paper.award.label}</a> : paper.award.label}</span>}
     </div>
 
-    <p class="mt-6 text-base leading-relaxed text-ink/90 dark:text-cream/90">{paper.blurb}</p>
+    {paper.tldr ? (
+      <>
+        {/* Plain-English summary up top; dense abstract behind a native toggle */}
+        <p class="mt-6 text-lg leading-relaxed text-ink/90 dark:text-cream/90">{paper.tldr}</p>
+        <details class="mt-4">
+          <summary class="cursor-pointer text-sm text-brand-red hover:underline">Read the full abstract</summary>
+          <p class="mt-3 text-base leading-relaxed text-ink/75 dark:text-cream/75">{paper.blurb}</p>
+        </details>
+      </>
+    ) : (
+      <p class="mt-6 text-base leading-relaxed text-ink/90 dark:text-cream/90">{paper.blurb}</p>
+    )}
 
     <div class="mt-5 text-sm">
       {paper.links.map((l, i) => (

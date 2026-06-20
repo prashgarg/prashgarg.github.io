@@ -1443,12 +1443,15 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
       }
       const geo = defaultGeo(app);
       const nextZ = topZ + 1;
-      // G7: on a narrow (mobile) viewport, open new windows MAXIMIZED so
-      // they fit the screen — the cascade geometry overflows badly < 600px.
-      const isMobile = containerSize.w < 600;
+      // Open new windows MAXIMIZED on a narrow viewport OR any touch device:
+      // drag/resize are mouse-only (no pointer/touch handlers), so a floating
+      // window on a tablet would be stuck where it opens. Maximized = usable.
+      const isTouch = typeof window !== 'undefined'
+        && window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+      const autoMax = containerSize.w < 600 || isTouch;
       return [...ws, {
         id, zIndex: nextZ,
-        minimized: false, maximized: isMobile,
+        minimized: false, maximized: autoMax,
         ...geo,
         openFrom: fromPoint, state: 'opening',
         path: pathOverride,

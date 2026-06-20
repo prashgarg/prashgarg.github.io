@@ -3615,6 +3615,11 @@ export default function Office() {
     try { if (sessionStorage.getItem(SS_PHASE) === 'desktop') return 'desktop'; } catch { /* */ }
     // G41: BIOS "Skip intro on load" jumps straight to the desktop.
     try { if (getBiosCfg().skipIntro) return 'desktop'; } catch { /* */ }
+    // Touch devices skip the BIOS splash straight to the desktop overlay
+    // (composite is gated off for touch anyway, and the heavy 3D intro is
+    // janky on phones) — content is one tap away. The 3D office stays
+    // reachable via the Start menu's "View office (3D)" item.
+    try { if (window.matchMedia('(hover: none) and (pointer: coarse)').matches) return 'desktop'; } catch { /* */ }
     return 'splash';
   });
   // Lazy init is safe — this component renders client:only (no SSR
@@ -3636,6 +3641,15 @@ export default function Office() {
       const c = document.createElement('canvas');
       setWebglOk(!!(c.getContext('webgl2') || c.getContext('webgl')));
     } catch { setWebglOk(false); }
+  }, []);
+
+  // The server-rendered #entry layer (crawlable bio + links) stays in the
+  // DOM for crawlers/no-JS but is painted over once this scene mounts. Take
+  // it out of the tab order + a11y tree so keyboard/screen-reader users
+  // don't land focus on links they can't see.
+  useEffect(() => {
+    const entry = document.getElementById('entry');
+    if (entry) { try { (entry as any).inert = true; entry.setAttribute('aria-hidden', 'true'); } catch { /* */ } }
   }, []);
 
   const handleEntryDone    = () => setPhase('idle');

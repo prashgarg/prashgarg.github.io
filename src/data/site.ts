@@ -6,7 +6,7 @@ export const site = {
   // prose bio; facts: Cambridge current, Imperial PhD completed,
   // Bocconi from Sept 2026 — all consistent with `affiliations`).
   bio: "Hi, I'm Prashant Garg, an economist working on science, innovation, production, and media using machine learning, causal inference, and network science. I am currently a Research Associate at the University of Cambridge and an Associate Fellow at INET Oxford. I recently completed my PhD in Economics at Imperial College London, and I will join Bocconi University as a Postdoctoral Researcher in September 2026.",
-  email: 'prashantgargib@gmail.com',
+  email: 'prashantgargib2@gmail.com',
   // Canonical origin for share/canonical/BibTeX URLs. prashantgarg.org
   // still serves the old Google Site — until the DNS cutover happens
   // (user-side), every absolute URL we print must use the host that
@@ -150,7 +150,7 @@ export const papers: Paper[] = [
     tldr: 'Foreign news coverage of disasters is wildly uneven: earthquakes and volcanic eruptions make headlines worldwide, while floods and droughts — the disasters most tied to climate change — barely register. We measured this with 135 million articles from 466 outlets in 123 countries. Coverage also rises with death tolls, especially between countries with close social or ancestral ties.',
     title: 'Uneven Patterns of Cross-Border Media Coverage Following Natural Disasters',
     status: 'accepted',
-    venue: 'Nature Human Behaviour (Forthcoming)',
+    venue: 'Nature Human Behaviour',
     coauthors: ['Thiemo Fetzer'],
     blurb:
       "Many natural disasters central to climate-policy debates are hydro-meteorological hazards, yet it remains unclear how global media attention is distributed across disaster types. Using a dataset of 466 news sources from 123 countries, covering 135 million news articles since 2016, we apply an event study framework to measure cross-border reporting following natural disasters. Cross-border attention rises after disasters but is highly uneven across hazards, with the largest short-run increases following earthquakes (b = 0.0785, 95% CI [0.0758, 0.0812]), dry-mass movements (b = 0.0531, 95% CI [0.0349, 0.0713]), and volcanic eruptions (b = 0.0425, 95% CI [0.0359, 0.0490]). In contrast, climatologically salient hazards such as floods (b = 0.0069, 95% CI [0.0062, 0.0076]) and droughts (b = 0.0001, 95% CI [−0.0036, 0.0039]) receive substantially less coverage. Conditional on severity and duration, hydro-meteorological (“climate-linked”) disasters receive less cross-border attention than geophysical disasters (θ = −0.0065, 95% CI [−0.0115, −0.0015]). Attention also increases with fatalities: disasters with 100+ deaths receive more coverage than those with 0–9 deaths (b = 0.0360, 95% CI [0.0231, 0.0490]), and this fatality gradient is stronger for country pairs with tighter social ties and deeper ancestral links. These patterns highlight systematic cross-border differences in attention to disaster risks.",
@@ -308,7 +308,7 @@ export const papers: Paper[] = [
     tldr: 'We tested seven leading AI models on thousands of vetted health statements in 21 languages. They are accurate on English-language textbook material but slip in many non-European languages and on contested topics. Thorough multilingual validation should come before anyone relies on AI for health advice at global scale.',
     title: 'AI Health Advice Accuracy Varies Across Languages and Contexts',
     status: 'rr',
-    venue: 'BMJ Health & Care Informatics (R&R)',
+    venue: 'BMJ Health & Care Informatics',
     coauthors: ['Thiemo Fetzer'],
     blurb:
       "Using basic health statements authorized by UK and EU registers and ~9,100 journalist-vetted public-health assertions on topics such as abortion, COVID-19 and politics from sources ranging from peer-reviewed journals and government advisories to social media and news across the political spectrum, we benchmark seven leading large language models in 21 languages. We find that, despite high accuracy on English-centric textbook claims, performance falls in multiple non-European languages and fluctuates by topic and source. This highlights the urgency of comprehensive multilingual, domain-aware validation before deploying AI in global health communication.",
@@ -435,7 +435,7 @@ export interface Talk {
 
 export const talks: Talk[] = [
   // 2026
-  { year: 2026, title: 'TBC', venue: 'Universitat de València Seminar', location: 'València', date: '4 Dec 2026', url: 'https://www.uv.es/uvweb/economic-analysis-department/en/department-economic-analysis-1285854461277.html' },
+  { year: 2026, title: 'Title TBA', venue: 'Universitat de València Seminar', location: 'València', date: '4 Dec 2026', url: 'https://www.uv.es/uvweb/economic-analysis-department/en/department-economic-analysis-1285854461277.html' },
   { year: 2026, title: 'Panel: AI as a Scientific Instrument for Economics', venue: 'Oxford INET Meeting', location: 'Oxford', date: '11 Jun 2026', url: 'https://www.inet.ox.ac.uk/' },
   { year: 2026, title: 'What Should Economics Ask Next?', venue: 'MPWZ–CEPR Text-as-Data', location: 'Virtual', date: '13–14 Apr 2026', url: 'https://cepr.org' },
   { year: 2026, title: 'Causal Claims in Economics', venue: 'MIT FutureTech Seminar', location: 'Virtual', date: '12 Mar 2026', url: 'https://futuretech.mit.edu/' },

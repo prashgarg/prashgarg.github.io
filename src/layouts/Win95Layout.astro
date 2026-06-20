@@ -192,6 +192,15 @@ const paletteIndex = [
     }
     .w95-titlebtn-close { margin-left: 2px; }
 
+    /* Skip-to-content link — visually hidden until keyboard-focused */
+    .w95-skip {
+      position: absolute; left: 8px; top: -40px; z-index: 100;
+      background: #0000a3; color: #fff; padding: 6px 12px;
+      font-family: MSSerif, Arial, sans-serif; font-size: 12px;
+      text-decoration: none; transition: top 0.12s ease;
+    }
+    .w95-skip:focus { top: 8px; }
+
     /* ---- Menu / nav bar ---- */
     .w95-menubar {
       display: flex;
@@ -366,6 +375,7 @@ const paletteIndex = [
       body.w95-embed-body .cmdk-hint-btn { display: none !important; }
     </style>
     <div class="w95-shell">
+      <a href="#main" class="w95-skip">Skip to content</a>
       <div class="w95-window">
 
         <!-- Title bar -->
@@ -378,13 +388,11 @@ const paletteIndex = [
             <rect x="3" y="11.5" width="8" height="1" fill="#fff"/>
           </svg>
           <span class="w95-titlebar-text">Prashant Garg — {winTitle}</span>
-          <button class="w95-titlebtn" title="Minimise">_</button>
-          <button class="w95-titlebtn" title="Maximise">□</button>
           <a href="/" class="w95-titlebtn w95-titlebtn-close" title="Back to study">✕</a>
         </div>
 
         <!-- Menu bar / navigation -->
-        <div class="w95-menubar">
+        <nav class="w95-menubar" aria-label="Site">
           {navItems.map(it => (
             <a
               href={it.href}
@@ -393,12 +401,12 @@ const paletteIndex = [
               {it.label}
             </a>
           ))}
-        </div>
+        </nav>
 
         <!-- Page content -->
-        <div class="w95-body">
+        <main id="main" class="w95-body">
           <slot />
-        </div>
+        </main>
 
         <!-- Status bar (4 cells, mirrors Henry's Window chrome) -->
         <div class="w95-statusbar">
