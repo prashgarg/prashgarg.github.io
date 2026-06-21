@@ -21,8 +21,8 @@ const OG_W = 1200, OG_H = 630;
 const TAGLINE = 'Economist working on science, innovation, production, and media — using machine learning, causal inference, and network science.';
 
 const cards = [
-  { out: 'index.png',    eyebrow: 'ECONOMIST · CAMBRIDGE → BOCCONI 2026', title: 'Prashant Garg', sub: TAGLINE },
-  { out: 'standard.png', eyebrow: 'ECONOMIST · CAMBRIDGE → BOCCONI 2026', title: 'Prashant Garg', sub: TAGLINE },
+  { out: 'index.png',    eyebrow: 'ECONOMIST', title: 'Prashant Garg', sub: TAGLINE },
+  { out: 'standard.png', eyebrow: 'ECONOMIST', title: 'Prashant Garg', sub: TAGLINE },
   { out: 'research.png', eyebrow: 'PRASHANT GARG', title: 'Research', sub: 'Papers on AI & automation, science, networks, media, and political economy.' },
   { out: 'talks.png',    eyebrow: 'PRASHANT GARG', title: 'Talks & seminars', sub: 'Sixty-plus talks since 2023 across economics, data-science, and policy venues.' },
   { out: 'library.png',  eyebrow: 'PRASHANT GARG', title: 'Library', sub: 'Code, datasets, and the occasional essay.' },
@@ -105,8 +105,6 @@ function html({ eyebrow, title, sub }) {
     <div class="rule"></div>
     <div class="title">${esc(title)}</div>
     <div class="sub">${esc(sub)}</div>
-    <div class="spacer"></div>
-    <div class="foot"><span class="dot"></span>prashgarg.github.io</div>
   </div>
   <div class="right">${OFFICE}</div>
 </div></body></html>`;
