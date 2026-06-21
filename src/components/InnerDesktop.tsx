@@ -249,6 +249,7 @@ const WIN95_STYLE = `
   box-shadow: var(--sunken);
   display: flex;
   flex-direction: column;
+  position: relative;            /* containing block for the iframe loading layer */
 }
 .win95-home {
   display: flex;
@@ -1341,6 +1342,32 @@ interface OpenWin {
   path?: string;
 }
 
+/** A window's content iframe + a Win95 'Loading…' layer shown until it
+ *  fires onLoad, so opening an app no longer flashes a blank cream panel
+ *  while the inner Astro page + webfonts paint. Remounts (via key) on path
+ *  change, which resets the loading state. */
+function WindowIframe({ src, title }: { src: string; title: string }) {
+  const [loading, setLoading] = useState(true);
+  return (
+    <>
+      <iframe
+        src={src}
+        className="win95-iframe"
+        title={title}
+        onLoad={() => setLoading(false)}
+        style={{ width: '100%', height: '100%', border: 0, display: 'block', background: '#EFEAD8' }}
+      />
+      {loading && (
+        <div aria-hidden="true" style={{
+          position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: '#EFEAD8', color: '#6a675f', pointerEvents: 'none',
+          fontFamily: 'MSSerif, Arial, sans-serif', fontSize: 13, letterSpacing: '0.04em',
+        }}>Loading…</div>
+      )}
+    </>
+  );
+}
+
 export default function InnerDesktop({ onClose, embedded = false }: InnerDesktopProps) {
   const [time, setTime] = useState(getTime);
   // Container ref so we can measure the desktop bounding rect for
@@ -1636,16 +1663,22 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
         focusApp(visible[idx].id);
         return;
       }
-      // Escape — close dialog/start/ctx menu first, then focused window
+      // Escape — close dialog/start/ctx menu, then the focused window, and
+      // if there's nothing left to close, LEAVE the desktop (back to the
+      // office). This listener lives INSIDE the /os iframe, so it fires even
+      // when the parent window's Esc handler can't (focus is in the monitor).
       if (e.key === 'Escape') {
         if (dialog)    { setDialog(null);     e.preventDefault(); return; }
         if (startOpen) { setStartOpen(false); e.preventDefault(); return; }
         if (ctxMenu)   { setCtxMenu(null);    e.preventDefault(); return; }
         if (inText) return;
         if (focusedId) { closeApp(focusedId); e.preventDefault(); return; }
+        e.preventDefault(); onClose(); return;
       }
-      // G36: B — the boss key. Instant plain-HTML standard-issue view.
-      if ((e.key === 'b' || e.key === 'B') && !inText && !e.metaKey && !e.ctrlKey && !e.altKey) {
+      // Boss key — Shift+B for the instant plain-HTML standard-issue view.
+      // (Was a bare 'b' that yanked a reader off the site on any stray
+      // keypress; now requires Shift so it can't fire by accident.)
+      if ((e.key === 'b' || e.key === 'B') && e.shiftKey && !inText && !e.metaKey && !e.ctrlKey && !e.altKey) {
         e.preventDefault();
         window.location.href = '/standard';
         return;
@@ -2013,15 +2046,13 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
                    detail under /research/...), the iframe loads that
                    instead of the app's root path. Add ?embed=1 so
                    Win95Layout strips its chrome. */
-                <iframe
+                <WindowIframe
                   key={w.path || app.path}      /* force reload on path change */
                   src={(() => {
                     const base = w.path || app.path;
                     return base + (base.includes('?') ? '&' : '?') + 'embed=1';
                   })()}
-                  className="win95-iframe"
                   title={app.title}
-                  style={{ width: '100%', height: '100%', border: 0, display: 'block', background: '#EFEAD8' }}
                 />
               )}
             </div>
@@ -2153,10 +2184,11 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
               Standard Issue View
             </div>
             <div className="win95-startmenu-sep" />
-            {/* G7: touch devices boot straight to this desktop, so the
-                3D office needs an explicit way in. Shutting down lands
-                on the idle room — same exit, friendlier label. */}
-            {typeof window !== 'undefined' && window.matchMedia('(hover: none) and (pointer: coarse)').matches && (
+            {/* The 3D office needs an explicit door from the desktop for
+                EVERY device: touch boots straight here, and returning desktop
+                visitors are persisted past the intro (so they'd otherwise have
+                no way back). Shutting down lands on the idle room. */}
+            {typeof window !== 'undefined' && (
               <div
                 className="win95-startmenu-item"
                 onMouseDown={() => playUiClick('down', 'menu')}
@@ -2296,6 +2328,23 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
         })}
 
         <div className="win95-toolbar-spacer" />
+        {/* Always-visible exit back to the 3D office — reliable even when a
+            window is maximized (clicking the room can't be reached then) and
+            mirrors the Esc shortcut. */}
+        <button
+          className="win95-tray-btn"
+          title="Back to the office (Esc)"
+          aria-label="Back to the office"
+          onMouseDown={() => playUiClick('down')}
+          onMouseUp={() => playUiClick('up')}
+          onClick={shutDown}
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16">
+            <rect x="1.5" y="3" width="13" height="9" rx="1" fill="none" stroke="#2b2b2b" strokeWidth="1.4"/>
+            <rect x="6" y="12.5" width="4" height="1.4" fill="#2b2b2b"/>
+            <path d="M5.6 7.4 L8 5 L10.4 7.4 M8 5 V9.6" fill="none" stroke="#2b2b2b" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </button>
         {/* system tray: volume slider + icon (click icon = mute toggle) */}
         <VolumeTray />
         <div className="win95-clock">{time}</div>

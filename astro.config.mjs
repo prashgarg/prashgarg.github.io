@@ -22,5 +22,14 @@ export default defineConfig({
   },
   // Exclude the iframe-only desktop shell (/os) from the sitemap — it is
   // noindex and not content. Everything else is included.
-  integrations: [sitemap({ filter: (page) => !page.includes('/os/') }), react()]
+  integrations: [
+    sitemap({
+      filter: (page) => !page.includes('/os/'),
+      // Stamp a build-time lastmod so crawlers get a freshness signal that
+      // refreshes on each deploy (per-page content dates would be better but
+      // need a date source; build date is a cheap, reasonable baseline).
+      serialize: (item) => ({ ...item, lastmod: new Date().toISOString() }),
+    }),
+    react(),
+  ]
 });
