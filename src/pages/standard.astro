@@ -30,6 +30,12 @@ const current = affiliations.filter((a: any) => a.current);
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="referrer" content="strict-origin-when-cross-origin" />
+  <script is:inline>
+    /* Plain top-level page — if it ever loads inside the composited monitor's
+       iframe, bust out to the top so going home doesn't nest the 3D office
+       inside the monitor (the "monitor-in-monitor" effect). */
+    if (window.top !== window.self) { try { window.top.location.replace(location.href); } catch (e) {} }
+  </script>
   <title>Prashant Garg — Economist</title>
   <meta name="description" content="Prashant Garg — economist. Papers, talks, CV, contact. Plain version." />
   <link rel="canonical" href={`${site.origin}/standard/`} />
@@ -150,7 +156,7 @@ const current = affiliations.filter((a: any) => a.current);
   <p class="note">
     This is the standard-issue view — the plain, fast version of this site.
     The full experience (a 3D Severance-style office with a Windows 95 desktop)
-    lives at <a href="/">the front door</a>.
+    lives at <a href="/" target="_top">the front door</a>.
   </p>
   </main>
 </body>

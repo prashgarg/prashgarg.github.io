@@ -1624,7 +1624,7 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
     const cmd = raw.trim().toLowerCase();
     if (!cmd) return;
     if (cmd === 'overtime') { setDialog(null); overtime(); return; }
-    if (cmd === 'standard' || cmd === 'standard issue') { window.location.href = '/standard'; return; }
+    if (cmd === 'standard' || cmd === 'standard issue') { (window.top || window).location.href = '/standard'; return; }
     if (cmd === 'wellness') { setDialog('wellness'); return; }
     if (cmd === 'properties' || cmd === 'sysprops' || cmd === 'system properties') { setDialog('sysprops'); return; }
     const appHit = APPS.find(a => a.id === cmd || a.label.toLowerCase() === cmd);
@@ -1680,7 +1680,7 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
       // keypress; now requires Shift so it can't fire by accident.)
       if ((e.key === 'b' || e.key === 'B') && e.shiftKey && !inText && !e.metaKey && !e.ctrlKey && !e.altKey) {
         e.preventDefault();
-        window.location.href = '/standard';
+        (window.top || window).location.href = '/standard';
         return;
       }
       // F11 — toggle maximize on focused window
@@ -2184,7 +2184,7 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
               className="win95-startmenu-item"
               onMouseDown={() => playUiClick('down', 'menu')}
               onMouseUp={() => playUiClick('up', 'menu')}
-              onClick={() => { window.location.href = '/standard'; }}
+              onClick={() => { (window.top || window).location.href = '/standard'; }}
               title="The plain, fast version of this site (or press B)"
             >
               <div className="win95-startmenu-icon">
