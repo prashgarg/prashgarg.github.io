@@ -9,11 +9,11 @@ import react from '@astrojs/react';
 
 // https://astro.build/config
 export default defineConfig({
-  // Drives canonicals, og:url, and sitemap URLs. prashantgarg.org still
-  // serves the old Google Site — keep this on the host that actually
-  // serves the site; flip together with site.origin (src/data/site.ts)
-  // when the DNS cutover happens.
-  site: 'https://prashgarg.github.io',
+  // Drives canonicals, og:url, and sitemap URLs. DNS cutover done
+  // (2026-06-24): prashantgarg.org serves the site over HTTPS (www +
+  // prashgarg.github.io 301-redirect to it). Keep in sync with
+  // site.origin (src/data/site.ts).
+  site: 'https://prashantgarg.org',
   vite: {
     plugins: [tailwindcss()]
   },

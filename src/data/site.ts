@@ -10,11 +10,11 @@ export const site = {
   // "correct" it by adding a digit; the digit-suffixed variant is a separate
   // private account and must never appear anywhere on the site. (Confirmed.)
   email: 'prashantgargib@gmail.com',
-  // Canonical origin for share/canonical/BibTeX URLs. prashantgarg.org
-  // still serves the old Google Site — until the DNS cutover happens
-  // (user-side), every absolute URL we print must use the host that
-  // actually serves THIS site. Flip this one constant at cutover.
-  origin: 'https://prashgarg.github.io',
+  // Canonical origin for share/canonical/BibTeX URLs. DNS cutover done
+  // (2026-06-24): prashantgarg.org now serves this site over HTTPS, with
+  // www + prashgarg.github.io 301-redirecting to it. Keep in sync with
+  // astro.config `site`.
+  origin: 'https://prashantgarg.org',
   cv: 'https://drive.google.com/file/d/1loWtmOeOwDtSSJ2WHKf7n_PzpQiP6rgF/view?usp=drive_link',
   scholar: 'https://scholar.google.com/citations?hl=en&user=C3o_l0IAAAAJ',
   twitter: 'https://x.com/Prashant_Garg_',
