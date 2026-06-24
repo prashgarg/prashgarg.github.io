@@ -285,8 +285,8 @@ const WIN95_STYLE = `
 /* prose bio (mirrors the old site's bio) — left-aligned, fills column */
 .win95-home-bio {
   font-family: Millennium, 'Times New Roman', serif;
-  font-size: 14px;
-  line-height: 1.55;
+  font-size: 17px;
+  line-height: 1.6;
   color: #333;
   text-align: left;
   max-width: none;
@@ -301,7 +301,7 @@ const WIN95_STYLE = `
 }
 .win95-home-subtitle {
   font-family: Millennium, 'Times New Roman', serif;
-  font-size: 16px;
+  font-size: 18px;
   color: #555;
 }
 /* narrow panel (beside the icon column on small monitors) — stack the
@@ -1725,15 +1725,19 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
     if (embedded || insideParentRoom) return;
     const audio = new Audio('/audio/ambient.mp3');
     audio.loop   = true;
-    audio.volume = 0.32;
+    audio.volume = 0.32 * getUiVolume();   // base level * slider (was a flat 0.32)
     audio.muted  = muted;
     audioRef.current = audio;
+    // live-update from the volume slider (standalone /os: same document, so the
+    // pg-volume CustomEvent reaches us here)
+    const onVol = () => { if (audioRef.current) audioRef.current.volume = 0.32 * getUiVolume(); };
+    window.addEventListener('pg-volume', onVol);
     // attempt autoplay; if blocked wait for first interaction
     audio.play().catch(() => {
       const resume = () => { audio.play().catch(() => {}); };
       document.addEventListener('pointerdown', resume, { once: true });
     });
-    return () => { audio.pause(); audio.src = ''; };
+    return () => { audio.pause(); audio.src = ''; window.removeEventListener('pg-volume', onVol); };
   }, [embedded]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {

@@ -311,12 +311,12 @@ const _COMPOSITE_CZ = (() => {
   if (typeof window === 'undefined') return 0.39;
   const v = parseFloat(new URLSearchParams(window.location.search).get('cz') || '');
   // Frame the monitor as an OBJECT IN THE ROOM (Henry-style). Pushed IN from
-  // 0.39 → 0.32 so the screen fills ~85% of the viewport (was ~70%) — the
-  // inner site + fonts read clearly — while still leaving a clickable room
-  // margin all around to step back out (see the wrapper onPointerDown). Don't
-  // go below ~0.30 or the widened 0.62 panel overflows and there's nothing
-  // outside to click.
-  return Number.isFinite(v) ? v : 0.32;
+  // 0.39 → 0.30 so the screen fills ~88% of the viewport — trims the top/room
+  // margin, inner site + fonts read clearly — while still leaving a thin
+  // clickable room margin to step back out (see the wrapper onPointerDown).
+  // 0.30 is the floor: below it the widened 0.62 panel overflows and there's
+  // nothing outside to click.
+  return Number.isFinite(v) ? v : 0.30;
 })();
 const CAM_COMPOSITE_POS = new THREE.Vector3(MONITOR_WORLD.x, MONITOR_WORLD.y + 0.02, DESK_Z + _COMPOSITE_CZ);
 const CAM_COMPOSITE_TGT = new THREE.Vector3(MONITOR_WORLD.x, MONITOR_WORLD.y + 0.02, MONITOR_WORLD.z);
@@ -3407,12 +3407,17 @@ function StudyAudio({ active, muted, focusMode }: { active: boolean; muted: bool
     try { const v = parseFloat(localStorage.getItem('pg_volume_v1') || '0.6'); return isNaN(v) ? 0.6 : Math.max(0, Math.min(1, v)); } catch { return 0.6; }
   });
   useEffect(() => {
-    const onVol = (e: any) => {
-      const v = typeof e.detail === 'number' ? e.detail : parseFloat(localStorage.getItem('pg_volume_v1') || '0.6');
-      setVol(Math.max(0, Math.min(1, isNaN(v) ? 0.6 : v)));
-    };
+    const apply = (v: number) => setVol(Math.max(0, Math.min(1, isNaN(v) ? 0.6 : v)));
+    const onVol = (e: any) => apply(typeof e.detail === 'number' ? e.detail : parseFloat(localStorage.getItem('pg_volume_v1') || '0.6'));
+    // The volume slider lives in the composited /os iframe; its `pg-volume`
+    // CustomEvent does NOT cross frames, so the room soundtrack never heard it
+    // (the slider appeared dead). The cross-document `storage` event DOES fire
+    // here when the same-origin iframe writes localStorage — that's what makes
+    // the slider actually adjust the room's soundtrack volume.
+    const onStorage = (e: StorageEvent) => { if (e.key === 'pg_volume_v1') apply(parseFloat(e.newValue || '0.6')); };
     window.addEventListener('pg-volume', onVol);
-    return () => window.removeEventListener('pg-volume', onVol);
+    window.addEventListener('storage', onStorage);
+    return () => { window.removeEventListener('pg-volume', onVol); window.removeEventListener('storage', onStorage); };
   }, []);
   useEffect(() => {
     const g = gainRef.current, ac = ctxRef.current; if (!g || !ac) return;
