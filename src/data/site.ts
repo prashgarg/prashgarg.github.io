@@ -6,7 +6,10 @@ export const site = {
   // prose bio; facts: Cambridge current, Imperial PhD completed,
   // Bocconi from Sept 2026 — all consistent with `affiliations`).
   bio: "Hi, I'm Prashant Garg, an economist working on science, innovation, production, and media using machine learning, causal inference, and network science. I am currently a Research Associate at the University of Cambridge and an Associate Fellow at INET Oxford. I recently completed my PhD in Economics at Imperial College London, and I will join Bocconi University as a Postdoctoral Researcher in September 2026.",
-  email: 'prashantgargib2@gmail.com',
+  // Public contact address — intentionally has NO trailing digit. Do not
+  // "correct" it by adding a digit; the digit-suffixed variant is a separate
+  // private account and must never appear anywhere on the site. (Confirmed.)
+  email: 'prashantgargib@gmail.com',
   // Canonical origin for share/canonical/BibTeX URLs. prashantgarg.org
   // still serves the old Google Site — until the DNS cutover happens
   // (user-side), every absolute URL we print must use the host that

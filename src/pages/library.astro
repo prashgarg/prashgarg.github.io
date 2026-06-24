@@ -30,7 +30,7 @@ const dylanFigures = papers.find(p => p.slug === 'mapping-dylans-mind')?.figures
         </div>
         <div class="mt-4 text-sm">
           {it.links.map((l, i) => (
-            <>{i > 0 && <span class="text-ink/40 dark:text-cream/40"> · </span>}<a href={l.url} target="_blank" rel="noopener" class="text-brand-red hover:underline">{l.label}</a></>
+            <>{i > 0 && <span class="text-ink/70 dark:text-cream/65"> · </span>}<a href={l.url} target="_blank" rel="noopener" class="text-brand-red hover:underline">{l.label}</a></>
           ))}
         </div>
       </section>
@@ -48,9 +48,9 @@ const dylanFigures = papers.find(p => p.slug === 'mapping-dylans-mind')?.figures
             <p class="mt-1 text-sm text-ink/80 dark:text-cream/80 leading-relaxed">{d.blurb}</p>
             <div class="mt-1.5 text-sm">
               {d.links.map((l, i) => (
-                <>{i > 0 && <span class="text-ink/40 dark:text-cream/40"> · </span>}<a href={l.url} target="_blank" rel="noopener" class="text-brand-red hover:underline">{l.label}</a></>
+                <>{i > 0 && <span class="text-ink/70 dark:text-cream/65"> · </span>}<a href={l.url} target="_blank" rel="noopener" class="text-brand-red hover:underline">{l.label}</a></>
               ))}
-              {d.paperSlug && <><span class="text-ink/40 dark:text-cream/40"> · </span><a href={`/research/${d.paperSlug}`} class="text-brand-red hover:underline">Paper</a></>}
+              {d.paperSlug && <><span class="text-ink/70 dark:text-cream/65"> · </span><a href={`/research/${d.paperSlug}`} class="text-brand-red hover:underline">Paper</a></>}
             </div>
           </div>
         ))}

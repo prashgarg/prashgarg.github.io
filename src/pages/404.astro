@@ -7,7 +7,7 @@ const recent = [...papers]
 ---
 <Layout title="Not found — Prashant Garg" description="Page not found.">
   <section class="max-w-3xl mx-auto px-4 pt-20 pb-20 text-center">
-    <div class="font-mono text-xs uppercase tracking-[0.18em] text-ink/40 dark:text-cream/40">Error</div>
+    <div class="font-mono text-xs uppercase tracking-[0.18em] text-ink/70 dark:text-cream/65">Error</div>
     <div class="font-display text-7xl md:text-9xl font-bold tracking-tight mt-4">404</div>
     <p class="mt-6 text-base text-ink/70 dark:text-cream/70 max-w-md mx-auto">
       That page doesn't exist (or moved). Try one of these instead, or hit <kbd class="px-1.5 py-0.5 border border-ink/30 dark:border-cream/30 rounded text-xs font-mono">⌘K</kbd> to search.
@@ -29,7 +29,7 @@ const recent = [...papers]
     </div>
 
     <div class="mt-14 pt-10 border-t border-ink/15 dark:border-cream/15 text-left">
-      <div class="text-xs font-bold uppercase tracking-wider text-ink/50 dark:text-cream/50 mb-4 text-center">
+      <div class="text-xs font-bold uppercase tracking-wider text-ink/70 dark:text-cream/65 mb-4 text-center">
         Or jump to a recent paper
       </div>
       <ul class="max-w-xl mx-auto space-y-2">
@@ -37,7 +37,7 @@ const recent = [...papers]
           <li>
             <a href={`/research/${p.slug}`} class="block p-3 rounded-md border border-ink/15 dark:border-cream/15 hover:border-ink dark:hover:border-cream hover:bg-brand-yellow/20 transition-colors">
               <div class="font-display font-semibold text-base">{p.title}</div>
-              <div class="text-xs text-ink/55 dark:text-cream/55 mt-0.5">
+              <div class="text-xs text-ink/70 dark:text-cream/65 mt-0.5">
                 {p.venue || 'Working paper'}{p.year ? ` · ${p.year}` : ''}
               </div>
             </a>

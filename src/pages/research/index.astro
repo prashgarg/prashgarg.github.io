@@ -39,9 +39,9 @@ const toolFor = (slug?: string) => slug ? tools.find(t => t.slug === slug) : und
                 </div>
                 <div class="mt-1.5 text-sm">
                   {p.links.map((l, i) => (
-                    <>{i > 0 && <span class="text-ink/40 dark:text-cream/40"> · </span>}<a href={l.url} target="_blank" rel="noopener" class="text-brand-red hover:underline">{l.label}</a></>
+                    <>{i > 0 && <span class="text-ink/70 dark:text-cream/65"> · </span>}<a href={l.url} target="_blank" rel="noopener" class="text-brand-red hover:underline">{l.label}</a></>
                   ))}
-                  {tool && <><span class="text-ink/40 dark:text-cream/40"> · </span><a href={tool.url} target="_blank" rel="noopener" class="text-brand-red hover:underline">{tool.name}</a></>}
+                  {tool && <><span class="text-ink/70 dark:text-cream/65"> · </span><a href={tool.url} target="_blank" rel="noopener" class="text-brand-red hover:underline">{tool.name}</a></>}
                 </div>
                 {p.coverage && p.coverage.length > 0 && (
                   <div class="mt-1 text-sm text-ink/70 dark:text-cream/70">
@@ -51,7 +51,7 @@ const toolFor = (slug?: string) => slug ? tools.find(t => t.slug === slug) : und
                   </div>
                 )}
                 <details class="mt-1.5 text-sm group">
-                  <summary class="list-none cursor-pointer text-ink/55 dark:text-cream/55 hover:text-ink dark:hover:text-cream select-none">Abstract</summary>
+                  <summary class="list-none cursor-pointer text-ink/70 dark:text-cream/65 hover:text-ink dark:hover:text-cream select-none">Abstract</summary>
                   <p class="mt-1.5 leading-relaxed text-ink/85 dark:text-cream/85">{p.blurb}</p>
                 </details>
               </li>
