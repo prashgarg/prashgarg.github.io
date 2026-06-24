@@ -1894,7 +1894,7 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
   })();
 
   // ── icon click + Start-menu open ──────────────────────────────────
-  const onIconActivate = (id: AppId, e: React.MouseEvent) => {
+  const onIconActivate = (id: AppId, e: React.MouseEvent | React.KeyboardEvent) => {
     const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
     const ce = containerRef.current?.getBoundingClientRect();
     const fp = ce ? { x: r.x + r.width/2 - ce.x, y: r.y + r.height/2 - ce.y } : undefined;
@@ -1946,11 +1946,16 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
           <div
             key={app.id}
             className={`win95-icon${selectedIcon === app.id ? ' selected' : ''}`}
+            role="button"
+            tabIndex={0}
+            aria-label={app.label}
             onMouseDown={e => { e.stopPropagation(); setSelectedIcon(app.id); playUiClick('down', 'tap'); }}
             onMouseUp={() => playUiClick('up', 'tap')}
             onDoubleClick={e => onIconActivate(app.id, e)}
             // single-click on touch acts as activate too
             onClick={(e) => { if (window.matchMedia('(hover: none)').matches) onIconActivate(app.id, e); }}
+            // keyboard: Enter/Space opens the app (M13 — was mouse-only)
+            onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onIconActivate(app.id, e); } }}
             title={app.label}
           >
             <div className="win95-icon-img"><app.Icon /></div>
