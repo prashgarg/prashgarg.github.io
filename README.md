@@ -1,21 +1,30 @@
 # prashantgarg.org
 
-Personal website for Prashant Garg.
+The personal academic website of Prashant Garg, economist. Live at
+[prashantgarg.org](https://prashantgarg.org).
 
-Built with [Astro](https://astro.build), [Tailwind CSS](https://tailwindcss.com),
-[Pagefind](https://pagefind.app) (search), and [astro-og-canvas](https://github.com/delucis/astro-og-canvas) (per-page social images).
+The home page is a 3D "Severance"-style office built with
+[Astro](https://astro.build), [React Three Fiber](https://r3f.docs.pmnd.rs/),
+and [drei](https://github.com/pmndrs/drei). Press Enter or click the monitor
+and the camera dollies in; the screen is a real Windows 95-style desktop
+(`/os`) composited into the 3D scene as a same-origin DOM iframe via drei's
+`<Html transform>`. The inner pages (research, talks, library, now, CV) live
+inside that desktop, with a plain, no-JS fallback at
+[`/standard`](https://prashantgarg.org/standard).
 
-The home page is a 3D scene built with [React Three Fiber](https://r3f.docs.pmnd.rs/) and
-[drei](https://github.com/pmndrs/drei). It loads CC0 stylised models from
-[Quaternius](https://quaternius.com) (Stylized Nature MegaKit etc.) when present in
-`/public/models/` — see [`public/models/README.md`](public/models/README.md) for the
-turnkey setup. The architectural pattern of "boot → camera into monitor → inner site" is
-inspired by [Henry Heffernan's portfolio](https://henryheffernan.com); none of his code
-or assets are reproduced.
-
-Visual design tips its hat to [PostHog](https://posthog.com).
+Also built with [Tailwind CSS](https://tailwindcss.com) and per-page social
+images from [astro-og-canvas](https://github.com/delucis/astro-og-canvas).
+The PBR surface textures are CC0 from [ambientCG](https://ambientcg.com). The
+"boot → camera into the monitor → inner site" pattern is inspired by
+[Henry Heffernan's portfolio](https://henryheffernan.com); none of his code or
+assets are reproduced. The visual register tips its hat to
+[PostHog](https://posthog.com).
 
 ## Local development
+
+> Use **Node 22**. Astro 6 + Vite 7 hang on Node 23+, so `predev`/`prebuild`
+> guard the version. On a Dropbox-synced checkout the local `astro build` can
+> stall at 0% CPU; CI builds it cleanly.
 
 ```sh
 npm install
@@ -26,80 +35,38 @@ npm run preview      # preview the built site
 
 ## Editing content
 
-All content lives in [`src/data/site.ts`](src/data/site.ts):
+Almost everything lives in [`src/data/site.ts`](src/data/site.ts):
 
-- `papers`     — the publications, working papers, R&Rs, and essays
-- `talks`      — every seminar, conference, and workshop
-- `tools`      — the live companion sites (causal.claims, frontiergraph.com, …)
-- `library`    — public-goods writing (LLM guide, Dylan essay)
-- `affiliations`, `site` (bio, email, socials)
+- `papers` — publications, working papers, R&Rs, essays
+- `talks` — seminars, conferences, workshops
+- `tools` — companion sites (causal.claims, frontiergraph.com, …)
+- `library` — public-goods writing (LLM guide, Dylan essay)
+- `site`, `affiliations`, `pageMeta` — bio, email, socials, per-page metadata
 
-Adding a paper or a talk is a one-line addition to that file. The Research,
-Talks, Library, and per-paper detail pages all re-render from it.
-
-To edit page text directly:
-
-| Page              | File                                    |
-| ----------------- | --------------------------------------- |
-| Home              | `src/pages/index.astro`                 |
-| Research listing  | `src/pages/research/index.astro`        |
-| Paper detail page | `src/pages/research/[slug].astro`       |
-| Talks             | `src/pages/talks.astro`                 |
-| Library           | `src/pages/library.astro`               |
-| Now               | `src/pages/now.astro`                   |
-| 404               | `src/pages/404.astro`                   |
+Adding a paper or a talk is a one-line addition there; the Research, Talks,
+Library, and per-paper pages all re-render from it. Page text lives in
+`src/pages/*.astro`. The 3D scene is `src/components/Office.tsx` and the Win95
+desktop is `src/components/InnerDesktop.tsx`.
 
 ## Deployment
 
-This repo is private. GitHub Pages on the free plan only deploys from public
-repos, so pick one of the following:
-
-### Option A — Cloudflare Pages (free, recommended for private repos)
-
-1. Sign in to <https://dash.cloudflare.com/?to=/:account/pages>.
-2. Create application → **Connect to Git** → authorise GitHub → pick this repo.
-3. Build settings:
-   - Build command: `npm run build`
-   - Build output directory: `dist`
-   - Node version (env var `NODE_VERSION`): `22`
-4. Save and deploy. Cloudflare will give a `*.pages.dev` URL.
-5. Add the custom domain `prashantgarg.org` in **Custom domains** → follow
-   Cloudflare's CNAME instructions. They handle TLS automatically.
-
-### Option B — GitHub Pages
-
-Requires either (a) making this repo public, or (b) a GitHub Pro plan. Once
-either is true, the workflow at `.github/workflows/deploy.yml` will build and
-publish on every push to `main`. Enable Pages in repo settings (Source: GitHub
-Actions).
-
-### Cutting `prashantgarg.org` over
-
-Once the new site is live on a `*.pages.dev` or `*.github.io` URL and you have
-checked every page, update the DNS records on the domain registrar:
-
-- Replace the current Google Sites A/CNAME records with the host the new
-  provider gives you (Cloudflare Pages provides a CNAME target; GitHub Pages
-  uses four A records pointing at `185.199.108–111.153`).
-- Verify the apex (`prashantgarg.org`) and `www.prashantgarg.org` both resolve.
-- Re-issue TLS certificates if needed (Cloudflare automatic; GitHub Pages via
-  repo settings → **Enforce HTTPS**).
-
-After cut-over, leave the Google Site up for a week as a fallback in case
-someone has cached the old DNS.
+A static build, deployed to GitHub Pages from `main` via
+[`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) on every push.
+It's served at the apex `prashantgarg.org` (with `www` and
+`prashgarg.github.io` 301-redirecting to it); the custom domain is pinned by
+`public/CNAME`.
 
 ## Site map
 
-- `/`              — Home (bio + recent research + contact)
-- `/research`      — All papers, filterable, with expandable cards
-- `/research/[slug]` — One page per paper: abstract, links, coverage, talks-given-on-it diagram
-- `/talks`         — Interactive timeline + per-paper branching networks
-- `/library`       — LLM guide, Dylan essay, future notes
-- `/now`           — What I'm thinking about right now
-- `/og/*.png`      — Auto-generated social preview images for every page
-- `/sitemap-index.xml`, `/robots.txt`, `/404`
+- `/` — the 3D office (bio, recent research, contact, inside the monitor)
+- `/research`, `/research/[slug]` — papers, filterable, one page each
+- `/talks` — talks timeline
+- `/library`, `/now`, `/cv` — writing, current focus, CV
+- `/standard` — plain, no-JS version of everything (the accessible fallback)
+- `/og/*.png`, `/sitemap-index.xml`, `/robots.txt`, `/404`
 
 ## License
 
-The code in this repo is released under the MIT license. The content (papers,
-talks list, bios, writing) belongs to Prashant Garg.
+The **code** in this repo is released under the [MIT License](LICENSE). The
+**content** (papers, talks, writing, bio, photo, CV) is © Prashant Garg and is
+not covered by that license.

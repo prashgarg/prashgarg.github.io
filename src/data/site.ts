@@ -1,11 +1,10 @@
 export const site = {
   name: 'Prashant Garg',
   tagline:
-    'Economist working on science, innovation, production, and media using machine learning, causal inference, and network science.',
-  // Short bio for the home/desktop surfaces (mirrors the old site's
-  // prose bio; facts: Cambridge current, Imperial PhD completed,
-  // Bocconi from Sept 2026 — all consistent with `affiliations`).
-  bio: "Hi, I'm Prashant Garg, an economist working on science, innovation, production, and media using machine learning, causal inference, and network science. I am currently a Research Associate at the University of Cambridge and an Associate Fellow at INET Oxford. I recently completed my PhD in Economics at Imperial College London, and I will join Bocconi University as a Postdoctoral Researcher in September 2026.",
+    'Economist studying science, innovation, production, and the media, with machine learning, causal inference, and network science.',
+  // Short first-person bio for the home/desktop surfaces. Facts (affiliations,
+  // dates) are kept in sync with `affiliations` below.
+  bio: "Hi, I'm Prashant Garg, an economist. I use machine learning, causal inference, and network science to study science, innovation, production, and the media. I'm currently a Research Associate at the University of Cambridge and an Associate Fellow at INET Oxford, and I recently finished my PhD in Economics at Imperial College London. In September 2026 I'll join Bocconi University as a postdoctoral researcher.",
   // Public contact address — intentionally has NO trailing digit. Do not
   // "correct" it by adding a digit; the digit-suffixed variant is a separate
   // private account and must never appear anywhere on the site. (Confirmed.)
