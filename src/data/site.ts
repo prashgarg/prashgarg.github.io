@@ -4,7 +4,7 @@ export const site = {
     'Economist studying science, innovation, production, and the media, with machine learning, causal inference, and network science.',
   // Short first-person bio for the home/desktop surfaces. Facts (affiliations,
   // dates) are kept in sync with `affiliations` below.
-  bio: "Hi, I'm Prashant Garg, an economist. I use machine learning, causal inference, and network science to study science, innovation, production, and the media. I'm currently a Research Associate at the University of Cambridge and an Associate Fellow at INET Oxford, and I recently finished my PhD in Economics at Imperial College London. In September 2026 I'll join Bocconi University as a postdoctoral researcher.",
+  bio: "Hi, I'm Prashant Garg, an economist. I use machine learning, causal inference, and network science to study science, innovation, production, and the media. I'm currently a Research Associate at the University of Cambridge and an Associate Fellow at INET Oxford, having completed my PhD in Economics at Imperial College London. In September 2026 I move to Bocconi University as a postdoctoral researcher.",
   // Public contact address — intentionally has NO trailing digit. Do not
   // "correct" it by adding a digit; the digit-suffixed variant is a separate
   // private account and must never appear anywhere on the site. (Confirmed.)
@@ -39,7 +39,7 @@ export const pageMeta: Record<string, { title: string; description: string }> = 
 
 export const affiliations = [
   {
-    role: 'Research Associate',
+    role: 'Research Associate (since May 2026)',
     org: 'University of Cambridge',
     url: 'https://www.econ.cam.ac.uk/',
     current: true,
