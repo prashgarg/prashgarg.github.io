@@ -14,7 +14,9 @@ export const site = {
   // www + prashgarg.github.io 301-redirecting to it. Keep in sync with
   // astro.config `site`.
   origin: 'https://prashantgarg.org',
-  cv: 'https://drive.google.com/file/d/1loWtmOeOwDtSSJ2WHKf7n_PzpQiP6rgF/view?usp=drive_link',
+  // Public CV served from `public/cv.pdf`. Keep this local so every site
+  // surface opens the same TeX-compiled CV instead of an old Drive copy.
+  cv: '/cv.pdf',
   scholar: 'https://scholar.google.com/citations?hl=en&user=C3o_l0IAAAAJ',
   twitter: 'https://x.com/Prashant_Garg_',
   twitterHandle: '@Prashant_Garg_',
