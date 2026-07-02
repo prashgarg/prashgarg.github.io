@@ -683,6 +683,12 @@ export const education: CvEntry[] = [
 ];
 
 export const awards: CvEntry[] = [
+  {
+    period: '2026',
+    title: 'Astera Essay Competition ($15,000 award)',
+    detail: 'For "Where Should Science Go Next?" Competition theme: Identifying Systemic Bottlenecks to Science.',
+    url: 'https://docs.google.com/document/d/1ZqPEIUN1CvD6YiTCOz_INvn8TKYIXkI1IsL-yBLRsVA/edit?tab=t.0',
+  },
   { period: '2025', title: 'Best Student Paper', org: 'NetSciSci2025', detail: 'For "Simple Contagion Drives Population-Scale Platform Migration".', url: 'https://netscisci.github.io/' },
   { period: '2018', title: 'Helen Robinson Memorial Prize', org: 'Cardiff University', detail: 'Highest score in microeconomic theory.' },
 ];
