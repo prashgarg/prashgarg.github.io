@@ -7,6 +7,12 @@ The code is public and MIT licensed. You are welcome to use it as a starting
 point for your own academic or portfolio site. Please replace my writing,
 papers, photo, CV, metadata, and domain before publishing your version.
 
+<p align="center">
+  <img src="public/og/index.png" alt="Preview of prashantgarg.org, with Prashant Garg's academic homepage beside a small office desk and computer" width="860">
+</p>
+
+<p align="center"><em>A personal academic site disguised as a small office. The monitor is the door.</em></p>
+
 ## What This Is
 
 The home page is a 3D office scene built with
