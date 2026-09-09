@@ -3,7 +3,7 @@
 // A fast, boring, beautifully plain academic page — no 3D, no window
 // chrome, no client JS required. The insurance policy for hiring
 // committees in a hurry (and the accessibility/no-WebGL story).
-import { site, papers, talks, affiliations, statusMeta, education, awards, datasets, type PaperStatus } from '../data/site';
+import { site, papers, talks, affiliations, education, awards, datasets, type PaperStatus } from '../data/site';
 import PersonJsonLd from '../components/PersonJsonLd.astro';
 
 // G43: press clippings grouped by paper (all coverage with article URLs).
@@ -22,7 +22,6 @@ const sectionTitles: Record<PaperStatus, string> = {
 };
 const grouped = order.map(s => ({ status: s, label: sectionTitles[s], items: papers.filter(p => p.status === s) }))
                      .filter(g => g.items.length > 0);
-const current = affiliations.filter((a: any) => a.current);
 ---
 <!doctype html>
 <html lang="en">
@@ -55,18 +54,20 @@ const current = affiliations.filter((a: any) => a.current);
     body { font-family: Georgia, 'Times New Roman', serif; max-width: 44rem; margin: 0 auto; padding: 2.5rem 1.25rem 4rem; color: #1a1a1a; background: #fffdf8; line-height: 1.55; }
     h1 { font-size: 1.9rem; margin: 0 0 0.25rem; }
     h2 { font-size: 1.15rem; margin: 2.2rem 0 0.6rem; border-bottom: 1px solid #ccc; padding-bottom: 0.25rem; }
-    .sub { color: #555; margin: 0 0 1rem; }
     ul { padding-left: 1.2rem; margin: 0.4rem 0; }
     li { margin-bottom: 0.55rem; }
     .meta { color: #555; font-size: 0.92rem; }
     a { color: #103a8c; }
     .links a { margin-right: 0.7rem; }
+    details { margin-top: 0.3rem; }
+    summary { cursor: pointer; color: #103a8c; }
+    details p { margin: 0.45rem 0 0.9rem; }
     .note { font-size: 0.85rem; color: #777; margin-top: 3rem; border-top: 1px solid #ddd; padding-top: 0.8rem; }
     @media (prefers-color-scheme: dark) {
       body { background: #16150f; color: #e8e3d3; }
       h2 { border-color: #555; }
-      .sub, .meta { color: #b5af9e; }
-      a { color: #9db8f0; }
+      .meta { color: #b5af9e; }
+      a, summary { color: #9db8f0; }
       .note { color: #8d8775; border-color: #444; }
     }
   </style>
@@ -74,8 +75,7 @@ const current = affiliations.filter((a: any) => a.current);
 <body>
   <main id="main">
   <h1>Prashant Garg</h1>
-  <p class="sub">{site.tagline}</p>
-  <p>{site.bio}</p>
+  {site.bio.split('\n\n').map(paragraph => <p>{paragraph}</p>)}
   <p class="links">
     <a href={`mailto:${site.email}`}>{site.email}</a>
     <a href="/cv">CV</a>
@@ -89,7 +89,7 @@ const current = affiliations.filter((a: any) => a.current);
       <h2>{g.label}</h2>
       <ul>
         {g.items.map(p => (
-          <li>
+          <li id={p.slug}>
             <strong>{p.title}</strong>
             {p.coauthors.length > 0 && <span> (with {p.coauthors.join(', ')})</span>}
             {p.venue && <span class="meta"> — {p.venue}{p.year ? `, ${p.year}` : ''}</span>}
@@ -97,8 +97,11 @@ const current = affiliations.filter((a: any) => a.current);
             <br />
             <span class="links">
               {p.links.slice(0, 3).map(l => <a href={l.url}>{l.label}</a>)}
-              <a href={`/research/${p.slug}`}>Details</a>
             </span>
+            <details>
+              <summary>Abstract</summary>
+              <p>{p.blurb}</p>
+            </details>
           </li>
         ))}
       </ul>

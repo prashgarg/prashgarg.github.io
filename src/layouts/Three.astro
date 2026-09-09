@@ -78,7 +78,7 @@ const canonical  = Astro.site ? new URL(path === '/' ? '/' : `${path}/`, Astro.s
       <div class="ef">
         <h1>Prashant Garg</h1>
         <p class="ef-tag">{site.tagline}</p>
-        <p class="ef-bio">{site.bio}</p>
+        {site.bio.split('\n\n').map(paragraph => <p class="ef-bio">{paragraph}</p>)}
         <nav class="ef-links" aria-label="Sections">
           <a href="/research/">Research</a>
           <a href="/talks/">Talks</a>

@@ -4,7 +4,7 @@ export const site = {
     'Economist working on economic and social measurement of science, innovation, production, and the media, with machine learning, econometrics, and network science.',
   // Short first-person bio for the home/desktop surfaces. Facts (affiliations,
   // dates) are kept in sync with `affiliations` below.
-  bio: "Hi, I'm Prashant Garg, an economist. My main research identity is economic and social measurement, using the latest tools from machine learning, econometrics, and network science. I have a keen interest in science & innovation, economic and social networks, production, and information & media. I'm currently a Research Associate at the University of Cambridge and an Associate Fellow at INET Oxford, having completed my PhD in Economics at Imperial College London. In September 2026 I move to Bocconi University as a postdoctoral researcher.",
+  bio: "Hi, I'm Prashant Garg, an economist. My research focuses on economic and social measurement, using machine learning, econometrics, and network science. I am interested in science and innovation, economic and social networks, production, and information and media.\n\nI'm a postdoctoral researcher at Bocconi University and an Associate Fellow at INET Oxford. I completed my PhD in Economics at Imperial College London.",
   // Public contact address — intentionally has NO trailing digit. Do not
   // "correct" it by adding a digit; the digit-suffixed variant is a separate
   // private account and must never appear anywhere on the site. (Confirmed.)
@@ -41,9 +41,9 @@ export const pageMeta: Record<string, { title: string; description: string }> = 
 
 export const affiliations = [
   {
-    role: 'Research Associate (since May 2026)',
-    org: 'University of Cambridge',
-    url: 'https://www.econ.cam.ac.uk/',
+    role: 'Postdoctoral Researcher (since September 2026)',
+    org: 'Bocconi University',
+    url: 'https://www.unibocconi.it/en',
     current: true,
   },
   {
@@ -57,12 +57,6 @@ export const affiliations = [
     org: 'Imperial College London',
     url: 'https://www.imperial.ac.uk/business-school/faculty-research/academic-areas/economics-public-policy/',
     current: false,
-  },
-  {
-    role: 'Postdoctoral Researcher (from Sept 2026)',
-    org: 'Bocconi University',
-    url: 'https://www.unibocconi.it/en',
-    incoming: true,
   },
 ];
 
@@ -153,13 +147,14 @@ export const papers: Paper[] = [
     // DRAFT plain-English summary (G31) — flagged for user review
     tldr: 'Foreign news coverage of disasters is wildly uneven: earthquakes and volcanic eruptions make headlines worldwide, while floods and droughts — the disasters most tied to climate change — barely register. We measured this with 135 million articles from 466 outlets in 123 countries. Coverage also rises with death tolls, especially between countries with close social or ancestral ties.',
     title: 'Uneven Patterns of Cross-Border Media Coverage Following Natural Disasters',
-    status: 'accepted',
+    status: 'published',
     venue: 'Nature Human Behaviour',
+    year: 2026,
     coauthors: ['Thiemo Fetzer'],
     blurb:
       "Many natural disasters central to climate-policy debates are hydro-meteorological hazards, yet it remains unclear how global media attention is distributed across disaster types. Using a dataset of 466 news sources from 123 countries, covering 135 million news articles since 2016, we apply an event study framework to measure cross-border reporting following natural disasters. Cross-border attention rises after disasters but is highly uneven across hazards, with the largest short-run increases following earthquakes (b = 0.0785, 95% CI [0.0758, 0.0812]), dry-mass movements (b = 0.0531, 95% CI [0.0349, 0.0713]), and volcanic eruptions (b = 0.0425, 95% CI [0.0359, 0.0490]). In contrast, climatologically salient hazards such as floods (b = 0.0069, 95% CI [0.0062, 0.0076]) and droughts (b = 0.0001, 95% CI [−0.0036, 0.0039]) receive substantially less coverage. Conditional on severity and duration, hydro-meteorological (“climate-linked”) disasters receive less cross-border attention than geophysical disasters (θ = −0.0065, 95% CI [−0.0115, −0.0015]). Attention also increases with fatalities: disasters with 100+ deaths receive more coverage than those with 0–9 deaths (b = 0.0360, 95% CI [0.0231, 0.0490]), and this fatality gradient is stronger for country pairs with tighter social ties and deeper ancestral links. These patterns highlight systematic cross-border differences in attention to disaster risks.",
     links: [
-      { label: 'Preprint', url: 'https://www.researchsquare.com/article/rs-6057848/v1' },
+      { label: 'Paper (open access)', url: 'https://www.nature.com/articles/s41562-026-02512-6' },
     ],
   },
   {
@@ -197,6 +192,7 @@ export const papers: Paper[] = [
       { label: 'Twitter thread (v2)', url: 'https://x.com/Prashant_Garg_/status/1879101708174864562' },
     ],
     coverage: [
+      { outlet: 'Financial Times', url: 'https://www.ft.com/content/ea4d4326-878d-4e9e-9303-466c8a382c60?syn-25a6b1a6=1' },
       { outlet: 'The Economist', url: 'https://www.economist.com/finance-and-economics/2025/05/22/what-the-failure-of-a-superstar-student-reveals-about-economics' },
       { outlet: 'Marginal Revolution', url: 'https://marginalrevolution.com/marginalrevolution/2024/11/causal-claims-in-economics.html' },
       { outlet: 'Marginal Revolution (2)', url: 'https://marginalrevolution.com/marginalrevolution/2025/05/sunday-assorted-links-518.html' },
@@ -277,7 +273,8 @@ export const papers: Paper[] = [
     // DRAFT plain-English summary (G31) — flagged for user review
     tldr: 'When academics fled Twitter/X for Bluesky, we tracked 276,431 scholars across both platforms to see what actually makes people abandon a social network. Adoption spreads through simple peer exposure — seeing a colleague move is enough, no complex social reinforcement needed — with Brazil\'s court-ordered Twitter suspension providing the causal evidence. Users who quickly rebuilt their old connections stayed active; the rest drifted back.',
     title: 'Simple Contagion Drives Population-Scale Platform Migration',
-    status: 'working',
+    status: 'rr',
+    venue: 'Nature Communications',
     coauthors: ['Dorian Quelle', 'Frederic Denker', 'Alexandre Bovet'],
     blurb:
       "Social media platforms mediate professional communication, political expression, and community formation, making the rare instances when users collectively abandon an incumbent platform particularly consequential. Strong network effects raise switching costs and strengthen incumbents' positions, making coordinated exit difficult. Here we link 276,431 scholars on Twitter/X to their respective new profiles among the universe of all 16.7 million Bluesky accounts, tracked from January 2023 to December 2024, using a scalable, high-precision cross-platform matching pipeline. Exploiting exogenous variation from Brazil's court-ordered suspension of Twitter/X and a dynamic matching design, we show that adoption is peer-driven, treatment effects are short-lived and dose-dependent, and contagion is simple, not complex. Three patterns characterize adoption and retention. Adoption concentrates among users deeply embedded in Twitter's social graph. Public political expression predicts migration, consistent with homophilous inflows into a largely left-of-center Bluesky information space. Early reconnection with prior contacts predicts longer tenure and engagement. Our findings provide the first population-scale causal evidence of peer influence in a social media platform migration by exploiting exogenous exposure variation in a natural experiment and using daily dynamic matching. Rather than the complex contagion mechanism often emphasized in the literature, contagion is predominantly simple. Our findings recast migration as a multi-homing strategy that insures against governance uncertainty and show that users who quickly reconnect with prior contacts remain active longer on Bluesky.",
@@ -429,7 +426,7 @@ export const tools: Tool[] = [
 ];
 
 export interface Talk {
-  title: string;
+  title?: string;
   venue: string;
   location: string;
   date: string;
@@ -438,8 +435,14 @@ export interface Talk {
 }
 
 export const talks: Talk[] = [
+  // 2027
+  { year: 2027, title: 'Global Automation Atlas', venue: 'STEG Annual Conference & Theme Workshops 2027', location: 'Manchester', date: '6–9 Jan 2027', url: 'https://cepr.org/events/steg-annual-conference-theme-workshops-2027' },
   // 2026
   { year: 2026, title: 'Title TBA', venue: 'Universitat de València Seminar', location: 'València', date: '4 Dec 2026', url: 'https://www.uv.es/uvweb/economic-analysis-department/en/department-economic-analysis-1285854461277.html' },
+  { year: 2026, title: 'Generative AI and the Structure of Scientific Creativity', venue: 'Network Science & Economics', location: 'Luxembourg', date: '23–25 Oct 2026', url: 'https://nse-conference.github.io/' },
+  { year: 2026, title: 'The Sacred and the Secular in Western Painting', venue: 'ASREC Europe 2026 Conference', location: 'Venice', date: '25–26 Sep 2026', url: 'https://www.asrec.org/' },
+  { year: 2026, venue: 'Innovation Seminar (invited), Collège de France', location: 'Paris', date: '25 Sep 2026', url: 'https://www.parisschoolofeconomics.eu/evenements/brown-bag-economics-of-innovation-seminar/' },
+  { year: 2026, title: 'The Sacred and the Secular in Western Painting', venue: 'MPWZ–CEPR Text-as-Data', location: 'Virtual', date: '17–18 Sep 2026', url: 'https://cepr.org/events/10th-monash-paris-warwick-zurich-cepr-text-data-workshop' },
   { year: 2026, title: 'Panel: AI as a Scientific Instrument for Economics', venue: 'Oxford INET Meeting', location: 'Oxford', date: '11 Jun 2026', url: 'https://www.inet.ox.ac.uk/' },
   { year: 2026, title: 'What Should Economics Ask Next?', venue: 'MPWZ–CEPR Text-as-Data', location: 'Virtual', date: '13–14 Apr 2026', url: 'https://cepr.org' },
   { year: 2026, title: 'Causal Claims in Economics', venue: 'MIT FutureTech Seminar', location: 'Virtual', date: '12 Mar 2026', url: 'https://futuretech.mit.edu/' },
@@ -515,6 +518,9 @@ export const talks: Talk[] = [
 export interface Topic { slug: string; label: string; paperSlug?: string }
 
 export const topics: Topic[] = [
+  { slug: 'global-automation-atlas',         label: 'Global Automation Atlas',            paperSlug: 'global-automation-atlas' },
+  { slug: 'sacred-secular-painting',         label: 'The Sacred and the Secular in Western Painting' },
+  { slug: 'scientific-creativity',          label: 'Generative AI and the Structure of Scientific Creativity' },
   { slug: 'causal-claims-economics',          label: 'Causal Claims in Economics',          paperSlug: 'causal-claims-economics' },
   { slug: 'ai-production-networks',           label: 'AI-Generated Production Networks',    paperSlug: 'ai-production-networks' },
   { slug: 'what-should-economics-ask-next',   label: 'What Should Economics Ask Next?',     paperSlug: 'what-should-economics-ask-next' },
@@ -558,8 +564,11 @@ export function topicsForPaper(p: Paper): TopicTag[] {
   return tags;
 }
 
-export function topicForTalk(title: string): Topic {
+export function topicForTalk(title: string = ''): Topic {
   const t = title.toLowerCase();
+  if (t.includes('global automation atlas')) return topics.find(x => x.slug === 'global-automation-atlas')!;
+  if (t.includes('sacred and the secular')) return topics.find(x => x.slug === 'sacred-secular-painting')!;
+  if (t.includes('structure of scientific creativity')) return topics.find(x => x.slug === 'scientific-creativity')!;
   if (t.includes('what should economics ask next')) return topics.find(x => x.slug === 'what-should-economics-ask-next')!;
   if (t.includes('causal claims'))                  return topics.find(x => x.slug === 'causal-claims-economics')!;
   if (t.includes('production network'))             return topics.find(x => x.slug === 'ai-production-networks')!;
@@ -636,6 +645,16 @@ export interface Dataset {
 
 export const datasets: Dataset[] = [
   {
+    name: 'Global Automation Atlas',
+    with: ['Tommaso Crosta', 'Jasmin Baier'],
+    blurb: 'Task-level automation exposure across 124 countries, distinguishing labour substitution from augmentation, technology channels, and the role of AI.',
+    links: [
+      { label: 'automationatlas.org', url: 'https://automationatlas.org/' },
+      { label: 'Data downloads', url: 'https://automationatlas.org/data/' },
+    ],
+    paperSlug: 'global-automation-atlas',
+  },
+  {
     name: 'Causal Claims in Economics — claim graphs',
     with: ['Thiemo Fetzer'],
     blurb: 'Evidence-annotated knowledge graph of ~45,000 economics papers (1980–2023): standardized concepts as nodes, stated causal and non-causal relationships as edges.',
@@ -699,6 +718,7 @@ export const teaching: CvEntry[] = [
 ];
 
 export const experience: CvEntry[] = [
+  { period: '2026', title: 'Research Associate', org: 'University of Cambridge', detail: 'Postdoctoral appointment beginning in May 2026.' },
   { period: '2025–', title: 'Visiting Researcher', org: 'University of Cambridge, Computer Science Department', detail: 'Hosted by Neil Lawrence.' },
   { period: '2024–2025', title: 'Visiting Researcher', org: 'International Finance Corporation (IFC), Paris / Washington DC', detail: 'Economics Research Unit; hosted by Ralf Martin.' },
 ];

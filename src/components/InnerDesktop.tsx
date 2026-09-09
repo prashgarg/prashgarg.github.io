@@ -2421,11 +2421,11 @@ const WELLNESS_LINES: { text: string; link?: { label: string; href: string } }[]
   { text: 'Your outie is an economist.' },
   { text: 'Your outie studies science, innovation, production, and media.' },
   { text: 'Your outie has published in Nature Human Behaviour.' },
-  { text: 'Your outie has a second paper forthcoming there. About disasters.' },
+  { text: 'Your outie has published a second paper there. About disasters.' },
   { text: 'Your outie taught a machine to read 45,000 economics papers, and now knows who claims what causes what.' },
   { text: 'Your outie recently completed a PhD at Imperial College London.' },
-  { text: 'Your outie is a Research Associate at the University of Cambridge.' },
-  { text: 'Your outie will join Bocconi University in September 2026. Milan is said to be agreeable.' },
+  { text: 'Your outie is a postdoctoral researcher at Bocconi University. Milan is said to be agreeable.' },
+  { text: 'Your outie is an Associate Fellow at INET Oxford.' },
   { text: "Your outie mapped Bob Dylan's mind. Mr. Dylan has not been informed." },
   { text: `Your outie has given ${talks.length} talks. People keep inviting your outie back.` },
   { text: 'Your outie can be reached by electronic mail.', link: { label: site.email, href: `mailto:${site.email}` } },
@@ -2468,9 +2468,9 @@ function HomeContent() {
         <div className="win95-home-headtext">
           <div className="win95-home-name">Prashant Garg</div>
           <div className="win95-home-subtitle">
-            Economist · Research Associate at Cambridge
+            Economist · Postdoctoral Researcher at Bocconi
           </div>
-          <p className="win95-home-bio">{site.bio}</p>
+          {site.bio.split('\n\n').map(paragraph => <p key={paragraph} className="win95-home-bio">{paragraph}</p>)}
         </div>
       </div>
       <ContactStrip />

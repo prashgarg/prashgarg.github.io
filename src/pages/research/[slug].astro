@@ -26,8 +26,7 @@ const myTalks: Talk[] = talks
   .filter(t => topicForTalk(t.title).paperSlug === paper.slug)
   .sort((a, b) => sortValue(b) - sortValue(a));
 
-// Absolute URLs use site.origin — prashantgarg.org still serves the
-// old Google Site until the DNS cutover (see site.ts).
+// Absolute URLs use the canonical production origin.
 const pageUrl = `${site.origin}/research/${paper.slug}`;
 
 // JSON-LD ScholarlyArticle for academic indexing (Google Scholar, etc.)
@@ -41,7 +40,7 @@ const scholarlyJsonLd = {
     ...paper.coauthors.map(c => ({ '@type': 'Person', name: c })),
   ],
   ...(paper.year ? { datePublished: String(paper.year) } : {}),
-  ...(paper.venue ? { publisher: { '@type': 'Organization', name: paper.venue } } : {}),
+  ...(paper.status === 'published' && paper.venue ? { publisher: { '@type': 'Organization', name: paper.venue } } : {}),
   url: pageUrl,
 };
 
@@ -85,6 +84,8 @@ const bibTeX = [
       {paper.coauthors.length > 0 && <span>with {paper.coauthors.join(', ')}</span>}
       {paper.coauthors.length > 0 && (paper.venue || paper.year) && <span> · </span>}
       {paper.venue && <span>{paper.venue}</span>}
+      {paper.status === 'rr' && <span> (R&amp;R)</span>}
+      {paper.status === 'accepted' && <span> (forthcoming)</span>}
       {paper.venue && paper.year && <span>, {paper.year}</span>}
       {!paper.venue && paper.year && <span>{paper.year}</span>}
       {paper.award && <span> · {paper.award.url ? <a href={paper.award.url} target="_blank" rel="noopener" class="hover:underline">{paper.award.label}</a> : paper.award.label}</span>}

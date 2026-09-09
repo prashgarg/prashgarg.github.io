@@ -29,7 +29,7 @@ const yearsDesc = Object.keys(byYear).map(Number).sort((a, b) => b - a);
               {t.url
                 ? <a href={t.url} target="_blank" rel="noopener" class="hover:underline">{t.venue}</a>
                 : <span>{t.venue}</span>}, {t.location}
-              <span class="text-ink/60 dark:text-cream/60"> — {t.title}</span>
+              {t.title && <span class="text-ink/60 dark:text-cream/60"> — {t.title}</span>}
             </li>
           ))}
         </ul>
