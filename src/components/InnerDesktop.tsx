@@ -115,6 +115,7 @@ const WIN95_STYLE = `
 }
 .win95-titlebar-title {
   flex: 1;
+  min-width: 0;
   font-family: MSSerif;
   font-size: 12px;
   color: #fff;
@@ -124,11 +125,11 @@ const WIN95_STYLE = `
   pointer-events: none;      /* let drag pass through text */
 }
 .win95-titlebtn {
-  width: 16px;
-  height: 14px;
+  width: 24px;
+  height: 22px;
   background: #c3c6ca;
   border: none;
-  font-size: 9px;
+  font-size: 11px;
   font-family: MSSerif, Arial, sans-serif;
   display: flex;
   align-items: center;
@@ -143,11 +144,13 @@ const WIN95_STYLE = `
   box-shadow: inset 1px 1px var(--win-fr), inset -1px -1px #fff;
 }
 .win95-titlebtn-close { margin-left: 2px; }
-/* G8: 16×14px buttons are untappable on touch — grow the hit areas.
-   (The taskbar keeps its 30px height: maximized-window geometry and
-   the Start-menu anchor are computed from that constant.) */
+.win95-titlebtn:focus-visible, .win95-icon:focus-visible {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 2px;
+}
+/* Larger touch targets; taskbar geometry remains independent. */
 @media (hover: none) and (pointer: coarse) {
-  .win95-titlebtn { width: 34px; height: 28px; font-size: 12px; }
+  .win95-titlebtn { width: 44px; height: 36px; font-size: 12px; }
   .win95-nav-link { padding: 8px 0; }
   .win95-startmenu-item { padding: 10px 8px 10px 6px; }
   .win95-context-item { padding: 8px 16px 8px 22px; }
@@ -267,13 +270,14 @@ const WIN95_STYLE = `
 }
 /* prose bio (mirrors the old site's bio) — left-aligned, fills column */
 .win95-home-bio {
-  font-family: Millennium, 'Times New Roman', serif;
+  font-family: var(--font-reading);
   font-size: 20px;
   line-height: 1.48;
   color: #333;
   text-align: left;
   max-width: none;
   margin: 14px 0 0;
+  user-select: text;
 }
 .win95-home-name {
   font-family: 'Cormorant Garamond', Georgia, serif;
@@ -283,7 +287,7 @@ const WIN95_STYLE = `
   margin-bottom: 6px;
 }
 .win95-home-subtitle {
-  font-family: Millennium, 'Times New Roman', serif;
+  font-family: var(--font-reading);
   font-size: 19px;
   color: #555;
 }
@@ -304,7 +308,7 @@ const WIN95_STYLE = `
   margin-top: 14px;
 }
 .win95-contact-link {
-  font-family: Millennium, 'Times New Roman', serif;
+  font-family: var(--font-reading);
   font-size: 15px;
   color: #0000a3;
   text-decoration: none;
@@ -1968,9 +1972,7 @@ export default function InnerDesktop({ onClose, embedded = false, active = true 
             aria-label={app.label}
             onMouseDown={e => { e.stopPropagation(); setSelectedIcon(app.id); playUiClick('down', 'tap'); }}
             onMouseUp={() => playUiClick('up', 'tap')}
-            onDoubleClick={e => onIconActivate(app.id, e)}
-            // single-click on touch acts as activate too
-            onClick={(e) => { if (window.matchMedia('(hover: none)').matches) onIconActivate(app.id, e); }}
+            onClick={e => onIconActivate(app.id, e)}
             // keyboard: Enter/Space opens the app (M13 — was mouse-only)
             onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onIconActivate(app.id, e); } }}
             title={app.label}
@@ -2039,6 +2041,7 @@ export default function InnerDesktop({ onClose, embedded = false, active = true 
               <button
                 className="win95-titlebtn"
                 title="Minimise"
+                aria-label="Minimise"
                 onMouseDown={e => { e.stopPropagation(); playUiClick('down', 'titlebtn'); }}
                 onMouseUp={() => playUiClick('up', 'titlebtn')}
                 onClick={e => { e.stopPropagation(); minimizeApp(w.id); }}
@@ -2046,6 +2049,7 @@ export default function InnerDesktop({ onClose, embedded = false, active = true 
               <button
                 className="win95-titlebtn"
                 title={w.maximized ? 'Restore' : 'Maximise'}
+                aria-label={w.maximized ? 'Restore' : 'Maximise'}
                 onMouseDown={e => { e.stopPropagation(); playUiClick('down', 'titlebtn'); }}
                 onMouseUp={() => playUiClick('up', 'titlebtn')}
                 onClick={e => { e.stopPropagation(); toggleMaximize(w.id); }}
@@ -2053,6 +2057,7 @@ export default function InnerDesktop({ onClose, embedded = false, active = true 
               <button
                 className="win95-titlebtn win95-titlebtn-close"
                 title="Close"
+                aria-label="Close"
                 onMouseDown={e => { e.stopPropagation(); playUiClick('down', 'close'); }}
                 onMouseUp={() => playUiClick('up', 'close')}
                 onClick={e => { e.stopPropagation(); closeApp(w.id); }}
@@ -2095,7 +2100,9 @@ export default function InnerDesktop({ onClose, embedded = false, active = true 
       })}
 
       {/* ───────────── G32/G33: screensaver + CRT flicker ───────────── */}
-      {active && <Screensaver />}
+      {/* Documents and dialogs stay readable even when their iframe does
+          not relay input to the desktop. Closing them starts a fresh timer. */}
+      {active && wins.length === 0 && !dialog && !startOpen && !ctxMenu && <Screensaver />}
       {flicker && <div className="win95-crt-flicker" />}
 
       {/* ───────────── G30: Run… dialog ───────────── */}
@@ -2380,10 +2387,9 @@ export default function InnerDesktop({ onClose, embedded = false, active = true 
 }
 
 /* ---------- HOME content — the inline React view for app=home -------- */
-/* ---------- G32: idle screensaver — "After Dark" ---------------------
- * After ~90 s without input the desktop dims and the workstation badge
- * bounces DVD-style. Any input dismisses. Disabled entirely under
- * prefers-reduced-motion. Test hook: sessionStorage 'pg_ss_ms'. */
+/* Idle desktop only: wait five minutes, with no documents or menus open.
+ * Any input dismisses. Disabled under prefers-reduced-motion.
+ * Test hook: sessionStorage 'pg_ss_ms'. */
 function Screensaver() {
   const [active, setActive] = useState(false);
   const posRef = useRef({ x: 80, y: 80, vx: 0.12, vy: 0.09 });
@@ -2391,15 +2397,23 @@ function Screensaver() {
   const rafRef = useRef(0);
   useEffect(() => {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    let ms = 90000;
+    let ms = 300000;
     try { const o = parseInt(sessionStorage.getItem('pg_ss_ms') || '', 10); if (o > 0) ms = o; } catch { /* */ }
     let timeout: ReturnType<typeof setTimeout>;
-    const arm = () => { clearTimeout(timeout); timeout = setTimeout(() => setActive(true), ms); };
+    const arm = () => {
+      clearTimeout(timeout);
+      if (!document.hidden) timeout = setTimeout(() => setActive(true), ms);
+    };
     const wake = () => { setActive(false); arm(); };
     const evs = ['pointermove', 'pointerdown', 'keydown', 'wheel', 'touchstart'];
     evs.forEach(ev => window.addEventListener(ev, wake, { passive: true }));
+    document.addEventListener('visibilitychange', wake);
     arm();
-    return () => { clearTimeout(timeout); evs.forEach(ev => window.removeEventListener(ev, wake)); };
+    return () => {
+      clearTimeout(timeout);
+      evs.forEach(ev => window.removeEventListener(ev, wake));
+      document.removeEventListener('visibilitychange', wake);
+    };
   }, []);
   useEffect(() => {
     if (!active) { cancelAnimationFrame(rafRef.current); return; }

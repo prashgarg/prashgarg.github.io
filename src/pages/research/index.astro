@@ -1,5 +1,6 @@
 ---
 import Layout from '../../layouts/Win95Layout.astro';
+import PaperLinks from '../../components/PaperLinks.astro';
 import { papers, tools, type PaperStatus } from '../../data/site';
 
 const order: PaperStatus[] = ['published', 'accepted', 'rr', 'working', 'other'];
@@ -15,8 +16,8 @@ const grouped = order.map(s => ({ status: s, items: papers.filter(p => p.status 
 const toolFor = (slug?: string) => slug ? tools.find(t => t.slug === slug) : undefined;
 ---
 <Layout title="Research — Prashant Garg" current="research">
-  <article class="max-w-3xl mx-auto px-4 pt-14 pb-20">
-    <h1 class="font-display text-3xl md:text-4xl font-bold mb-8">Research</h1>
+  <article class="max-w-3xl mx-auto px-4 pt-8 pb-16">
+    <h1 class="font-display text-3xl md:text-4xl font-bold mb-6">Research</h1>
 
     {grouped.map(group => (
       <section class="mb-10">
@@ -26,7 +27,7 @@ const toolFor = (slug?: string) => slug ? tools.find(t => t.slug === slug) : und
             const tool = toolFor(p.tools?.[0]);
             return (
               <li id={p.slug}>
-                <h3 class="font-display font-semibold text-lg leading-snug">
+                <h3 class="font-display font-semibold text-xl leading-snug">
                   <a href={`/research/${p.slug}`} class="hover:underline">{p.title}</a>
                 </h3>
                 <div class="mt-1 text-sm text-ink/70 dark:text-cream/70">
@@ -37,22 +38,17 @@ const toolFor = (slug?: string) => slug ? tools.find(t => t.slug === slug) : und
                   {!p.venue && p.year && <span>{p.year}</span>}
                   {p.award && <span> · {p.award.url ? <a href={p.award.url} target="_blank" rel="noopener" class="hover:underline">{p.award.label}</a> : p.award.label}</span>}
                 </div>
-                <div class="mt-1.5 text-sm">
-                  {p.links.map((l, i) => (
-                    <>{i > 0 && <span class="text-ink/70 dark:text-cream/65"> · </span>}<a href={l.url} target="_blank" rel="noopener" class="text-brand-red hover:underline">{l.label}</a></>
-                  ))}
-                  {tool && <><span class="text-ink/70 dark:text-cream/65"> · </span><a href={tool.url} target="_blank" rel="noopener" class="text-brand-red hover:underline">{tool.name}</a></>}
-                </div>
+                <PaperLinks links={p.links} tool={tool} />
                 {p.coverage && p.coverage.length > 0 && (
-                  <div class="mt-1 text-sm text-ink/70 dark:text-cream/70">
+                  <div class="mt-2 text-sm leading-relaxed text-ink/70 dark:text-cream/70">
                     Coverage: {p.coverage.map((c, i) => (
                       <>{i > 0 && <span>, </span>}<a href={c.url} target="_blank" rel="noopener" class="hover:underline">{c.outlet}</a></>
                     ))}
                   </div>
                 )}
-                <details class="mt-1.5 text-sm group">
-                  <summary class="list-none cursor-pointer text-ink/70 dark:text-cream/65 hover:text-ink dark:hover:text-cream select-none">Abstract</summary>
-                  <p class="mt-1.5 leading-relaxed text-ink/85 dark:text-cream/85">{p.blurb}</p>
+                <details class="paper-abstract mt-2 text-sm">
+                  <summary>Abstract</summary>
+                  <p class="mt-3 text-base text-ink/85 dark:text-cream/85">{p.blurb}</p>
                 </details>
               </li>
             );
@@ -62,3 +58,25 @@ const toolFor = (slug?: string) => slug ? tools.find(t => t.slug === slug) : und
     ))}
   </article>
 </Layout>
+<style>
+  .paper-abstract summary {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: fit-content;
+    cursor: pointer;
+    list-style: none;
+  }
+  .paper-abstract summary::-webkit-details-marker { display: none; }
+  .paper-abstract summary::before {
+    content: '';
+    width: 0.375rem;
+    height: 0.375rem;
+    border-right: 1.5px solid currentColor;
+    border-bottom: 1.5px solid currentColor;
+    transform: rotate(-45deg);
+  }
+  .paper-abstract[open] summary::before { transform: rotate(45deg); }
+  .paper-abstract summary:hover { text-decoration: underline; text-underline-offset: 0.2em; }
+  .paper-abstract summary:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
+</style>

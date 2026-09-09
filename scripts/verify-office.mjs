@@ -33,7 +33,7 @@ try {
   await page.waitForTimeout(800);
   await shot('desktop');
   assert.equal(await page.locator('iframe[title="prashantgarg.os"]').getAttribute('data-continuity'), 'same-frame');
-  await frame.getByRole('button', {name:'Research', exact:true}).dblclick();
+  await frame.getByRole('button', {name:'Research', exact:true}).click();
   await frame.locator('.win95-window').waitFor();
   await frame.frameLocator('iframe.win95-iframe').locator('h1').waitFor();
   await shot('research');

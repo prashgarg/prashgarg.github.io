@@ -1578,9 +1578,28 @@ function CoffeeMug() {
   );
 }
 
+/* Feathered points avoid visible squares in dust and steam. */
+function useSoftParticleTexture() {
+  const texture = useMemo(() => {
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = 64;
+    const ctx = canvas.getContext('2d')!;
+    const gradient = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+    gradient.addColorStop(0, 'rgba(255,255,255,1)');
+    gradient.addColorStop(0.3, 'rgba(255,255,255,0.5)');
+    gradient.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, 64, 64);
+    return new THREE.CanvasTexture(canvas);
+  }, []);
+  useEffect(() => () => texture.dispose(), [texture]);
+  return texture;
+}
+
 /* ---------- coffee steam (rising wisps from mug) -------------------- */
 function CoffeeSteam({ origin }: { origin: [number, number, number] }) {
   const ref = useRef<THREE.Points>(null);
+  const texture = useSoftParticleTexture();
   const COUNT = 12;
   const positions = useMemo(() => new Float32Array(COUNT * 3), []);
   const seeds = useMemo(() => {
@@ -1599,7 +1618,7 @@ function CoffeeSteam({ origin }: { origin: [number, number, number] }) {
   useFrame((state) => {
     if (!ref.current) return;
     const t = state.clock.elapsedTime;
-    const burst = sipUntilRef.current > t;          // boosted window
+    const burst = sipUntilRef.current > performance.now() / 1000;
     const speed = burst ? 0.95 : 0.35;              // faster during sip
     const reach = burst ? 0.65 : 0.40;              // higher rise
     for (let i = 0; i < COUNT; i++) {
@@ -1610,8 +1629,8 @@ function CoffeeSteam({ origin }: { origin: [number, number, number] }) {
     }
     ref.current.geometry.attributes.position.needsUpdate = true;
     const mat = ref.current.material as THREE.PointsMaterial;
-    mat.opacity = burst ? 0.50 : 0.22;
-    mat.size    = burst ? 0.06 : 0.04;
+    mat.opacity = burst ? 0.20 : 0.10;
+    mat.size    = burst ? 0.055 : 0.035;
   });
   return (
     <points ref={ref} position={origin}>
@@ -1619,11 +1638,12 @@ function CoffeeSteam({ origin }: { origin: [number, number, number] }) {
         <bufferAttribute attach="attributes-position" array={positions} count={COUNT} itemSize={3} />
       </bufferGeometry>
       <pointsMaterial
-        size={0.04}
+        map={texture}
+        size={0.035}
         color="#FFFFFF"
         sizeAttenuation
         transparent
-        opacity={0.22}
+        opacity={0.10}
         depthWrite={false}
       />
     </points>
@@ -1636,7 +1656,8 @@ function CoffeeSteam({ origin }: { origin: [number, number, number] }) {
 // without distracting from the workstation focal point.
 function DustParticles() {
   const ref = useRef<THREE.Points>(null);
-  const COUNT = 90;
+  const texture = useSoftParticleTexture();
+  const COUNT = 40;
   const positions = useMemo(() => {
     const arr = new Float32Array(COUNT * 3);
     for (let i = 0; i < COUNT; i++) {
@@ -1646,6 +1667,7 @@ function DustParticles() {
     }
     return arr;
   }, []);
+  const origins = useMemo(() => positions.slice(), [positions]);
   const seeds = useMemo(() => {
     const arr = new Float32Array(COUNT);
     for (let i = 0; i < COUNT; i++) arr[i] = Math.random() * 6.28;
@@ -1658,7 +1680,7 @@ function DustParticles() {
     for (let i = 0; i < COUNT; i++) {
       // gentle vertical bob + slow horizontal sway
       pos[i * 3 + 1] = 0.5 + ((seeds[i] + t * 0.08) % 3.4);
-      pos[i * 3]    += Math.sin(t * 0.07 + seeds[i]) * 0.0008;
+      pos[i * 3] = origins[i * 3] + Math.sin(t * 0.07 + seeds[i]) * 0.08;
     }
     ref.current.geometry.attributes.position.needsUpdate = true;
   });
@@ -1668,11 +1690,12 @@ function DustParticles() {
         <bufferAttribute attach="attributes-position" array={positions} count={COUNT} itemSize={3} />
       </bufferGeometry>
       <pointsMaterial
-        size={0.035}
+        map={texture}
+        size={0.018}
         color="#FFFFFF"
         sizeAttenuation
         transparent
-        opacity={0.25}
+        opacity={0.12}
         depthWrite={false}
       />
     </points>
@@ -1870,7 +1893,8 @@ function StationLite({ active = false, variant = 0 }: { active?: boolean; varian
           roughness={0.4}
           metalness={0.0}
           transparent
-          opacity={0.24}
+          opacity={0.12}
+          depthWrite={false}
         />
       </mesh>
     </>
@@ -2144,7 +2168,7 @@ function TexturedCarpet({ width, depth }: { width: number; depth: number }) {
   useMemo(() => {
     Object.values(props).forEach((t: any) => {
       t.wrapS = t.wrapT = THREE.RepeatWrapping;
-      t.repeat.set(width / 2.0, depth / 2.0);
+      t.repeat.set(width / 1.4, depth / 1.4);
       t.anisotropy = 8;
     });
   }, [props, width, depth]);
@@ -2155,8 +2179,8 @@ function TexturedCarpet({ width, depth }: { width: number; depth: number }) {
         {...(props as any)}
         color={C.carpet}
         roughness={0.92}
-        normalScale={[0.35, 0.35] as any}
-        aoMapIntensity={0.35}
+        normalScale={[0.12, 0.12] as any}
+        aoMapIntensity={0.12}
       />
     </mesh>
   );
@@ -2411,6 +2435,7 @@ function OfficeScene({ phase, onMonitorClick, onDesktopReady }: {
         color="#FFFFFF"
         castShadow
         shadow-mapSize={[4096, 4096]}
+        shadow-radius={5}
         shadow-camera-left={-12}
         shadow-camera-right={12}
         shadow-camera-top={12}
@@ -2474,7 +2499,7 @@ function OfficeScene({ phase, onMonitorClick, onDesktopReady }: {
         frames={1}
         opacity={0.52}
         scale={7.0}
-        blur={3.2}
+        blur={3.8}
         far={2.2}
         resolution={1024}
         color="#091812"
@@ -3453,7 +3478,7 @@ export default function Office() {
         transition: 'filter 0.55s ease-out',
       }}>
         <Canvas
-          shadows="soft"
+          shadows="percentage"
           dpr={[1, 1.75]}
           gl={{
             antialias: true,

@@ -3,6 +3,7 @@
 @theme {
   --font-sans: 'Inter', system-ui, sans-serif;
   --font-display: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+  --font-reading: Georgia, 'Times New Roman', serif;
 
   --color-cream: #E8E0CB;
   --color-cream-dim: #DCD3BC;

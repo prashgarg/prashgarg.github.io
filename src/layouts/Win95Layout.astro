@@ -165,6 +165,7 @@ const paletteIndex = [
     }
     .w95-titlebar-text {
       flex: 1;
+      min-width: 0;
       font-family: MSSerif, Arial, sans-serif;
       font-size: 12px;
       color: #fff;
@@ -173,11 +174,11 @@ const paletteIndex = [
       text-overflow: ellipsis;
     }
     .w95-titlebtn {
-      width: 16px;
-      height: 14px;
+      width: 24px;
+      height: 22px;
       background: var(--face);
       border: none;
-      font-size: 9px;
+      font-size: 11px;
       font-family: MSSerif, Arial, sans-serif;
       display: flex;
       align-items: center;
@@ -192,6 +193,9 @@ const paletteIndex = [
       box-shadow: inset 1px 1px var(--fr), inset -1px -1px var(--hi);
     }
     .w95-titlebtn-close { margin-left: 2px; }
+    @media (hover: none) and (pointer: coarse) {
+      .w95-titlebtn { width: 44px; height: 36px; font-size: 12px; }
+    }
 
     /* Skip-to-content link — visually hidden until keyboard-focused */
     .w95-skip {
@@ -242,6 +246,7 @@ const paletteIndex = [
     /* ---- Content area ---- */
     .w95-body {
       flex: 1;
+      font-family: var(--font-sans);
       overflow-y: auto;
       background: #fff;
       box-shadow: var(--sunken);
@@ -250,6 +255,10 @@ const paletteIndex = [
     }
     /* override global.css cream background inside the window */
     .w95-body { background-color: var(--color-cream) !important; }
+    .w95-body p {
+      font-family: var(--font-reading);
+      line-height: 1.65;
+    }
 
     /* ---- Status bar ---- */
     .w95-statusbar {
@@ -356,7 +365,7 @@ const paletteIndex = [
          is the scrollable content of a Win95 window iframe, so let html
          grow + scroll. Without this, content below the fold is unreachable. */
       html.w95-embed-html { height: auto !important; overflow-y: auto !important; }
-      body.w95-embed-body { height: auto !important; overflow: visible !important; background: var(--color-cream) !important; font-family: MSSerif, Arial, sans-serif; }
+      body.w95-embed-body { height: auto !important; overflow: visible !important; background: var(--color-cream) !important; }
       /* G1 (goal_12jun26): the shell keeps 100vh flex-centering in embed
          mode, so content taller than the window gets vertically centered
          and the overflow above the viewport is clipped UNREACHABLY (the

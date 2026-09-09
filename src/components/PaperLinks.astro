@@ -1,0 +1,58 @@
+---
+import type { PaperLink } from '../data/site';
+
+interface Props {
+  links: PaperLink[];
+  tool?: { name: string; url: string };
+  bibtex?: string;
+}
+const { links, tool, bibtex } = Astro.props;
+const primary = links.filter(link => /\bpaper\b|\bpreprint\b|\bessay\b/i.test(link.label));
+if (!primary.length && links.length) primary.push(links[0]);
+const supporting = links.filter(link => !primary.includes(link));
+// Some records already link to their companion tool in the links array.
+const normalized = (url: string) => url.replace(/\/$/, '');
+if (tool && !links.some(link => normalized(link.url) === normalized(tool.url))) {
+  supporting.push({ label: tool.name, url: tool.url });
+}
+---
+<div class="paper-links">
+  <div class="paper-primary-links">
+    {primary.map(link => <a href={link.url} target="_blank" rel="noopener">{link.label}</a>)}
+    {bibtex && <button type="button" id="cite-btn" data-bibtex={bibtex}>BibTeX</button>}
+  </div>
+  {supporting.length > 0 && (
+    <div class="paper-supporting-links">
+      {supporting.map(link => <a href={link.url} target="_blank" rel="noopener">{link.label}</a>)}
+    </div>
+  )}
+</div>
+<style>
+  .paper-links {
+    --paper-ink: var(--color-ink);
+    margin-top: 0.65rem;
+    font-size: 0.875rem;
+    line-height: 1.6;
+  }
+  :global(html.dark) .paper-links { --paper-ink: var(--color-cream); }
+  .paper-primary-links, .paper-supporting-links {
+    display: flex;
+    flex-wrap: wrap;
+    column-gap: 1rem;
+    row-gap: 0.25rem;
+  }
+  .paper-primary-links a {
+    color: var(--paper-ink);
+    font-weight: 650;
+    text-decoration: underline;
+    text-decoration-color: var(--color-brand-red);
+    text-underline-offset: 0.25em;
+  }
+  .paper-primary-links button, .paper-supporting-links {
+    color: color-mix(in srgb, var(--paper-ink) 75%, transparent);
+  }
+  .paper-primary-links button { cursor: pointer; }
+  .paper-supporting-links { margin-top: 0.4rem; }
+  a:hover, button:hover { text-decoration: underline; text-underline-offset: 0.25em; }
+  a:focus-visible, button:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
+</style>
