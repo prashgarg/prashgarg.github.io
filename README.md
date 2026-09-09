@@ -36,6 +36,10 @@ Most personal content is in [`src/data/site.ts`](src/data/site.ts):
 - `library` and `datasets` - writing, public goods, open data
 - `education`, `awards`, `teaching`, `experience` - CV sections
 
+The editable PDF CV source is [`documents/cv/CV.tex`](documents/cv/CV.tex).
+See its [build instructions](documents/cv/README.md). Only the compiled
+`public/cv.pdf` is published on the website; the TeX source stays in Git.
+
 To make your own version:
 
 1. Replace the content in `src/data/site.ts`.

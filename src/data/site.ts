@@ -5,17 +5,15 @@ export const site = {
   // Short first-person bio for the home/desktop surfaces. Facts (affiliations,
   // dates) are kept in sync with `affiliations` below.
   bio: "Hi, I'm Prashant Garg, an economist. My research focuses on economic and social measurement, using machine learning, econometrics, and network science. I am interested in science and innovation, economic and social networks, production, and information and media.\n\nI'm a postdoctoral researcher at Bocconi University and an Associate Fellow at INET Oxford. I completed my PhD in Economics at Imperial College London.",
-  // Public contact address — intentionally has NO trailing digit. Do not
-  // "correct" it by adding a digit; the digit-suffixed variant is a separate
-  // private account and must never appear anywhere on the site. (Confirmed.)
-  email: 'prashantgargib@gmail.com',
+  // Public contact address confirmed by Prashant in September 2026.
+  email: 'prashant.garg@unibocconi.it',
   // Canonical origin for share/canonical/BibTeX URLs. DNS cutover done
   // (2026-06-24): prashantgarg.org now serves this site over HTTPS, with
   // www + prashgarg.github.io 301-redirecting to it. Keep in sync with
   // astro.config `site`.
   origin: 'https://prashantgarg.org',
   // Public CV served from `public/cv.pdf`. Keep this local so every site
-  // surface opens the same TeX-compiled CV instead of an old Drive copy.
+  // surface opens the same PDF compiled from documents/cv/CV.tex.
   cv: '/cv.pdf',
   scholar: 'https://scholar.google.com/citations?hl=en&user=C3o_l0IAAAAJ',
   twitter: 'https://x.com/Prashant_Garg_',
@@ -685,8 +683,8 @@ export const datasets: Dataset[] = [
 ];
 
 /* ── CV sections (education / awards / teaching / experience) ──────
-   Extracted from the Drive CV PDF + the old-site bio. The PhD entry
-   has no month-precise dates in any source — flagged for review. */
+   Keep in sync with documents/cv/CV.tex and the author's updates.
+   The supplied source gives years, not month-precise PhD dates. */
 export interface CvEntry {
   period: string;
   title: string;
@@ -696,7 +694,9 @@ export interface CvEntry {
 }
 
 export const education: CvEntry[] = [
-  { period: '2022–2026', title: 'PhD in Economics (incl. MRes, Distinction)', org: 'Imperial College London' },
+  { period: '2022–2026', title: 'PhD in Economics and Public Policy', org: 'Imperial College London' },
+  { period: '2022', title: 'MRes in Economics', org: 'Imperial College London', detail: 'Distinction.' },
+  { period: '2019', title: 'MSc Economics', org: 'University College London' },
   { period: '2018', title: 'BSc Economics', org: 'Cardiff University', detail: 'First-class honours; Helen Robinson Memorial Prize for the highest score in microeconomic theory.' },
   { period: '2015', title: 'International Baccalaureate', org: 'GD Goenka World School, Gurgaon', detail: "Chairman's Award for the highest overall score in the school (43/45), 99th percentile globally." },
 ];
@@ -721,4 +721,5 @@ export const experience: CvEntry[] = [
   { period: '2026', title: 'Research Associate', org: 'University of Cambridge', detail: 'Postdoctoral appointment beginning in May 2026.' },
   { period: '2025–', title: 'Visiting Researcher', org: 'University of Cambridge, Computer Science Department', detail: 'Hosted by Neil Lawrence.' },
   { period: '2024–2025', title: 'Visiting Researcher', org: 'International Finance Corporation (IFC), Paris / Washington DC', detail: 'Economics Research Unit; hosted by Ralf Martin.' },
+  { period: '2017', title: 'Research Assistant', org: 'Institute of Welsh Affairs, Cardiff', detail: 'Three-month appointment at a policy think tank.' },
 ];
