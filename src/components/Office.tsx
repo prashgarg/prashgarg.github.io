@@ -61,7 +61,7 @@ const ROOM_H = 3.4;
 
 /* ---------- palette --------------------------------------------------- */
 const C = {
-  carpet:    '#64A76E',   // cool minty green — iterating toward ref #79B27D rendered (G27)
+  carpet:    '#719779',   // muted institutional green; texture carries the variation
   wall:      '#B2C4CA',   // cool white, held under the ACES knee — show walls sample #B2C6CF (G1)
   ceiling:   '#D2D4D6',
   desk:      '#E3E4E3',   // neutral white — was warm cream #E4E2DC (G22: desks green/warm-washed)
@@ -228,11 +228,7 @@ function FannedPaper({ position, rot = 0 }: { position: [number, number, number]
 /* ---------- camera rig constants ------------------------------------- */
 const ENTRY_MS = 2400;
 const DOLLY_MS = 1600;
-function easeOutExpo(t: number) { return t >= 1 ? 1 : 1 - Math.pow(2, -10 * t); }
-function easeOutCubic(t: number) { return 1 - Math.pow(1 - t, 3); }
-// easeInOutCubic — smooth acceleration AND smooth deceleration, used
-// for the dolly because pure easeOutCubic kicks too hard at the start
-// and crawls at the end. This reads as a deliberate camera move.
+// Gentle acceleration and deceleration for the entrance and monitor dolly.
 function easeInOutCubic(t: number) {
   return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 }
@@ -718,7 +714,7 @@ function CameraRig({ phase, onArrived, onEntryDone, reducedMotion }: {
     return () => { window.removeEventListener('pointermove', mv); window.removeEventListener('pointerleave', lv); };
   }, []);
 
-  useFrame((state) => {
+  useFrame((state, delta) => {
     // ── entry ─────────────────────────────────────────────────────────────
     if (phase === 'entering') {
       if (entryStartTime.current === null) {
@@ -726,18 +722,15 @@ function CameraRig({ phase, onArrived, onEntryDone, reducedMotion }: {
         camera.position.copy(CAM_ENTRY_POS);
         tgt.current.copy(CAM_ENTRY_TGT);
       }
-      const k = easeOutExpo(Math.min(1, (performance.now() - entryStartTime.current) / ENTRY_MS));
+      const k = easeInOutCubic(Math.min(1, (performance.now() - entryStartTime.current) / ENTRY_MS));
       camera.position.lerpVectors(CAM_ENTRY_POS, idlePos.current, k);
       tgt.current.lerpVectors(CAM_ENTRY_TGT, idleTgt.current, k);
       camera.lookAt(tgt.current);
-      if (!entryFired.current && k >= 0.99) { entryFired.current = true; onEntryDone(); }
+      if (!entryFired.current && k >= 1) { entryFired.current = true; onEntryDone(); }
       return;
     }
     // ── dolly ──────────────────────────────────────────────────────────────
-    // easeInOutCubic gives the camera a gentle launch AND a gentle
-    // arrival — feels like a deliberate "lean forward to read" move
-    // instead of the easeOutCubic snap-then-crawl we had before.
-    // composite mode frames the monitor instead of filling the viewport
+    // Composite mode frames the monitor instead of filling the viewport.
     // Keep the whole screen reachable when a desktop browser is narrowed.
     // Preserve the normal close-up and pull back only when width requires it.
     compositeEnd.current.copy(CAM_COMPOSITE_POS);
@@ -778,34 +771,27 @@ function CameraRig({ phase, onArrived, onEntryDone, reducedMotion }: {
       return;
     }
     // ── reduced motion: hold a still idle framing ───────────────────────
-    // No breath, drift, parallax, or lean-in — settle to the idle pose and
-    // stop. Entry and exit also skip the dolly for reduced motion.
+    // Entry and exit also skip the dolly for reduced motion.
     if (reducedMotion) {
-      camera.position.lerp(idlePos.current, 0.1);
-      tgt.current.lerp(idleTgt.current, 0.1);
+      camera.position.copy(idlePos.current);
+      tgt.current.copy(idleTgt.current);
       camera.lookAt(tgt.current);
       return;
     }
-    // ── idle: parallax + LEAN-IN on cursor approach ──────────────────────
-    // Strategy: when cursor moves into the lower-centre of the viewport
-    // (where the workstation lives) the camera smoothly transitions from
-    // CAM_IDLE_POS (wide doorway view) to CAM_LEAN_POS (close-up of
-    // keyboard + monitor). When cursor moves back up/out, it pulls back.
-    //
-    // Trigger is screen-space (not world-space) on purpose — using world
-    // proximity would create a feedback loop: camera leans in → ws moves
-    // on screen → cursor no longer near ws → camera pulls back. Screen
-    // position is stable through the transition.
+    // ── idle: a slight response to the cursor ──────────────────────────
+    // Keep the workstation framing steady. A small lean toward the lower
+    // centre hints at depth; the full approach belongs to Enter / click.
+    // Screen-space input avoids a feedback loop as the camera moves.
     const mx = mouse.current.x, my = mouse.current.y;
     // yLean: 0 at mouse.y=0 (centre), 1 at mouse.y>=0.5 (lower half)
     // xCentre: 1 when |mx|<small, fades to 0 by |mx|=0.85
     const yLean   = Math.max(0, Math.min(1, my / 0.5));
     const xCentre = 1 - Math.min(1, Math.abs(mx) / 0.85);
-    const leanK   = Math.pow(yLean * xCentre, 1.15);   // 0…1 — eased
-    // sine drift so it never feels static
+    const leanK   = Math.pow(yLean * xCentre, 1.15) * 0.14;
+    // Barely perceptible idle motion keeps the room from feeling frozen.
     const ms = state.clock.elapsedTime * 1000;
-    const driftX = Math.sin((ms + 19000) * 0.00007) * 0.18;
-    const driftY = Math.sin((ms +  1000) * 0.000003) * 0.06;
+    const driftX = Math.sin((ms + 19000) * 0.00007) * 0.035;
+    const driftY = Math.sin((ms +  1000) * 0.000003) * 0.01;
     // interpolate IDLE ↔ LEAN positions / targets by leanK
     const basePosX = idlePos.current.x * (1 - leanK) + CAM_LEAN_POS.x * leanK;
     const basePosY = idlePos.current.y * (1 - leanK) + CAM_LEAN_POS.y * leanK;
@@ -816,23 +802,23 @@ function CameraRig({ phase, onArrived, onEntryDone, reducedMotion }: {
     // parallax — dialed down during lean so the cursor doesn't fight the
     // smooth lean-in transition
     const parallaxScale = 1 - leanK * 0.55;
-    const wx = basePosX + driftX - mx * 0.34 * parallaxScale;
-    const wy = basePosY + driftY + my * 0.20 * parallaxScale * (1 - leanK * 0.8);
-    // slow clinical "breath" — ~22s-period ±9cm forward/back creep, the
-    // show's signature unsettling dolly; yields to the lean-in.
-    const breath = Math.sin(ms * 0.000045) * 0.09 * (1 - leanK);
+    const wx = basePosX + driftX - mx * 0.11 * parallaxScale;
+    const wy = basePosY + driftY + my * 0.06 * parallaxScale * (1 - leanK * 0.8);
+    const breath = Math.sin(ms * 0.000045) * 0.018 * (1 - leanK);
     const wz = basePosZ + breath;
-    // smooth lerp toward target — slightly faster lerp during lean for
-    // responsiveness, slower at idle for stillness
-    const lerpK = 0.05 + leanK * 0.04;
+    // Time-based damping keeps the same response at different frame rates.
+    // Cap a long frame so returning to a background tab cannot cause a jump.
+    const dt = Math.min(delta, 0.1);
+    const lerpK = 1 - Math.exp(-3 * dt);
+    const targetK = 1 - Math.exp(-4 * dt);
     camera.position.x += (wx - camera.position.x) * lerpK;
     camera.position.y += (wy - camera.position.y) * lerpK;
     camera.position.z += (wz - camera.position.z) * lerpK;
-    const tx = baseTgtX + mx * 0.11 * parallaxScale;
-    const ty = baseTgtY - my * 0.06 * parallaxScale * (1 - leanK * 0.7);
-    tgt.current.x += (tx - tgt.current.x) * (lerpK + 0.02);
-    tgt.current.y += (ty - tgt.current.y) * (lerpK + 0.02);
-    tgt.current.z += (baseTgtZ - tgt.current.z) * (lerpK + 0.02);
+    const tx = baseTgtX + mx * 0.03 * parallaxScale;
+    const ty = baseTgtY - my * 0.015 * parallaxScale * (1 - leanK * 0.7);
+    tgt.current.x += (tx - tgt.current.x) * targetK;
+    tgt.current.y += (ty - tgt.current.y) * targetK;
+    tgt.current.z += (baseTgtZ - tgt.current.z) * targetK;
     camera.lookAt(tgt.current);
   });
   return null;
@@ -1731,7 +1717,7 @@ function StationLite({ active = false, variant = 0 }: { active?: boolean; varian
         <meshStandardMaterial
           {...(deskNormals as any)}
           color={C.desk}
-          roughness={0.42}
+          roughness={0.56}
           metalness={0.02}
           normalScale={[0.18, 0.18] as any}
         />
@@ -1959,7 +1945,7 @@ function DeskLamp({ pos }: { pos: [number, number, number] }) {
   // Toggleable on/off via click. Heffer-style — clicking the shade
   // flicks the light on or off (emissive + pointLight both gated).
   const [on, setOn] = useState(true);
-  const metal = { roughness: 0.35, metalness: 0.5 };
+  const metal = { roughness: 0.55, metalness: 0.25 };
   // Lathe profile for a real cone/dome task-lamp shade (wide rim at y0,
   // narrowing to the neck at the top).
   const shadeProfile = useMemo(() => [
@@ -2005,7 +1991,7 @@ function DeskLamp({ pos }: { pos: [number, number, number] }) {
             {...metal}
             side={THREE.DoubleSide}
             emissive="#EAF1FF"
-            emissiveIntensity={on ? 0.20 : 0.0}
+            emissiveIntensity={on ? 0.08 : 0.0}
           />
         </mesh>
       </group>
@@ -2013,7 +1999,7 @@ function DeskLamp({ pos }: { pos: [number, number, number] }) {
       {on && (
         <pointLight
           position={[0.13, 0.22, 0]}
-          intensity={1.2}
+          intensity={0.55}
           distance={1.3}
           decay={2}
           color="#EAF1FF"
@@ -2090,7 +2076,7 @@ function CarpetVacuumTracks({ width, depth, cx, cz }: {
         float avoid = smoothstep(1.5, 2.8, r);
         // outer FALLOFF — fade toward room corners where vacuum doesn't reach
         float falloff = 1.0 - smoothstep(11.0, 18.0, r);
-        float a = band * bright * 0.09 * avoid * falloff;
+        float a = band * bright * 0.06 * avoid * falloff;
         gl_FragColor = vec4(uTint, a);
       }
     `,
@@ -2132,7 +2118,7 @@ function FloorSheen({ cx, cz, radius }: { cx: number; cz: number; radius: number
       void main() {
         vec2 d = vUv - 0.5;
         float r = length(d) * 2.0;          // 0 at centre, 1 at edge
-        float a = pow(1.0 - smoothstep(0.0, 1.0, r), 2.2) * 0.55;
+        float a = pow(1.0 - smoothstep(0.0, 1.0, r), 2.2) * 0.22;
         gl_FragColor = vec4(uTint, a);
       }
     `,
@@ -2413,29 +2399,15 @@ function OfficeScene({ phase, onMonitorClick, onDesktopReady }: {
           Density kept low so the bright register survives. */}
       <fogExp2 attach="fog" args={['#D2E0DC', 0.020]} />
       {/* ── LIGHTING ─────────────────────────────────────────────────── */}
-      {/* Image-based ambient lighting + reflections — soft "lobby" preset
-          gives the scene proper environmental cues so metallic + glossy
-          surfaces feel grounded. background={false} keeps our 3D walls. */}
-      {/* G22 (goal_12jun26): the lobby preset is WARM — at 0.62 it pushed
-          every white surface cream (#E9E9D1 ceiling, B-channel ~24 under
-          R). Halved; the cooled ambient below compensates brightness. */}
-      {/* Self-hosted HDR (vendored from pmndrs/drei-assets, CC0) — the
-          `preset="lobby"` form hotlinked a 1.5MB HDR from raw.githack.com
-          on the lighting critical path (off-origin SPOF + hidden weight).
-          Same image, now served from our own origin (H2). */}
-      <Environment files="/hdri/lobby.hdr" background={false} environmentIntensity={0.20} />
+      {/* Self-hosted CC0 HDR from pmndrs/drei-assets. Keep its warm
+          reflections faint beneath the cool fluorescent light. */}
+      <Environment files="/hdri/lobby.hdr" background={false} environmentIntensity={0.18} />
 
-      {/* Single dominant SHADOW caster — angled "sun"-style directional.
-          All nine ceiling pointLights provide flat fluorescent flood
-          without shadow cost; this one casts contact shadows under
-          furniture so the scene reads grounded. */}
-      {/* Dominant shadow caster — strengthened (0.55 → 1.05) for the
-          dramatic pool-and-shadow contrast the reference has. Same
-          angled-from-above position; carries all the hard furniture
-          shadows. */}
+      {/* One shadow caster gives the furniture definition; the ceiling
+          lights fill the room without additional shadow maps. */}
       <directionalLight
         position={[8, 9, 4]}
-        intensity={0.75}
+        intensity={0.95}
         color="#FFFFFF"
         castShadow
         shadow-mapSize={[4096, 4096]}
@@ -2449,27 +2421,11 @@ function OfficeScene({ phase, onMonitorClick, onDesktopReady }: {
         shadow-normalBias={0.06}
       />
 
-      {/* Ambient + hemisphere TURNED DOWN. Previously the room was
-          flooded with so much ambient fill that the directional light's
-          shadows couldn't develop. Halving ambient (1.75 → 0.85) and
-          hemisphere (0.55 → 0.28) lets the dir-light and the spot
-          carry the contrast — bright surfaces stay bright, under-desk
-          stays dark. */}
-      {/* G2: raised ambient + hemisphere for the bright, even, clinical
-          fluorescent flood of the reference (was 0.85 / 0.28 — too dim &
-          dramatic). Higher fill softens shadows toward the show's look. */}
-      {/* G1 (goal_09jun26): raised + cooled — scene sampled ~1.6× darker than
-          the show with a warm cast (carpet #435338 vs ref #67A36F). The show
-          is bright clinical fluorescent with a faint cool-cyan cast (B ≥ R
-          on whites). */}
-      {/* G22: cooled + slightly raised (compensates the env cut). The old
-          hemisphere GROUND '#B6CCB2' bounced green onto walls/desks —
-          neutralized toward cool grey. */}
-      {/* cooler, less flooded so the dark forest dividers keep saturation;
-          the white-point lift (exposure) keeps the room from going dim.
-          Ground term neutral grey (was sage #A8B4AE → green bounce). */}
-      <ambientLight intensity={1.6} color="#E6F1F7" />
-      <hemisphereLight args={['#EFF7FD', '#B8BEBE', 0.6]} />
+      {/* Even, cool fill preserves the clinical brightness while leaving
+          some contrast beneath the desks. Neutral ground avoids green
+          bounce on the white surfaces. */}
+      <ambientLight intensity={1.35} color="#E6F1F7" />
+      <hemisphereLight args={['#EFF7FD', '#B8BEBE', 0.5]} />
 
       {/* DESK POOL spotlight — a focused down-light right above the
           active SW station's desk surface. Penumbra creates a soft
@@ -2481,22 +2437,19 @@ function OfficeScene({ phase, onMonitorClick, onDesktopReady }: {
         target-position={[SOUTH_DX + 0.10, 0.74, DESK_Z - 0.10]}
         angle={0.40}
         penumbra={0.55}
-        intensity={9.0}
+        intensity={6.5}
         distance={8.0}
         decay={1.8}
         color="#FBFCFF"
         castShadow={false}
       />
 
-      {/* Ceiling panel point lights — fluorescent flood, but intensity
-          knocked down (7.0 → 4.0) so the new dir-light and spot can
-          carry the drama. Still bright enough to fill the cavernous
-          room corners. */}
+      {/* Broad fluorescent fill keeps the distant room evenly lit. */}
       {lightGrid.map(([x, z], i) => (
         <pointLight
           key={i}
           position={[x, ROOM_H - 0.25, z]}
-          intensity={9.0}
+          intensity={8.0}
           distance={26}
           decay={2}
           color="#F5F8FF"
@@ -2514,17 +2467,12 @@ function OfficeScene({ phase, onMonitorClick, onDesktopReady }: {
       {/* ── DUST PARTICLES — atmospheric haze ─────────────────────── */}
       <DustParticles />
 
-      {/* ── ContactShadows under chair + desk area — DEEPER (0.42 →
-          0.75) to read as a proper grounding shadow now that ambient
-          + hemisphere are turned down. Wider scale + slightly sharper
-          blur so the desk silhouette shows on the carpet underneath. */}
-      {/* G1: opacity 0.75→0.45, blur 2.4→3.2 — the dense shadow plane
-          blended into the OLD dark carpet but read as a hard dark
-          rectangle on the new bright green. */}
+      {/* Soft contact shadows anchor the desk and chair without a hard
+          dark boundary on the carpet. */}
       <ContactShadows
         position={[0.3, 0.012, DESK_Z + 0.7]}
         frames={1}
-        opacity={0.45}
+        opacity={0.52}
         scale={7.0}
         blur={3.2}
         far={2.2}
@@ -3510,7 +3458,7 @@ export default function Office() {
           gl={{
             antialias: true,
             toneMapping: THREE.ACESFilmicToneMapping,
-            toneMappingExposure: 1.45,
+            toneMappingExposure: 1.38,
           }}
         >
           <PerspectiveCamera makeDefault position={[CAM_ENTRY_POS.x, CAM_ENTRY_POS.y, CAM_ENTRY_POS.z]} fov={54} />
@@ -3524,10 +3472,9 @@ export default function Office() {
               SSAO costs almost nothing visually and kills the shimmer. With no
               AO pass we no longer need the normal pass either. */}
           <EffectComposer multisampling={0} disableNormalPass={true}>
-            {/* Stronger bloom — Severance MDR is shot bright/overexposed,
-                ceiling panels glow into the surrounding cells. Tight threshold
-                + low intensity keeps the glow ON the panels, not the frame. */}
-            <Bloom intensity={0.26} luminanceThreshold={0.96} luminanceSmoothing={0.45} mipmapBlur />
+            {/* A little glow around the ceiling panels, with enough
+                restraint to keep the lamp and white furniture defined. */}
+            <Bloom intensity={0.16} luminanceThreshold={0.96} luminanceSmoothing={0.45} mipmapBlur />
           </EffectComposer>
         </Canvas>
       </div>}
