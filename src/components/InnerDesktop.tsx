@@ -16,6 +16,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { papers, talks, site } from '../data/site';
+import { MONITOR_VIEWPORT } from '../lib/monitor';
 
 
 /* ---------- Win95 CSS injected once ----------------------------------- */
@@ -239,7 +240,7 @@ const WIN95_STYLE = `
   align-items: stretch;
   justify-content: flex-start;
   height: 100%;
-  padding: 38px 42px;
+  padding: 30px 32px;
   box-sizing: border-box;
   overflow-y: auto;
   gap: 22px;
@@ -250,13 +251,13 @@ const WIN95_STYLE = `
   display: flex;
   flex-direction: row;
   align-items: flex-start;
-  gap: 36px;
+  gap: 28px;
   text-align: left;
 }
 .win95-home-headtext { flex: 1; min-width: 0; }
 /* portrait — bigger white-matted print, sits on the left, doesn't shrink */
 .win95-home-photo {
-  width: 238px;
+  width: 200px;
   height: auto;
   flex-shrink: 0;
   display: block;
@@ -1378,11 +1379,11 @@ export default function InnerDesktop({ onClose, embedded = false, active = true 
   const containerRef = useRef<HTMLDivElement>(null);
   // Container size — recomputed on resize. Used so the cascade window
   // defaults size sensibly in the embedded CRT viewport vs full-screen.
-  // Default matches the composited /os viewport (1040×795) so the
+  // Default matches the composited /os viewport so the
   // deep-link auto-open sizes windows correctly even before the
   // ResizeObserver fires — otherwise windows clamp to a tiny 662px
   // (research opened undersized in the monitor).
-  const [containerSize, setContainerSize] = useState({ w: 1280, h: 800 });
+  const [containerSize, setContainerSize] = useState({ w: Number(MONITOR_VIEWPORT.width), h: Number(MONITOR_VIEWPORT.height) });
   useEffect(() => {
     const measure = () => {
       const el = containerRef.current;

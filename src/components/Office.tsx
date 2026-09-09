@@ -17,6 +17,7 @@ import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import * as THREE from 'three';
 import InnerDesktop from './InnerDesktop';
 import '../styles/office.css';
+import { MONITOR_VIEWPORT } from '../lib/monitor';
 
 /* ---------- shared UI audio helpers ---------------------------------- */
 // Mechanical click + keyboard typing sounds, synthesised inline so we
@@ -2348,9 +2349,9 @@ function MonitorDesktop({ phase, onEnter, onReady }: {
   return (
     <Html transform occlude="blending"
       position={[MONITOR_WORLD.x, MONITOR_WORLD.y + 0.02, MONITOR_WORLD.z + 0.218]}
-      rotation={[0, 0, 0]} scale={0.0196} zIndexRange={[100, 0]}
+      rotation={[0, 0, 0]} scale={MONITOR_VIEWPORT.scale} zIndexRange={[100, 0]}
       pointerEvents={phase === 'idle' || active ? 'auto' : 'none'}
-      style={{ width: '1280px', height: '800px', overflow: 'hidden' }}>
+      style={{ width: MONITOR_VIEWPORT.width, height: MONITOR_VIEWPORT.height, overflow: 'hidden' }}>
       <div className="office-monitor" data-ready={ready}>
         <iframe ref={frame} src={src} title="prashantgarg.os"
           inert={!active} aria-hidden={!active} tabIndex={active ? 0 : -1}

@@ -45,7 +45,7 @@
 }
 .office-enter { animation: office-cue-in .8s ease both; }
 .office-enter span, .office-exit span { opacity: .6; margin-left: 12px; font-size: 10px; }
-.office-monitor { position: relative; width: 1280px; height: 800px; }
+.office-monitor { position: relative; width: 100%; height: 100%; }
 .office-monitor iframe {
   width: 100%; height: 100%; border: 0; display: block;
   background: var(--office-screen);
