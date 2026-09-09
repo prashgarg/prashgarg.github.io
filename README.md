@@ -21,6 +21,10 @@ The home page is a 3D office scene built with
 Press Enter or click the CRT monitor and the camera moves into a
 Windows 95-style desktop. The desktop is a real same-origin DOM iframe
 composited into the 3D monitor with drei's `<Html transform>`.
+It loads during the initial splash and stays visible through entry and exit;
+there is no second boot sequence. Open windows survive a trip back to the room.
+Touch devices and `?composite=0` use a fullscreen desktop, and reduced-motion
+mode skips the camera transitions.
 
 The inner site has pages for research, talks, library, now, and CV. A plain
 fallback lives at [`/standard`](https://prashantgarg.org/standard) for readers
@@ -64,6 +68,11 @@ npm run build        # static build into dist/
 npm run preview      # preview the built site
 ```
 
+With the built site served locally, `node scripts/verify-office.mjs` checks
+monitor continuity, window persistence, keyboard focus, entry/exit, and reload.
+It saves entrance, transition, and desktop screenshots under `shots/office-check/`.
+Pass a different base URL as its first argument when comparing worktrees.
+
 On a Dropbox-synced checkout, local builds can occasionally stall. The GitHub
 Pages CI build is the deployment source of truth.
 
@@ -73,6 +82,8 @@ Pages CI build is the deployment source of truth.
   audio, room interactions
 - `src/components/InnerDesktop.tsx` - Windows 95-style desktop, windows, start
   menu, tray, keyboard shortcuts
+- `src/components/OsPage.tsx` - monitor readiness and keyboard-focus handoff
+- `src/styles/office.css` - room controls and the monitor's glass overlay
 - `src/layouts/Win95Layout.astro` - inner-page chrome and embed mode
 - `src/pages/*.astro` - public pages
 - `src/pages/og/[...route].ts` - social image generation

@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import InnerDesktop from './InnerDesktop';
 
 /**
@@ -9,8 +10,25 @@ import InnerDesktop from './InnerDesktop';
  * transformed in 3D. Shutdown bubbles to the parent room via postMessage.
  */
 export default function OsPage() {
+  const [active, setActive] = useState(() => window.parent === window);
+  useEffect(() => {
+    if (window.parent === window) return;
+    const receive = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin || event.source !== window.parent) return;
+      if (event.data?.type === 'pg-office-focus') setActive(event.data.active === true);
+    };
+    window.addEventListener('message', receive);
+    // The child and its styles have committed before the room reveals it.
+    const frame = requestAnimationFrame(() => {
+      window.parent.postMessage({ type: 'pg-desktop-ready' }, window.location.origin);
+    });
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener('message', receive);
+    };
+  }, []);
   const onClose = () => {
-    try { window.parent?.postMessage({ type: 'pg-shutdown' }, '*'); } catch { /* */ }
+    try { window.parent?.postMessage({ type: 'pg-shutdown' }, window.location.origin); } catch { /* */ }
   };
-  return <InnerDesktop embedded={false} onClose={onClose} />;
+  return <InnerDesktop embedded={false} active={active} onClose={onClose} />;
 }

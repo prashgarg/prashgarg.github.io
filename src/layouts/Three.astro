@@ -69,6 +69,8 @@ const canonical  = Astro.site ? new URL(path === '/' ? '/' : `${path}/`, Astro.s
         background: rgba(19,16,11,0.38); backdrop-filter: blur(3px);
       }
       #text-version:hover { color: #E8DBB6; border-color: rgba(232,219,182,0.45); }
+      /* The fullscreen desktop carries this link in its taskbar. */
+      body:has(.win95-desktop.embedded) #text-version { display: none; }
     </style>
   </head>
   <body>

@@ -1,0 +1,67 @@
+.office {
+  --office-ink: #0e0d0b;
+  --office-paper: #e8eedf;
+  --office-panel: rgb(31 47 39 / 72%);
+  --office-line: rgb(199 213 195 / 24%);
+  --office-screen: #3e9697;
+  --office-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  outline: none;
+}
+.office-hud {
+  position: fixed;
+  bottom: 18px;
+  left: 20px;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--office-paper);
+  font: 11px var(--office-mono);
+  letter-spacing: .06em;
+}
+.office-control {
+  color: var(--office-paper);
+  background: var(--office-panel);
+  border: 1px solid var(--office-line);
+  font: 11px var(--office-mono);
+  letter-spacing: .06em;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  transition: background .2s ease, border-color .2s ease;
+}
+.office-control:hover { border-color: var(--office-paper); }
+.office-control:focus-visible, .office-monitor-enter:focus-visible {
+  outline: 2px solid var(--office-paper);
+  outline-offset: 4px;
+}
+.office-sound { width: 34px; height: 34px; display: grid; place-items: center; padding: 0; }
+.office-enter, .office-exit {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 60;
+  padding: 8px 16px;
+}
+.office-enter { animation: office-cue-in .8s ease both; }
+.office-enter span, .office-exit span { opacity: .6; margin-left: 12px; font-size: 10px; }
+.office-monitor { position: relative; width: 1280px; height: 800px; }
+.office-monitor iframe {
+  width: 100%; height: 100%; border: 0; display: block;
+  background: var(--office-screen);
+}
+.office-monitor-enter {
+  position: absolute; inset: 0; z-index: 2;
+  width: 100%; height: 100%; padding: 0; border: 0;
+  background: transparent; cursor: pointer;
+}
+.office-crt-glass {
+  position: absolute; inset: 0; pointer-events: none;
+  background: repeating-linear-gradient(to bottom, rgb(0 0 0 / 3.5%) 0px, rgb(0 0 0 / 3.5%) 1px, transparent 1px, transparent 3px);
+  box-shadow: inset 0 0 28px 5px rgb(0 0 0 / 15%);
+}
+@keyframes office-cue-in { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .office-control { transition: none; }
+  .office-enter { animation: none; }
+}

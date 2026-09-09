@@ -1,5 +1,5 @@
 /**
- * InnerDesktop — Win95-style overlay that appears after the CRT boot sequence.
+ * InnerDesktop — the live Win95 desktop, shared by the monitor and touch view.
  *
  * Aesthetic / component patterns adapted from Henry Heffernan's open-source
  * portfolio-inner-site (MIT):
@@ -36,34 +36,16 @@ const WIN95_STYLE = `
   overflow: hidden;            /* positioning context for absolute windows */
   font-family: MSSerif, 'Arial', sans-serif;
   user-select: none;
+  outline: none;
 }
-/* Embedded mode — sized to the EXACT pixel rect of the CRT screen plane
-   as projected to the viewport every frame. CSS vars --crt-left/top/w/h
-   are written by CrtScreenProjector inside the R3F canvas. Fallbacks
-   keep the overlay sensible if the projector hasn't run yet. */
+/* Touch and ?composite=0 use a fullscreen fallback. A projected CRT
+   rectangle can extend beyond the viewport and hide icons or the tray. */
 .win95-desktop.embedded {
-  inset: auto;
-  top:    var(--crt-top,  50%);
-  left:   var(--crt-left, 50%);
-  width:  var(--crt-w,    min(66vw, 880px));
-  height: var(--crt-h,    min(78vh, 670px));
-  transform: none;
-  box-shadow: 0 0 0 2px #2b2b2b, 0 18px 50px rgba(0,0,0,0.55);
-  /* fade-in when boot completes and InnerDesktop mounts */
+  inset: 0;
+  width: 100%;
+  height: 100dvh;
+  box-shadow: none;
   animation: w95-fadein 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-/* PHONES + ALL TOUCH DEVICES: the CRT projection is wider than a
-   portrait viewport (the monitor camera frames landscape), which
-   clipped the desktop on both edges. Below 700px — and on ANY touch
-   device, where G7 skips the 3D room entirely so there is no CRT to
-   project into — the embedded desktop goes FULL-SCREEN. */
-@media (max-width: 700px), (hover: none) and (pointer: coarse) {
-  .win95-desktop.embedded {
-    top: 0; left: 0;
-    width: 100vw;
-    height: 100dvh;
-    box-shadow: none;
-  }
 }
 @keyframes w95-fadein {
   0%   { opacity: 0; }
@@ -257,10 +239,10 @@ const WIN95_STYLE = `
   align-items: stretch;
   justify-content: flex-start;
   height: 100%;
-  padding: 30px 38px;
+  padding: 38px 42px;
   box-sizing: border-box;
   overflow-y: auto;
-  gap: 18px;
+  gap: 22px;
 }
 /* masthead — photo on the SIDE (bigger), text to its right, left-aligned.
    Fills the panel width so there's no dead whitespace down the sides. */
@@ -268,13 +250,13 @@ const WIN95_STYLE = `
   display: flex;
   flex-direction: row;
   align-items: flex-start;
-  gap: 30px;
+  gap: 36px;
   text-align: left;
 }
 .win95-home-headtext { flex: 1; min-width: 0; }
 /* portrait — bigger white-matted print, sits on the left, doesn't shrink */
 .win95-home-photo {
-  width: 210px;
+  width: 238px;
   height: auto;
   flex-shrink: 0;
   display: block;
@@ -285,8 +267,8 @@ const WIN95_STYLE = `
 /* prose bio (mirrors the old site's bio) — left-aligned, fills column */
 .win95-home-bio {
   font-family: Millennium, 'Times New Roman', serif;
-  font-size: 17px;
-  line-height: 1.6;
+  font-size: 20px;
+  line-height: 1.48;
   color: #333;
   text-align: left;
   max-width: none;
@@ -294,14 +276,14 @@ const WIN95_STYLE = `
 }
 .win95-home-name {
   font-family: 'Cormorant Garamond', Georgia, serif;
-  font-size: 52px;
-  line-height: 0.98;
+  font-size: 64px;
+  line-height: 1.02;
   color: #1a1a1a;
   margin-bottom: 6px;
 }
 .win95-home-subtitle {
   font-family: Millennium, 'Times New Roman', serif;
-  font-size: 18px;
+  font-size: 19px;
   color: #555;
 }
 /* narrow panel (beside the icon column on small monitors) — stack the
@@ -322,7 +304,7 @@ const WIN95_STYLE = `
 }
 .win95-contact-link {
   font-family: Millennium, 'Times New Roman', serif;
-  font-size: 13px;
+  font-size: 15px;
   color: #0000a3;
   text-decoration: none;
   border-bottom: 1px dotted rgba(0,0,32,0.35);
@@ -436,6 +418,12 @@ const WIN95_STYLE = `
   box-shadow: inset -1px -1px #fff, inset 1px 1px #2b2b2b,
               inset -2px -2px #c3c6ca, inset 2px 2px #86898d;
 }
+.win95-text-btn { height: 22px; text-decoration: none; }
+.win95-taskbar-windows {
+  display: flex; align-items: center; gap: 3px;
+  flex: 1; min-width: 0; overflow-x: auto;
+  scrollbar-width: none;
+}
 /* taskbar window chip — always visible like real Win95 */
 .win95-taskbar-chip {
   height: 22px;
@@ -464,7 +452,6 @@ const WIN95_STYLE = `
   box-shadow: inset -1px -1px #fff, inset 1px 1px #2b2b2b,
               inset -2px -2px #c3c6ca, inset 2px 2px #86898d;
 }
-.win95-toolbar-spacer { flex: 1; }
 .win95-clock {
   font-family: MSSerif;
   font-size: 12px;
@@ -552,7 +539,7 @@ const WIN95_STYLE = `
    panel right of the icon column, centred, scrollable if cramped. */
 .win95-desktop-home {
   position: absolute;
-  left: 140px; right: 16px; top: 8px; bottom: 38px;
+  left: 128px; right: 32px; top: 36px; bottom: 62px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -561,7 +548,7 @@ const WIN95_STYLE = `
 }
 .win95-desktop-home-inner {
   pointer-events: auto;
-  width: min(860px, 100%);
+  width: min(1080px, 100%);
   max-height: 100%;
   overflow-y: auto;
   background: var(--color-cream, #F4EFE2);
@@ -569,12 +556,27 @@ const WIN95_STYLE = `
               inset -2px -2px #c3c6ca, inset 2px 2px #f4efe2,
               2px 3px 0 rgba(0,0,0,0.28);
 }
-@media (max-width: 700px) {
-  .win95-desktop-home { left: 126px; right: 8px; }
-  /* shrink the masthead so the panel reads cleanly in the narrow
-     column beside the icons */
-  .win95-desktop-home .win95-home { padding: 16px 14px 14px; }
-  .win95-desktop-home .win95-home-name { font-size: 34px; }
+@media (max-width: 900px) {
+  .win95-vol-slider { display: none; }
+  .win95-taskbar-chip { min-width: 76px; max-width: 100px; flex-shrink: 0; }
+  .win95-icons, .win95-desktop.embedded .win95-icons {
+    top: 12px; left: 10px; right: 10px;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 4px;
+  }
+  .win95-icons .win95-icon { width: auto; padding: 6px 2px; }
+  .win95-icons .win95-icon-img { width: 34px; height: 34px; }
+  .win95-icons .win95-icon-label { font-size: 11px; }
+  .win95-desktop-home { left: 12px; right: 12px; top: 96px; bottom: 46px; align-items: flex-start; }
+  .win95-desktop-home .win95-home { padding: 24px 22px; }
+  .win95-home-header { display: block; text-align: left; }
+  .win95-home-headtext { display: contents; }
+  .win95-home-photo { float: right; width: clamp(86px, 16vw, 140px); margin: 0 0 16px 18px; }
+  .win95-desktop-home .win95-home-name { font-size: clamp(38px, 6.5vw, 52px); padding-top: 4px; }
+  .win95-home-subtitle { font-size: 16px; line-height: 1.4; }
+  .win95-home-bio { clear: both; text-align: left; font-size: 18px; line-height: 1.5; margin-top: 20px; }
+  .win95-contact { margin-top: 0; gap: 8px 10px; }
+  .win95-contact-link { font-size: 15px; overflow-wrap: anywhere; }
 }
 .win95-icon {
   display: flex;
@@ -1318,8 +1320,9 @@ function VolumeTray() {
 /* ---------- main component --------------------------------------------- */
 interface InnerDesktopProps {
   onClose: () => void;
-  /** When true, the desktop renders as a centred window with the 3D
-   *  scene visible around it (Henry Heffernan pattern). */
+  /** A monitor in the room is visible but only interactive after entry. */
+  active?: boolean;
+  /** Fullscreen fallback hosted directly by the room on touch or composite=0. */
   embedded?: boolean;
 }
 
@@ -1368,7 +1371,7 @@ function WindowIframe({ src, title }: { src: string; title: string }) {
   );
 }
 
-export default function InnerDesktop({ onClose, embedded = false }: InnerDesktopProps) {
+export default function InnerDesktop({ onClose, embedded = false, active = true }: InnerDesktopProps) {
   const [time, setTime] = useState(getTime);
   // Container ref so we can measure the desktop bounding rect for
   // window cascade defaults + animation origin transforms.
@@ -1573,9 +1576,9 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [containerSize]);
 
-  // G29: startup chime — once per browser session, right after the
-  // desktop first mounts (the boot sequence's payoff note).
+  // Startup chime once per session, when the visitor enters the desktop.
   useEffect(() => {
+    if (!active) return;
     try {
       if (sessionStorage.getItem('pg_chimed') === '1') return;
       sessionStorage.setItem('pg_chimed', '1');
@@ -1583,7 +1586,7 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
     const t = setTimeout(() => playStartupChime(), 600);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [active]);
 
   // popstate (back/forward) — open the app for the new path if not
   // already, else focus it.
@@ -1644,6 +1647,7 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
   // ⌘/Ctrl+W — close focused window (Mac-style)
   // ⌘/Ctrl+Q — shut down (exit back to the study)
   useEffect(() => {
+    if (!active) return;
     const onKey = (e: KeyboardEvent) => {
       // compute focused window id inline (top zIndex, non-minimized)
       const visible = wins.filter(w => !w.minimized).sort((a, b) => b.zIndex - a.zIndex);
@@ -1704,7 +1708,7 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [wins, startOpen, ctxMenu, dialog, focusApp, closeApp, toggleMaximize, onClose]);
+  }, [active, wins, startOpen, ctxMenu, dialog, focusApp, closeApp, toggleMaximize, onClose]);
 
   // ---------- ambient audio (continues from the study) ----------
   const [muted, setMuted] = useState<boolean>(() => {
@@ -1745,24 +1749,29 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
     try { sessionStorage.setItem(SS_MUTED, muted ? '1' : '0'); } catch { /* ignore */ }
   }, [muted]);
 
-  // inject CSS + Google Fonts once
+  // Fonts may load asynchronously; the desktop CSS is rendered with its
+  // markup below so a preloaded monitor never flashes an unstyled page.
   useEffect(() => {
-    const id = 'win95-styles';
-    if (!document.getElementById(id)) {
-      const s = document.createElement('style');
-      s.id = id; s.textContent = WIN95_STYLE;
-      document.head.appendChild(s);
-    }
     const linkId = 'win95-gfonts';
     if (!document.getElementById(linkId)) {
       const l = document.createElement('link');
       l.id = linkId; l.rel = 'stylesheet'; l.href = GFONTS_HREF;
       document.head.appendChild(l);
     }
-    // signal to Study: if the user navigates away and comes back,
-    // skip the dolly+boot animation and go straight to desktop
-    try { sessionStorage.setItem(SS_PHASE, 'desktop'); } catch { /* ignore */ }
   }, []);
+
+  useEffect(() => {
+    if (!active) return;
+    // Entering the monitor transfers keyboard focus into its document.
+    // Window dragging prevents the browser's default focus change, so
+    // waiting for a mouse click could leave Escape bound to the room.
+    containerRef.current?.focus({ preventScroll: true });
+    // The parent owns room state. Merely preloading /os must not make a
+    // fresh visitor count as someone who has already entered the monitor.
+    if (window.parent === window) {
+      try { sessionStorage.setItem(SS_PHASE, 'desktop'); } catch { /* ignore */ }
+    }
+  }, [active]);
 
 
   // ── tick clock ────────────────────────────────────────────────────
@@ -1925,6 +1934,8 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
     <div
       ref={containerRef}
       className={`win95-desktop${embedded ? ' embedded' : ''}`}
+      tabIndex={-1}
+      inert={!active}
       onMouseDown={() => { setStartOpen(false); setSelectedIcon(null); setCtxMenu(null); }}
       onContextMenu={(e) => {
         // Only show context menu when right-clicking the empty desktop
@@ -1942,6 +1953,7 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
       }}
     >
 
+      <style id="win95-styles">{WIN95_STYLE}</style>
       {/* ───────────── desktop icons ───────────── */}
       <div className="win95-icons" onMouseDown={e => e.stopPropagation()}>
         {/* (declutter) Home dropped from the icon column — the home panel is
@@ -2082,7 +2094,7 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
       })}
 
       {/* ───────────── G32/G33: screensaver + CRT flicker ───────────── */}
-      <Screensaver />
+      {active && <Screensaver />}
       {flicker && <div className="win95-crt-flicker" />}
 
       {/* ───────────── G30: Run… dialog ───────────── */}
@@ -2298,7 +2310,11 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
           Home
         </button>
 
-        {/* one taskbar chip per open window */}
+        {embedded && <a className="win95-start-btn win95-text-btn" href="/standard/"
+          title="Text version" aria-label="Text version">Text</a>}
+
+        {/* Scroll the open-window chips without pushing the tray off-screen. */}
+        <div className="win95-taskbar-windows">
         {wins.map(w => {
           const app = APP_BY_ID[w.id];
           const focused = topId === w.id && !w.minimized;
@@ -2336,7 +2352,7 @@ export default function InnerDesktop({ onClose, embedded = false }: InnerDesktop
           );
         })}
 
-        <div className="win95-toolbar-spacer" />
+        </div>
         {/* Always-visible exit back to the 3D office — reliable even when a
             window is maximized (clicking the room can't be reached then) and
             mirrors the Esc shortcut. */}

@@ -10,12 +10,13 @@
  * Only the Scene geometry and camera positions change.
  */
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { PerspectiveCamera, ContactShadows, MeshReflectorMaterial, Environment, RoundedBox, useTexture, Html } from '@react-three/drei';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import * as THREE from 'three';
 import InnerDesktop from './InnerDesktop';
+import '../styles/office.css';
 
 /* ---------- shared UI audio helpers ---------------------------------- */
 // Mechanical click + keyboard typing sounds, synthesised inline so we
@@ -47,25 +48,8 @@ function playUiClick(type: 'down' | 'up' = 'down') {
   const g   = ac.createGain(); g.gain.value = gain;
   src.connect(bpf); bpf.connect(g); g.connect(ac.destination); src.start(now);
 }
-// Softer, slightly varied keystroke for typewriter HUD.
-function playKeystroke() {
-  const ac = getUiAc(); if (!ac) return;
-  const now    = ac.currentTime;
-  const durS   = 0.013 + Math.random() * 0.006;
-  const bpFreq = 2200 + Math.random() * 900;
-  const gain   = 0.085 + Math.random() * 0.025;
-  const n      = Math.floor(ac.sampleRate * durS);
-  const buf    = ac.createBuffer(1, n, ac.sampleRate);
-  const d      = buf.getChannelData(0);
-  for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / (n * 0.2));
-  const src = ac.createBufferSource(); src.buffer = buf;
-  const bpf = ac.createBiquadFilter(); bpf.type = 'bandpass'; bpf.frequency.value = bpFreq; bpf.Q.value = 0.85;
-  const g   = ac.createGain(); g.gain.value = gain;
-  src.connect(bpf); bpf.connect(g); g.connect(ac.destination); src.start(now);
-}
-
 /* ---------- phase type ------------------------------------------------ */
-type Phase = 'splash' | 'entering' | 'idle' | 'dollying' | 'on-monitor' | 'booting' | 'desktop';
+type Phase = 'splash' | 'entering' | 'idle' | 'dollying' | 'desktop' | 'returning';
 
 /* ---------- room constants ------------------------------------------- */
 const ROOM_W = 36;
@@ -685,52 +669,6 @@ const CARPET_FRAG = `
 `;
 
 /* ---------- camera rig ----------------------------------------------- */
-/**
- * Projects the CRT screen plane into viewport pixels every frame and
- * writes the bounding rect to CSS variables on <html>. The embedded
- * InnerDesktop overlay reads these vars so it sits EXACTLY inside the
- * CRT bezel — instead of an arbitrary 66vw × 78vh box that overflows.
- *
- * Why every frame: the camera dollies smoothly, so the screen rect is
- * animated through several seconds; we want the overlay to slot in only
- * once the camera arrives. We still update during idle (the screen is
- * tiny then, so the overlay isn't shown anyway) — cheap enough.
- */
-function CrtScreenProjector() {
-  const { camera, size } = useThree();
-  // Screen plane lives at MONITOR_WORLD + local offset [0, 0.02, 0.207],
-  // size 0.62 × 0.3875 (see CrtMonitor). Four corners in world space:
-  const corners = useMemo(() => {
-    const cx = MONITOR_WORLD.x, cy = MONITOR_WORLD.y + 0.02, cz = MONITOR_WORLD.z + 0.207;
-    const hw = 0.31, hh = 0.19375;
-    return [
-      new THREE.Vector3(cx - hw, cy - hh, cz),
-      new THREE.Vector3(cx + hw, cy - hh, cz),
-      new THREE.Vector3(cx - hw, cy + hh, cz),
-      new THREE.Vector3(cx + hw, cy + hh, cz),
-    ];
-  }, []);
-  const v = useMemo(() => new THREE.Vector3(), []);
-  useFrame(() => {
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    for (const c of corners) {
-      v.copy(c).project(camera);
-      const px = (v.x + 1) * 0.5 * size.width;
-      const py = (1 - v.y) * 0.5 * size.height;
-      if (px < minX) minX = px;
-      if (py < minY) minY = py;
-      if (px > maxX) maxX = px;
-      if (py > maxY) maxY = py;
-    }
-    const root = document.documentElement.style;
-    root.setProperty('--crt-left', `${minX}px`);
-    root.setProperty('--crt-top',  `${minY}px`);
-    root.setProperty('--crt-w',    `${maxX - minX}px`);
-    root.setProperty('--crt-h',    `${maxY - minY}px`);
-  });
-  return null;
-}
-
 function CameraRig({ phase, onArrived, onEntryDone, reducedMotion }: {
   phase: Phase; onArrived: () => void; onEntryDone: () => void; reducedMotion: boolean;
 }) {
@@ -745,6 +683,7 @@ function CameraRig({ phase, onArrived, onEntryDone, reducedMotion }: {
   const entryFired      = useRef(false);
   const idlePos = useRef(CAM_IDLE_POS.clone());
   const idleTgt = useRef(CAM_IDLE_TGT.clone());
+  const compositeEnd = useRef(CAM_COMPOSITE_POS.clone());
 
   // widen FOV slightly on landscape monitors — office is a wide room
   useEffect(() => {
@@ -759,7 +698,7 @@ function CameraRig({ phase, onArrived, onEntryDone, reducedMotion }: {
 
   useEffect(() => {
     if (phase === 'entering') { entryStartTime.current = null; entryFired.current = false; }
-    if (phase === 'dollying') {
+    if (phase === 'dollying' || phase === 'returning') {
       startedAt.current = performance.now();
       fromPos.current.copy(camera.position);
       fromTgt.current.copy(tgt.current);
@@ -798,18 +737,31 @@ function CameraRig({ phase, onArrived, onEntryDone, reducedMotion }: {
     // arrival — feels like a deliberate "lean forward to read" move
     // instead of the easeOutCubic snap-then-crawl we had before.
     // composite mode frames the monitor instead of filling the viewport
-    const endPos = COMPOSITE ? CAM_COMPOSITE_POS : CAM_MONITOR_POS;
+    // Keep the whole screen reachable when a desktop browser is narrowed.
+    // Preserve the normal close-up and pull back only when width requires it.
+    compositeEnd.current.copy(CAM_COMPOSITE_POS);
+    if (COMPOSITE && camera instanceof THREE.PerspectiveCamera) {
+      const tanHalfFov = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+      const fitWidth = 0.3136 / (tanHalfFov * camera.aspect * 0.90);
+      const fitHeight = 0.196 / (tanHalfFov * 0.88);
+      compositeEnd.current.z = Math.max(compositeEnd.current.z,
+        MONITOR_WORLD.z + 0.218 + Math.max(fitWidth, fitHeight));
+    }
+    const endPos = COMPOSITE ? compositeEnd.current : CAM_MONITOR_POS;
     const endTgt = COMPOSITE ? CAM_COMPOSITE_TGT : CAM_MONITOR_TGT;
-    if (phase === 'dollying') {
+    if (phase === 'dollying' || phase === 'returning') {
       const k = easeInOutCubic(Math.min(1, (performance.now() - (startedAt.current ?? 0)) / DOLLY_MS));
-      camera.position.lerpVectors(fromPos.current, endPos, k);
-      tgt.current.lerpVectors(fromTgt.current, endTgt, k);
+      camera.position.lerpVectors(fromPos.current, phase === 'returning' ? idlePos.current : endPos, k);
+      tgt.current.lerpVectors(fromTgt.current, phase === 'returning' ? idleTgt.current : endTgt, k);
       camera.lookAt(tgt.current);
-      if (!arrivedFired.current && k >= 1) { arrivedFired.current = true; onArrived(); }
+      if (!arrivedFired.current && k >= 1) {
+        arrivedFired.current = true;
+        if (phase === 'returning') onEntryDone(); else onArrived();
+      }
       return;
     }
-    // ── on-monitor / booting / desktop ─────────────────────────────────────
-    if (phase === 'on-monitor' || phase === 'booting' || phase === 'desktop') {
+    // ── desktop ──────────────────────────────────────────────────────────
+    if (phase === 'desktop') {
       // Hold DEAD STILL on the framed monitor. PIN with copy() rather than a
       // damped lerp: the dolly already delivers the camera to endPos in the
       // click-through flow (so there's no jump), and on a deep-link /
@@ -826,7 +778,7 @@ function CameraRig({ phase, onArrived, onEntryDone, reducedMotion }: {
     }
     // ── reduced motion: hold a still idle framing ───────────────────────
     // No breath, drift, parallax, or lean-in — settle to the idle pose and
-    // stop (WCAG 2.3.3). The user-initiated dolly still runs on click.
+    // stop. Entry and exit also skip the dolly for reduced motion.
     if (reducedMotion) {
       camera.position.lerp(idlePos.current, 0.1);
       tgt.current.lerp(idleTgt.current, 0.1);
@@ -2216,8 +2168,8 @@ function TexturedCarpet({ width, depth }: { width: number; depth: number }) {
         {...(props as any)}
         color={C.carpet}
         roughness={0.92}
-        normalScale={[0.7, 0.7] as any}
-        aoMapIntensity={0.55}
+        normalScale={[0.35, 0.35] as any}
+        aoMapIntensity={0.35}
       />
     </mesh>
   );
@@ -2369,8 +2321,52 @@ function MdrPanel({ w, h, fabric }: { w: number; h: number; fabric: any }) {
 
 
 /* ---------- main 3-D scene ------------------------------------------- */
-function OfficeScene({ phase, onMonitorClick }: {
-  phase: Phase; onMonitorClick: () => void;
+function MonitorDesktop({ phase, onEnter, onReady }: {
+  phase: Phase; onEnter: () => void; onReady: () => void;
+}) {
+  const frame = useRef<HTMLIFrameElement>(null);
+  const [ready, setReady] = useState(false);
+  const active = phase === 'desktop';
+  const src = useMemo(() => {
+    const query = new URLSearchParams(window.location.search);
+    query.delete('composite'); query.delete('cz');
+    return '/os' + (query.size ? '?' + query.toString() : '');
+  }, []);
+  const sendFocus = useCallback(() => {
+    frame.current?.contentWindow?.postMessage({ type: 'pg-office-focus', active }, window.location.origin);
+  }, [active]);
+  useEffect(() => {
+    const receive = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin || event.source !== frame.current?.contentWindow) return;
+      if (event.data?.type !== 'pg-desktop-ready') return;
+      setReady(true); onReady(); sendFocus();
+    };
+    window.addEventListener('message', receive);
+    sendFocus();
+    return () => window.removeEventListener('message', receive);
+  }, [sendFocus, onReady]);
+  return (
+    <Html transform occlude="blending"
+      position={[MONITOR_WORLD.x, MONITOR_WORLD.y + 0.02, MONITOR_WORLD.z + 0.218]}
+      rotation={[0, 0, 0]} scale={0.0196} zIndexRange={[100, 0]}
+      pointerEvents={phase === 'idle' || active ? 'auto' : 'none'}
+      style={{ width: '1280px', height: '800px', overflow: 'hidden' }}>
+      <div className="office-monitor" data-ready={ready}>
+        <iframe ref={frame} src={src} title="prashantgarg.os"
+          inert={!active} aria-hidden={!active} tabIndex={active ? 0 : -1}
+          onLoad={sendFocus} style={{ opacity: ready ? 1 : 0 }} />
+        <div className="office-crt-glass" />
+        {phase === 'idle' && <button className="office-monitor-enter"
+          aria-label="Enter workstation" title="Enter workstation"
+          onPointerDown={event => event.stopPropagation()}
+          onClick={event => { event.stopPropagation(); onEnter(); }} />}
+      </div>
+    </Html>
+  );
+}
+
+function OfficeScene({ phase, onMonitorClick, onDesktopReady }: {
+  phase: Phase; onMonitorClick: () => void; onDesktopReady: () => void;
 }) {
   // Engraved nameplate texture (real text on the chrome face)
   const nameTex = useMemo(() => getEngravedTex('P. GARG'), []);
@@ -2625,52 +2621,7 @@ function OfficeScene({ phase, onMonitorClick }: {
           so it's mounted OUTSIDE this group.) */}
       <CrtMonitor phase={phase} onClick={onMonitorClick} />
 
-      {/* PATH C — composited monitor: the desktop is a real DOM iframe
-          (/os) transformed INTO the 3D scene via <Html transform>, so it
-          inherits the room's perspective and stays fully interactive
-          inside its own document coordinate space (Henry pattern). Only
-          mounts on the composite flag once we're at the desktop phase. */}
-      {COMPOSITE && phase === 'desktop' && (
-        <Html
-          transform
-          occlude="blending"
-          /* z just in front of the monitor's frontmost face (inner bezel
-             is at +0.214) so the bezel frames the screen from behind and
-             can't occlude it — while real room geometry crossing in front
-             still hides it correctly via blending occlusion. */
-          position={[MONITOR_WORLD.x, MONITOR_WORLD.y + 0.02, MONITOR_WORLD.z + 0.218]}
-          rotation={[0, 0, 0]}
-          /* scale calibrated so the 1280×800 (16:10) iframe fills the wider
-             screen plane (0.62 world) exactly: 0.0163 × (0.62/0.42) / (1280/1040)
-             ≈ 0.0196. Re-verified empirically via probe-composite. */
-          scale={0.0196}
-          distanceFactor={undefined}
-          zIndexRange={[100, 0]}
-          pointerEvents="auto"
-          style={{ width: '1280px', height: '800px', overflow: 'hidden', background: '#000' }}
-        >
-          <div style={{ position: 'relative', width: '1280px', height: '800px' }}>
-            <iframe
-              src={'/os' + (typeof window !== 'undefined' ? window.location.search.replace(/[?&]composite=[^&]*/,'').replace(/[?&]cz=[^&]*/,'').replace(/^&/,'?') : '')}
-              title="prashantgarg.os"
-              style={{ width: '1280px', height: '800px', border: 0, display: 'block', background: '#3e9697' }}
-            />
-            {/* CRT glass realism (rides the screen's 3D transform; never
-                blocks clicks): scanlines + soft corner vignette only. The
-                top-left white glare was distracting over the content, so it's
-                dropped — the vignette alone still reads as curved glass. */}
-            <div style={{
-              position: 'absolute', inset: 0, pointerEvents: 'none', mixBlendMode: 'multiply',
-              backgroundImage: 'repeating-linear-gradient(to bottom, rgba(0,0,0,0.10) 0px, rgba(0,0,0,0.10) 1px, transparent 1px, transparent 3px)',
-            }} />
-            <div style={{
-              position: 'absolute', inset: 0, pointerEvents: 'none',
-              background: 'radial-gradient(130% 130% at 50% 50%, rgba(0,0,0,0) 64%, rgba(0,0,0,0.24) 100%)',
-              boxShadow: 'inset 0 0 22px 6px rgba(0,0,0,0.26)',
-            }} />
-          </div>
-        </Html>
-      )}
+      {COMPOSITE && <MonitorDesktop phase={phase} onEnter={onMonitorClick} onReady={onDesktopReady} />}
 
       <group position={[SOUTH_DX, 0, 0]}>
       {/* ── DESK ACCESSORIES — all on the south booth only ──────────
@@ -3033,7 +2984,7 @@ function BiosSetup({ onExit }: { onExit: () => void }) {
 }
 
 /* ---------- BIOS splash ---------------------------------------------- */
-function BiosScreen({ onDone }: { onDone: () => void }) {
+function BiosScreen({ onDone, ready }: { onDone: () => void; ready: boolean }) {
   const [step,        setStep]        = useState(0);
   const [biosGone,    setBiosGone]    = useState(false);
   const [showPopup,   setShowPopup]   = useState(false);
@@ -3049,12 +3000,12 @@ function BiosScreen({ onDone }: { onDone: () => void }) {
   const LINES = [
     { text: 'prashantgarg.org  v1.0',                                          type: 'header' },
     { text: '',                                                                 type: 'blank'  },
-    { text: '> initializing workstation',                                      type: 'check'  },
-    { text: '> mounting research archives',                                    type: 'check'  },
-    { text: '> calibrating fluorescent ceiling',                               type: 'check'  },
-    { text: '> establishing network link',                                     type: 'check'  },
+    { text: 'Memory',                                      type: 'check'  },
+    { text: 'Display',                                    type: 'check'  },
+    { text: 'Storage',                               type: 'check'  },
+    { text: 'Network',                                     type: 'check'  },
     { text: '',                                                                 type: 'blank'  },
-    { text: `Press any key to skip · DEL to enter SETUP · ${new Date().getFullYear()}`, type: 'footer' },
+    { text: 'DEL / SETUP', type: 'footer' },
   ] as const;
   const DELAYS = [0, 280, 420, 560, 700, 840, 960, 1060];
 
@@ -3066,7 +3017,7 @@ function BiosScreen({ onDone }: { onDone: () => void }) {
   }, []); // eslint-disable-line
 
   const dismiss = () => {
-    if (dismissedRef.current) return;
+    if (dismissedRef.current || !ready) return;
     if (performance.now() - mountedAtRef.current < 800) return;  // G28c
     dismissedRef.current = true;
     setDismissed(true);
@@ -3083,14 +3034,14 @@ function BiosScreen({ onDone }: { onDone: () => void }) {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [setupOpen]); // eslint-disable-line
+  }, [setupOpen, ready]); // eslint-disable-line
 
   useEffect(() => {
     if (!showPopup || setupOpen) return;
     const onDown = () => dismiss();
     window.addEventListener('pointerdown', onDown, { capture: true });
     return () => window.removeEventListener('pointerdown', onDown, { capture: true });
-  }, [showPopup, setupOpen]); // eslint-disable-line
+  }, [showPopup, setupOpen, ready]); // eslint-disable-line
 
   const mono = "ui-monospace, 'SF Mono', Menlo, Monaco, Consolas, monospace";
   return (
@@ -3113,7 +3064,7 @@ function BiosScreen({ onDone }: { onDone: () => void }) {
     }}>
       <div style={{ width: 'min(92vw, 500px)', padding: 24, opacity: biosGone ? 0 : 1, transition: 'opacity 0.32s ease', pointerEvents: biosGone ? 'none' : 'auto', position: showPopup ? 'absolute' : 'static' }}>
         {LINES.slice(0, step).map((line, i) => (
-          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', lineHeight: line.type === 'blank' ? '0.85em' : '1.85em', color: line.type === 'header' ? '#fff' : line.type === 'sub' ? 'rgba(255,255,255,0.52)' : line.type === 'footer' ? 'rgba(255,255,255,0.28)' : '#a4d9c5', fontSize: line.type === 'header' ? 14 : line.type === 'footer' ? 10 : 12, letterSpacing: line.type === 'header' ? '0.10em' : '0.04em' }}>
+          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', lineHeight: line.type === 'blank' ? '0.85em' : '1.85em', color: line.type === 'header' ? '#fff' : line.type === 'footer' ? 'rgba(255,255,255,0.28)' : '#a4d9c5', fontSize: line.type === 'header' ? 14 : line.type === 'footer' ? 10 : 12, letterSpacing: line.type === 'header' ? '0.10em' : '0.04em' }}>
             {line.type === 'check' ? (<><span>{line.text}</span><span style={{ color: '#4ec994', marginLeft: 20, flexShrink: 0 }}>[ ok ]</span></>) : (<span>{line.text || ' '}</span>)}
           </div>
         ))}
@@ -3123,8 +3074,8 @@ function BiosScreen({ onDone }: { onDone: () => void }) {
         <div
           onClick={dismiss}
           style={{
-            border: '8px solid #fff',
-            padding: '44px 56px',
+            border: '1px solid rgba(255,255,255,0.7)',
+            padding: '40px 48px',
             width: 'min(92vw, 480px)',
             boxSizing: 'border-box',
             cursor: 'pointer',
@@ -3135,13 +3086,10 @@ function BiosScreen({ onDone }: { onDone: () => void }) {
           }}
         >
           <div style={{ color: 'rgba(255,255,255,0.55)', fontSize: 13, letterSpacing: '0.14em', marginBottom: 26 }}>
-            prashantgarg.org&nbsp;&nbsp;·&nbsp;&nbsp;{new Date().getFullYear()}
-          </div>
-          <div style={{ color: '#fff', fontSize: 18, lineHeight: 1.4, letterSpacing: '0.05em', marginBottom: 36, display: 'flex', alignItems: 'center', gap: 9 }}>
-            {typeof window !== 'undefined' && window.matchMedia('(hover: none)').matches ? 'Tap' : 'Click'} START to enter
-            <span style={{ display: 'inline-block', width: '0.55em', height: '1.05em', background: '#fff', verticalAlign: 'middle', animation: 'bios-blink 0.65s step-end infinite' }} />
+            prashantgarg.org
           </div>
           <button
+            disabled={!ready}
             onMouseEnter={() => setStartHover(true)}
             onMouseLeave={() => setStartHover(false)}
             onMouseDown={() => playUiClick('down')}
@@ -3160,82 +3108,11 @@ function BiosScreen({ onDone }: { onDone: () => void }) {
               transition: 'background 0.12s ease, color 0.12s ease',
               outline: 'none',
             }}
-          >START</button>
+          >{ready ? 'ENTER' : '···'}</button>
         </div>
       )}
       <style>{`@keyframes bios-blink{0%,100%{opacity:1}50%{opacity:0}}@keyframes bios-popup-in{from{opacity:0;transform:scale(0.95)}to{opacity:1;transform:scale(1)}}`}</style>
       {setupOpen && <BiosSetup onExit={() => setSetupOpen(false)} />}
-    </div>
-  );
-}
-
-/* ---------- boot overlay --------------------------------------------- */
-function BootOverlay({ onDone }: { onDone: () => void }) {
-  const [text, setText] = useState('');
-  const [done, setDone] = useState(false);
-  const skipped = useRef(false);
-  useEffect(() => {
-    const script = [
-      { line: 'prashantgarg.org',                                typeMs: 14, pauseMs: 120 },
-      { line: '> booting workstation  [ ok ]',                  typeMs: 8,  pauseMs: 140 },
-      { line: '> mounting research, talks, library  [ ok ]',    typeMs: 8,  pauseMs: 220 },
-      { line: '',                                                typeMs: 0,  pauseMs: 80  },
-      { line: 'welcome.',                                        typeMs: 32, pauseMs: 180 },
-    ];
-    let cancelled = false, buf = '';
-    async function run() {
-      for (const s of script) {
-        for (let i = 0; i < s.line.length; i++) {
-          if (cancelled || skipped.current) return;
-          buf += s.line[i]; setText(buf);
-          await new Promise(r => setTimeout(r, s.typeMs));
-        }
-        buf += '\n'; setText(buf);
-        if (cancelled || skipped.current) return;
-        await new Promise(r => setTimeout(r, s.pauseMs));
-      }
-      if (!cancelled) setDone(true);
-    }
-    run();
-    function onKey() { skipped.current = true; setText(script.map(s => s.line).join('\n')); setDone(true); }
-    window.addEventListener('keydown', onKey);
-    return () => { cancelled = true; window.removeEventListener('keydown', onKey); };
-  }, []);
-  // Let "welcome." linger before the desktop appears — the review found
-  // the boot's final beat exited too quickly. (Skipped boots still feel
-  // instant because `done` fires immediately on keypress.)
-  useEffect(() => { if (!done) return; const t = setTimeout(onDone, skipped.current ? 160 : 280); return () => clearTimeout(t); }, [done, onDone]);
-  return (
-    <div
-      onClick={() => { skipped.current = true; setDone(true); }}
-      style={{
-        position: 'fixed',
-        // Use the live CRT screen projection (set by CrtScreenProjector
-        // every frame). Fallbacks keep the overlay sensible if the
-        // projector hasn't written the vars yet.
-        // clamped to the viewport — on portrait phones the CRT projection
-        // is wider than the screen and the un-clamped box ran off-edge.
-        top:    'max(var(--crt-top,  50%), 0px)' as any,
-        left:   'max(var(--crt-left, 50%), 0px)' as any,
-        width:  'min(var(--crt-w,    min(66vw, 880px)), calc(100vw - max(var(--crt-left, 0px), 0px)))' as any,
-        height: 'min(var(--crt-h,    min(78vh, 670px)), calc(100dvh - max(var(--crt-top, 0px), 0px)))' as any,
-        zIndex: 9999,
-        background: '#0E0D0B', color: '#A4D9C5',
-        // subtle CRT scanlines for the boot terminal background
-        backgroundImage: 'repeating-linear-gradient(to bottom, rgba(164,217,197,0.045) 0px, rgba(164,217,197,0.045) 1px, transparent 1px, transparent 3px)',
-        fontFamily: "ui-monospace,'SF Mono',Menlo,Monaco,Consolas,monospace",
-        display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
-        paddingTop: '10%', cursor: 'pointer',
-        boxShadow: '0 0 0 2px #2b2b2b, 0 20px 60px rgba(0,0,0,0.55)',
-        boxSizing: 'border-box',
-      }}
-    >
-      <div style={{ width: 'min(92%, 560px)', padding: 24 }}>
-        <pre style={{ margin: 0, fontSize: 13, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{text}<span style={{ color: '#F9BD2B' }}>▋</span></pre>
-        <div style={{ marginTop: 36, fontSize: 11, color: 'rgba(164,217,197,0.45)' }}>
-          {typeof window !== 'undefined' && window.matchMedia('(hover: none)').matches ? 'tap to skip' : 'press any key · click to skip'}
-        </div>
-      </div>
     </div>
   );
 }
@@ -3256,32 +3133,6 @@ function VolumeOffIcon() {
       <path d="M87.87,61.64q0,25.53,0,51c0,4-1.16,7.34-4.91,9.36A7.37,7.37,0,0,1,74.24,121q-13.39-12.1-26.88-24.1c-3.16-2.82-6.26-5.7-9.54-8.38a6.53,6.53,0,0,0-3.7-1.41C27.56,87,21,87.05,14.44,87,5.08,87,.1,82.08,0,72.79Q0,61.08,0,49.38c.07-8.78,5.39-14,14.21-14.05,6.73,0,13.46,0,20.18-.06a5.09,5.09,0,0,0,3.06-1.15q17.58-15.46,35-31.06C75.59.3,78.82-.71,82.75,1S87.83,6,87.85,9.85c.06,13.53,0,27.06,0,40.59Z" transform="translate(0 -0.15)"/>
       <path d="M137.18,62.29c4.61,4.19,9.06,8.13,13.38,12.2,2.66,2.52,3.19,5.58,1.78,8.23-1.8,3.37-6.94,5.37-11.37,1.06q-5.72-5.55-11.43-11.1c-.44-.43-.9-.84-1.95-1.8-4.19,4.33-8.24,8.66-12.45,12.84-3,3-6,3.3-9.23,1.32a6,6,0,0,1-2-8.51,13.79,13.79,0,0,1,2-2.42c4.06-4,8.15-7.92,12.38-12-.54-.56-1-1.06-1.45-1.52-3.8-3.7-7.63-7.38-11.41-11.11-2.75-2.73-3.26-5.5-1.63-8.34,2.31-4,7.53-4.55,11.28-.88,4.24,4.15,8.27,8.5,12.51,12.89,1.06-1,1.56-1.4,2-1.86,3.77-3.74,7.52-7.49,11.31-11.22,2.56-2.52,5.4-3.15,8.26-1.91a6.27,6.27,0,0,1,3.1,8.84,13.16,13.16,0,0,1-2.2,2.75C146,53.72,142,57.66,137.18,62.29Z" transform="translate(0 -0.15)"/>
     </svg>
-  );
-}
-
-/* ---------- phase-transition flash ---------------------------------- */
-// Brief dark fade overlay that triggers on every phase change. Smooths
-// the visual jumps between BIOS→entering, dollying→booting, etc.
-function PhaseFlash({ phase }: { phase: Phase }) {
-  const [opacity, setOpacity] = useState(0);
-  useEffect(() => {
-    // Quick fade-in then fade-out on each phase change
-    setOpacity(0.45);
-    const t = setTimeout(() => setOpacity(0), 250);
-    return () => clearTimeout(t);
-  }, [phase]);
-  return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: '#000',
-        pointerEvents: 'none',
-        opacity,
-        transition: 'opacity 0.4s ease-out',
-        zIndex: 7, // above scene & vignette, below HUD & overlays
-      }}
-    />
   );
 }
 
@@ -3438,165 +3289,30 @@ function StudyAudio({ active, muted, focusMode }: { active: boolean; muted: bool
   return null;
 }
 
-/* ---------- HUD overlay ---------------------------------------------- */
-function getTime() {
-  const d = new Date(); let h = d.getHours(); const m = d.getMinutes();
-  const ap = h >= 12 ? 'PM' : 'AM'; h = h % 12 || 12;
-  return `${h}:${m < 10 ? '0'+m : m} ${ap}`;
+/* ---------- quiet room controls -------------------------------------- */
+function HudOverlay({ muted, onMuteToggle, focused }: {
+  muted: boolean; onMuteToggle: () => void; focused: boolean;
+}) {
+  return <div className="office-hud">
+    <button className="office-control office-sound" onClick={onMuteToggle}
+      aria-label={muted ? 'Unmute' : 'Mute'} title={muted ? 'Unmute' : 'Mute'}>
+      {muted ? <VolumeOffIcon /> : <VolumeOnIcon />}
+    </button>
+    {!focused && <span>Prashant Garg</span>}
+  </div>;
 }
-function HudOverlay({ muted, onMuteToggle }: { muted: boolean; onMuteToggle: () => void }) {
-  const [nameText, setNameText] = useState('');
-  const [subText,  setSubText]  = useState('');
-  const [timeText, setTimeText] = useState('');
-  const [showSub,  setShowSub]  = useState(false);
-  const [showTime, setShowTime] = useState(false);
-  const [muteActive,   setMuteActive]   = useState(false);
-  const [muteHovering, setMuteHovering] = useState(false);
-  function typeString(str: string, setter: (s: string) => void, done: () => void, withSound = false) {
-    let i = 0, built = '';
-    function step() {
-      if (i >= str.length) { done(); return; }
-      const ch = str[i++];
-      built += ch;
-      setter(built);
-      if (withSound && ch !== ' ') playKeystroke();
-      setTimeout(step, Math.random()*70+55);
-    }
-    step();
-  }
+function TapHint({ onEnter }: { onEnter: () => void }) {
+  const [visible, setVisible] = useState(false);
   useEffect(() => {
-    const t = setTimeout(() => {
-      typeString('Prashant Garg', setNameText, () => {
-        setShowSub(true);
-        typeString('Economist', setSubText, () => {
-          setShowTime(true);
-          setTimeText(getTime());
-        }, true);
-      }, true);
-    }, 400);
-    return () => clearTimeout(t);
-  }, []); // eslint-disable-line
-  useEffect(() => { if (!showTime) return; const id = setInterval(() => setTimeText(getTime()), 5000); return () => clearInterval(id); }, [showTime]);
-  // Henry-style HUD chips — bigger, more letter-spacing, monospaced.
-  // HUD chips themed to match the MDR study: dark sage-green ground
-  // (close to C.partition) with cream sage-tinted text (echoes the
-  // ceiling-bounce light). Smaller font than before — overlay should
-  // feel like a quiet badge, not compete with the scene. Border ring
-  // adds the Lumon-plaque feel.
-  const chip: React.CSSProperties = {
-    background: 'rgba(31, 47, 39, 0.78)',   // dark sage with subtle alpha
-    color: '#E8EEDF',                        // cream sage-tinted text
-    fontFamily: "ui-monospace,'SF Mono',Menlo,Consolas,monospace",
-    fontSize: 12, lineHeight: '18px',
-    padding: '3px 10px',
-    display: 'inline-block',
-    letterSpacing: '0.08em',
-    whiteSpace: 'nowrap',
-    border: '1px solid rgba(199, 213, 195, 0.18)',
-    backdropFilter: 'blur(4px)' as any,
-    animation: 'hud-chip-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) both',
-  };
-  const chipName: React.CSSProperties = { ...chip, fontSize: 13, lineHeight: '20px' };
-  const muteOpacity = muteActive ? 0.2 : muteHovering ? 0.8 : 1.0;
-  const muteScale   = muteActive ? 0.8 : 1.0;
-  return (
-    <div style={{ position: 'fixed', bottom: 20, left: 20, zIndex: 8, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 5 }}>
-      <style>{`
-        @keyframes hud-chip-in {
-          from { opacity: 0; transform: translateX(-8px); }
-          to   { opacity: 1; transform: translateX(0); }
-        }
-      `}</style>
-      {nameText && <div style={chipName}>{nameText}</div>}
-      {showSub  && <div style={chip}>{subText}</div>}
-      {showTime && <div style={chip}>{timeText}</div>}
-      <button
-        onMouseEnter={() => setMuteHovering(true)}
-        onMouseLeave={() => { setMuteHovering(false); setMuteActive(false); }}
-        onClick={e => { e.stopPropagation(); onMuteToggle(); }}
-        onMouseDown={() => setMuteActive(true)}
-        onMouseUp={() => setMuteActive(false)}
-        aria-label={muted ? 'Unmute' : 'Mute'}
-        style={{
-          width: 32, height: 32,                              // smaller, matches the toned-down HUD
-          background: 'rgba(31, 47, 39, 0.78)',                // same dark-sage as the chips
-          color: '#E8EEDF',
-          border: muteHovering ? '1px solid rgba(199, 213, 195, 0.40)' : '1px solid rgba(199, 213, 195, 0.18)',
-          padding: 0,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          cursor: 'pointer',
-          boxSizing: 'border-box',
-          backdropFilter: 'blur(4px)' as any,
-          transition: 'border-color 0.18s ease, background 0.18s ease',
-          animation: 'hud-chip-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) both',
-          animationDelay: '0.6s',
-        }}
-      >
-        <span style={{ opacity: muteOpacity, transform: `scale(${muteScale})`, transition: 'opacity 0.2s ease-out, transform 0.2s ease-out', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 0 }}>
-          {muted ? <VolumeOffIcon /> : <VolumeOnIcon />}
-        </span>
-      </button>
-    </div>
-  );
+    const timer = setTimeout(() => setVisible(true), 1800);
+    return () => clearTimeout(timer);
+  }, []);
+  return visible ? <button className="office-control office-enter" onClick={onEnter}
+    aria-label="Enter workstation">Enter <span aria-hidden="true">↵</span></button> : null;
 }
-
-/* ---------- start hint ------------------------------------------------ */
-/**
- * The only onboarding cue: a single quiet "Click monitor to start" chip
- * pinned to the bottom-centre, styled to match the bottom-left HUD name
- * chip (same dark-sage ground, cream mono type). It pulses gently so it
- * reads as a call to action, and disappears on the first click. (Replaces
- * the old verbose top-right "Welcome to the workstation…" card, which was
- * too much to read.)
- */
-function TapHint({ isTouch, reducedMotion }: { isTouch: boolean; reducedMotion: boolean }) {
-  // Touch users get the cue immediately; desktop users after a short beat.
-  const [visible, setVisible] = useState(isTouch);
-  useEffect(() => {
-    let showT: any;
-    if (!isTouch) showT = setTimeout(() => setVisible(true), 1400);
-    const off = () => { setVisible(false); clearTimeout(showT); };
-    window.addEventListener('pointerdown', off, { once: true });
-    return () => { clearTimeout(showT); window.removeEventListener('pointerdown', off); };
-  }, [isTouch]);
-  if (!visible) return null;
-  const label = isTouch ? 'Tap monitor to start' : 'Click monitor to start';
-  return (
-    <div style={{ position: 'fixed', bottom: 22, left: 0, right: 0, display: 'flex', justifyContent: 'center', pointerEvents: 'none', zIndex: 9 }}>
-      <div style={{
-        background: 'rgba(31, 47, 39, 0.78)',                              // same dark-sage as the HUD name chip
-        color: '#E8EEDF',
-        fontFamily: "ui-monospace,'SF Mono',Menlo,Consolas,monospace",
-        fontSize: 12, lineHeight: '18px',
-        padding: '5px 14px',
-        letterSpacing: '0.10em',
-        whiteSpace: 'nowrap',
-        border: '1px solid rgba(199, 213, 195, 0.18)',
-        backdropFilter: 'blur(4px)' as any,
-        animation: reducedMotion ? 'none' : 'pg-hint-pulse 2.2s ease-in-out infinite',
-      }}>{label}</div>
-      <style>{`@keyframes pg-hint-pulse{0%,100%{opacity:0.62}50%{opacity:1}}`}</style>
-    </div>
-  );
-}
-
-/* ---------- exit hint (composite desktop) ---------------------------- */
-// Quiet, persistent cue so a visitor who has zoomed into the monitor knows
-// how to get back out (clicking the room, or Esc). Mirrors the entry hint;
-// the opposite of feeling trapped inside the screen (M22).
-function ExitHint() {
-  return (
-    <div style={{
-      position: 'fixed', left: '50%', bottom: 14, transform: 'translateX(-50%)',
-      zIndex: 60, pointerEvents: 'none',
-      fontFamily: "ui-monospace,'SF Mono',Menlo,Monaco,Consolas,monospace",
-      fontSize: 11, letterSpacing: '0.04em', color: 'rgba(255,255,255,0.7)',
-      background: 'rgba(16,26,26,0.5)', border: '1px solid rgba(255,255,255,0.16)',
-      borderRadius: 4, padding: '4px 10px', whiteSpace: 'nowrap',
-    }}>
-      Click the room to step out · Esc
-    </div>
-  );
+function ExitHint({ onExit }: { onExit: () => void }) {
+  return <button className="office-control office-exit" onClick={onExit}
+    title="Return to the room (Esc)">Room <span>Esc</span></button>;
 }
 
 /* ================================================================
@@ -3606,11 +3322,13 @@ const SS_PHASE = 'pg_phase';
 const SS_MUTED = 'pg_muted';
 
 export default function Office() {
+  const [monitorReady, setMonitorReady] = useState(!COMPOSITE);
+  const handleDesktopReady = useCallback(() => setMonitorReady(true), []);
   const [phase, setPhase] = useState<Phase>(() => {
     if (typeof window === 'undefined') return 'splash';
     // If the user landed directly on an inner URL (e.g. /research,
     // /talks, /now, /cv, /research/some-paper), skip BIOS + entry +
-    // dolly + boot and drop them straight into the desktop phase so
+    // dolly and drop them straight into the desktop phase so
     // the content shows immediately. The 3D scene still mounts in
     // the background — they're "inside the monitor" from the start.
     const path = window.location.pathname || '/';
@@ -3658,12 +3376,11 @@ export default function Office() {
   }, []);
 
   const handleEntryDone    = () => setPhase('idle');
-  const handleClick        = () => { if (phase === 'idle') setPhase('dollying'); };
-  const handleArrived      = () => setPhase('booting');
-  const handleBootDone     = () => setPhase('desktop');
+  const handleClick        = () => { if (phase === 'idle') setPhase(reducedMotion ? 'desktop' : 'dollying'); };
+  const handleArrived      = () => setPhase('desktop');
   // Persist 'desktop' for ALL visitors (was touch-only) so that returning
   // within the session lands straight on the monitor — no replayed
-  // BIOS/entry/dolly/boot. Cleared on shutdown (handleDesktopClose).
+  // BIOS/entry/dolly. Cleared on shutdown (handleDesktopClose).
   useEffect(() => {
     if (phase === 'desktop') { try { sessionStorage.setItem(SS_PHASE, 'desktop'); } catch { /* */ } }
   }, [phase]);
@@ -3677,12 +3394,13 @@ export default function Office() {
       try { sessionStorage.setItem(SS_PHASE, 'desktop'); } catch { /* */ }
       setPhase('desktop');
     } else {
-      setPhase('entering');
+      setPhase(reducedMotion ? 'idle' : 'entering');
     }
   };
   const handleDesktopClose = () => {
     try { sessionStorage.removeItem(SS_PHASE); } catch { /* */ }
-    setPhase('idle');
+    setPhase(isTouch || reducedMotion ? 'idle' : 'returning');
+    document.getElementById('office')?.focus({ preventScroll: true });
   };
   // Composite mode: the desktop lives in the /os iframe, so its Shut Down
   // posts a message up to exit back to the room.
@@ -3711,7 +3429,8 @@ export default function Office() {
   // canvas covers it for sighted users.)
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (phase === 'idle' && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); handleClick(); }
+      const control = (e.target as HTMLElement)?.closest('button, a, input, select, textarea');
+      if (!control && phase === 'idle' && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); handleClick(); }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -3760,13 +3479,10 @@ export default function Office() {
   }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: '#C8CAC4' }}>
-      {/* Subtle cool color grade — gives the institutional fluorescent
-          feel of the references (slight contrast + cool tint). When the
-          inner Win95 desktop is mounted (phase==='desktop' or 'booting'),
-          DIM the 3D scene to ~30 % brightness so the bright teal/cream
-          desktop window doesn't fight the green carpet/cubicle bezel
-          showing around its edges — keeps the eye on the inner site. */}
+    <div id="office" className="office" data-phase={phase} tabIndex={-1}
+      style={{ position: 'fixed', inset: 0, background: '#C8CAC4' }}>
+      {/* Keep the room's fluorescent color grade continuous through the
+          approach. Only the legacy overlay view dims its background. */}
       {mount3d && <div
         onPointerDown={() => {
           // COMPOSITE desktop: clicking the room AROUND the monitor steps back
@@ -3782,7 +3498,7 @@ export default function Office() {
         // The overlay desktop dims the room to ~30% so the bright HTML
         // window doesn't fight the scene behind it. In COMPOSITE mode the
         // room IS the frame (the screen is inside it), so keep it bright.
-        filter: (!COMPOSITE && (phase === 'desktop' || phase === 'booting'))
+        filter: (!COMPOSITE && phase === 'desktop')
           ? 'contrast(1.03) saturate(1.02) brightness(0.32)'
           : 'contrast(1.03) saturate(1.02)',
         transition: 'filter 0.55s ease-out',
@@ -3793,13 +3509,12 @@ export default function Office() {
           gl={{
             antialias: true,
             toneMapping: THREE.ACESFilmicToneMapping,
-            toneMappingExposure: 1.62,
+            toneMappingExposure: 1.45,
           }}
         >
           <PerspectiveCamera makeDefault position={[CAM_ENTRY_POS.x, CAM_ENTRY_POS.y, CAM_ENTRY_POS.z]} fov={54} />
           <CameraRig phase={phase} onArrived={handleArrived} onEntryDone={handleEntryDone} reducedMotion={reducedMotion} />
-          <CrtScreenProjector />
-          <OfficeScene phase={phase} onMonitorClick={handleClick} />
+          <OfficeScene phase={phase} onMonitorClick={handleClick} onDesktopReady={handleDesktopReady} />
           {/* Post-processing: Bloom only. N8AO (screen-space AO) was the
               source of the floor "flicker in various places" — as the camera
               parallaxes/breathes, the denoised SSAO samples crawl across the
@@ -3820,19 +3535,17 @@ export default function Office() {
           behind the near-fullscreen iframe there, so the per-frame RNG
           canvas redraw (setInterval) is wasted main-thread work. */}
       {phase !== 'splash' && phase !== 'desktop' && mount3d && <GrainOverlay />}
-      <PhaseFlash phase={phase} />
       <StudyAudio
         active={audioActive}
         muted={muted}
-        focusMode={phase === 'desktop' || phase === 'booting'}
+        focusMode={phase === 'desktop'}
       />
       {phase !== 'splash' && (
-        <HudOverlay muted={muted} onMuteToggle={() => setMuted(m => !m)} />
+        <HudOverlay muted={muted} onMuteToggle={() => setMuted(m => !m)} focused={phase === 'desktop'} />
       )}
-      {COMPOSITE && phase === 'desktop' && <ExitHint />}
-      {(phase === 'idle' || phase === 'entering') && <TapHint isTouch={isTouch} reducedMotion={reducedMotion} />}
-      {phase === 'splash'  && <BiosScreen onDone={handleBiosDone} />}
-      {phase === 'booting' && <BootOverlay onDone={handleBootDone} />}
+      {COMPOSITE && phase === 'desktop' && <ExitHint onExit={handleDesktopClose} />}
+      {phase === 'idle' && <TapHint onEnter={handleClick} />}
+      {phase === 'splash'  && <BiosScreen onDone={handleBiosDone} ready={monitorReady} />}
       {phase === 'desktop' && !COMPOSITE && <InnerDesktop onClose={handleDesktopClose} embedded />}
     </div>
   );
