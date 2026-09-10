@@ -438,6 +438,7 @@ export const talks: Talk[] = [
   // 2026
   { year: 2026, title: 'Title TBA', venue: 'Universitat de València Seminar', location: 'València', date: '4 Dec 2026', url: 'https://www.uv.es/uvweb/economic-analysis-department/en/department-economic-analysis-1285854461277.html' },
   { year: 2026, title: 'Generative AI and the Structure of Scientific Creativity', venue: 'Network Science & Economics', location: 'Luxembourg', date: '23–25 Oct 2026', url: 'https://nse-conference.github.io/' },
+  { year: 2026, venue: 'Bocconi University, PE breakfast (internal)', location: 'Milan', date: '30 Sep 2026', url: 'https://economics.unibocconi.eu/' },
   { year: 2026, title: 'The Sacred and the Secular in Western Painting', venue: 'ASREC Europe 2026 Conference', location: 'Venice', date: '25–26 Sep 2026', url: 'https://www.asrec.org/' },
   { year: 2026, venue: 'Innovation Seminar (invited), Collège de France', location: 'Paris', date: '25 Sep 2026', url: 'https://www.parisschoolofeconomics.eu/evenements/brown-bag-economics-of-innovation-seminar/' },
   { year: 2026, title: 'The Sacred and the Secular in Western Painting', venue: 'MPWZ–CEPR Text-as-Data', location: 'Virtual', date: '17–18 Sep 2026', url: 'https://cepr.org/events/10th-monash-paris-warwick-zurich-cepr-text-data-workshop' },
