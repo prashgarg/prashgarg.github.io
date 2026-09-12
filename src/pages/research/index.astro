@@ -27,7 +27,6 @@ const toolFor = (slug?: string) => slug ? tools.find(t => t.slug === slug) : und
     <h1 class="font-display text-3xl md:text-4xl font-bold mb-6">Research</h1>
 
     <nav aria-label="Research sections" class="research-index mb-10 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
-      <span class="text-ink/60 dark:text-cream/60">Jump to</span>
       {grouped.map(group => (
         <a href={`#research-${group.status}`} class="text-brand-red hover:underline underline-offset-2">{sectionTitles[group.status]}</a>
       ))}
@@ -47,8 +46,7 @@ const toolFor = (slug?: string) => slug ? tools.find(t => t.slug === slug) : und
                 <div class="mt-1 text-sm text-ink/70 dark:text-cream/70">
                   {p.coauthors.length > 0 && <span>with {p.coauthors.join(', ')}</span>}
                   {p.coauthors.length > 0 && (p.venue || p.year) && <span> · </span>}
-                  {p.venue && <span>{p.venue}</span>}
-                  {p.venue && p.year && <span>, {p.year}</span>}
+                  {p.venue && <span>{p.venue}{p.year && `, ${p.year}`}</span>}
                   {!p.venue && p.year && <span>{p.year}</span>}
                   {p.award && <span> · {p.award.url ? <a href={p.award.url} target="_blank" rel="noopener" class="hover:underline">{p.award.label}</a> : p.award.label}</span>}
                 </div>

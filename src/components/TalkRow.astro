@@ -3,19 +3,19 @@ import { topicForTalk, type Talk } from '../data/site';
 
 interface Props {
   talk: Talk;
-  start: number;
+  start: string;
+  end: string;
 }
 
-const { talk, start } = Astro.props;
+const { talk, start, end } = Astro.props;
 const topic = topicForTalk(talk.title);
 const paperHref = topic.paperSlug ? `/research/${topic.paperSlug}` : undefined;
 ---
-<li data-talk-item data-talk-start={start} data-talk-year={talk.year}>
+<li data-talk-item data-talk-start={start} data-talk-end={end} data-talk-year={talk.year}>
   <span class="text-ink/70 dark:text-cream/65">{talk.date}</span> —
   {talk.url
     ? <a href={talk.url} target="_blank" rel="noopener" class="hover:underline">{talk.venue}</a>
-    : <span>{talk.venue}</span>}
-  {talk.location && <span>, {talk.location}</span>}
+    : <span>{talk.venue}</span>}{talk.location && <span>, {talk.location}</span>}
   {talk.title && <span class="text-ink/60 dark:text-cream/60"> — {paperHref
     ? <a href={paperHref} class="hover:underline">{talk.title}</a>
     : talk.title}</span>}

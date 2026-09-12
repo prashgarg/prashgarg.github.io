@@ -4,57 +4,62 @@ import TalkRow from '../components/TalkRow.astro';
 import { talks, type Talk } from '../data/site';
 
 const MONTHS = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
-function monthIndex(date: string): number {
-  const m = date.toLowerCase().match(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\b/);
-  return m ? MONTHS.indexOf(m[1]) : 6;
-}
-function sortValue(t: Talk): number { return t.year * 12 + monthIndex(t.date); }
-
-// Store a precise start date in the markup so the small client enhancement can
-// reclassify events after the static build has gone stale. Month-only entries
-// use the first of the month; entries without a month remain in their year.
-function startTimestamp(t: Talk): number {
-  const full = t.date.match(/(\d{1,2})\s*(?:[–-]\s*\d{1,2})?\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{4})/i);
-  if (full) return Date.UTC(Number(full[3]), MONTHS.indexOf(full[2].toLowerCase()), Number(full[1]));
+// Keep a local calendar date in the markup so the small client enhancement can
+// reclassify events after the static build has gone stale. A range stays
+// current through its final day; month-only entries stay current through the
+// end of that month. Entries without a month remain anchored to mid-year.
+function dateKey(t: Talk, end = false): string {
+  const full = t.date.match(/(\d{1,2})\s*(?:[–-]\s*(\d{1,2}))?\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{4})/i);
+  if (full) {
+    const month = MONTHS.indexOf(full[3].toLowerCase());
+    const day = end && full[2] ? Number(full[2]) : Number(full[1]);
+    return `${full[4]}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  }
   const monthYear = t.date.match(/\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{4})/i);
-  if (monthYear) return Date.UTC(Number(monthYear[2]), MONTHS.indexOf(monthYear[1].toLowerCase()), 1);
-  return Date.UTC(t.year, 6, 1);
+  if (monthYear) {
+    const month = MONTHS.indexOf(monthYear[1].toLowerCase());
+    const day = end ? new Date(Number(monthYear[2]), month + 1, 0).getDate() : 1;
+    return `${monthYear[2]}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  }
+  return `${t.year}-07-01`;
 }
 
-const sorted = [...talks].sort((a, b) => sortValue(b) - sortValue(a));
+const sorted = [...talks].sort((a, b) => dateKey(b).localeCompare(dateKey(a)));
 const buildToday = new Date();
 buildToday.setHours(0, 0, 0, 0);
-const upcoming = sorted.filter(t => startTimestamp(t) >= buildToday.getTime());
-const archive = sorted.filter(t => startTimestamp(t) < buildToday.getTime());
+const buildTodayKey = `${buildToday.getFullYear()}-${String(buildToday.getMonth() + 1).padStart(2, '0')}-${String(buildToday.getDate()).padStart(2, '0')}`;
+const upcoming = sorted.filter(t => dateKey(t, true) >= buildTodayKey)
+  .sort((a, b) => dateKey(a).localeCompare(dateKey(b)));
+const archive = sorted.filter(t => dateKey(t, true) < buildTodayKey);
 const byYear: Record<number, Talk[]> = {};
 for (const t of archive) (byYear[t.year] ||= []).push(t);
 const yearsDesc = Object.keys(byYear).map(Number).sort((a, b) => b - a);
-const startFor = (t: Talk) => startTimestamp(t);
+const startFor = (t: Talk) => dateKey(t);
+const endFor = (t: Talk) => dateKey(t, true);
 ---
 <Layout title="Talks — Prashant Garg" current="talks">
   <article class="max-w-3xl mx-auto px-4 pt-14 pb-20">
     <h1 class="font-display text-3xl md:text-4xl font-bold mb-8">Talks &amp; seminars</h1>
 
     <nav aria-label="Talks sections" class="talks-index mb-10 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
-      <span class="text-ink/60 dark:text-cream/60">Jump to</span>
-      <a href="#upcoming" class="text-brand-red hover:underline underline-offset-2">Upcoming</a>
-      <a href="#archive" class="text-brand-red hover:underline underline-offset-2">Archive</a>
+      <a href="#upcoming" data-talk-upcoming-link hidden={!upcoming.length} class="text-brand-red hover:underline underline-offset-2">Upcoming</a>
+      <a href="#archive" data-talk-archive-link hidden={!archive.length} class="text-brand-red hover:underline underline-offset-2">Archive</a>
     </nav>
 
-    <section id="upcoming" data-talk-upcoming-section class="mb-10 scroll-mt-4">
+    <section id="upcoming" data-talk-upcoming-section hidden={!upcoming.length} class="mb-10 scroll-mt-4">
       <h2 class="font-display text-xl font-bold mb-3 pb-1 border-b border-ink/20 dark:border-cream/20">Upcoming</h2>
       <ul data-talk-upcoming-list class="space-y-2.5 text-sm text-ink/85 dark:text-cream/85 leading-relaxed">
-        {upcoming.map(t => <TalkRow talk={t} start={startFor(t)} />)}
+        {upcoming.map(t => <TalkRow talk={t} start={startFor(t)} end={endFor(t)} />)}
       </ul>
     </section>
 
-    <section id="archive" data-talk-archive class="scroll-mt-4">
+    <section id="archive" data-talk-archive hidden={!archive.length} class="scroll-mt-4">
       <h2 class="font-display text-xl font-bold mb-3 pb-1 border-b border-ink/20 dark:border-cream/20">Archive</h2>
       {yearsDesc.map(y => (
         <details data-talk-year-group={y} class="talk-year mb-5" open={y === buildToday.getFullYear()}>
-          <summary class="font-display text-lg font-bold pb-1 border-b border-ink/15 dark:border-cream/15">{y} <span class="text-sm font-sans font-normal text-ink/55 dark:text-cream/55">({byYear[y].length})</span></summary>
+          <summary class="font-display text-lg font-bold pb-1 border-b border-ink/15 dark:border-cream/15">{y} <span data-talk-count class="text-sm font-sans font-normal text-ink/55 dark:text-cream/55">({byYear[y].length})</span></summary>
           <ul data-talk-list class="mt-3 space-y-2.5 text-sm text-ink/85 dark:text-cream/85 leading-relaxed">
-            {byYear[y].map(t => <TalkRow talk={t} start={startFor(t)} />)}
+            {byYear[y].map(t => <TalkRow talk={t} start={startFor(t)} end={endFor(t)} />)}
           </ul>
         </details>
       ))}
@@ -70,29 +75,73 @@ const startFor = (t: Talk) => startTimestamp(t);
   if (upcomingSection instanceof HTMLElement && upcomingList instanceof HTMLUListElement && archive instanceof HTMLElement) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
     const items = [...document.querySelectorAll('[data-talk-item]')];
-    const groups = new Map([...archive.querySelectorAll('[data-talk-year-group]')].map(group => [group.getAttribute('data-talk-year'), group]));
+    const groups = new Map([...archive.querySelectorAll<HTMLDetailsElement>('[data-talk-year-group]')].map(group => [group.getAttribute('data-talk-year-group')!, group]));
+
+    const listForYear = (year: string | null) => {
+      let group = year ? groups.get(year) : null;
+      if (!group) {
+        if (!year) return null;
+        group = document.createElement('details');
+        group.className = 'talk-year mb-5';
+        group.setAttribute('data-talk-year-group', year);
+        group.open = Number(year) === today.getFullYear();
+        const summary = document.createElement('summary');
+        summary.className = 'font-display text-lg font-bold pb-1 border-b border-ink/15 dark:border-cream/15';
+        summary.textContent = year + ' ';
+        const count = document.createElement('span');
+        count.className = 'text-sm font-sans font-normal text-ink/55 dark:text-cream/55';
+        count.setAttribute('data-talk-count', '');
+        count.textContent = '(0)';
+        summary.append(count);
+        const list = document.createElement('ul');
+        list.className = 'mt-3 space-y-2.5 text-sm text-ink/85 dark:text-cream/85 leading-relaxed';
+        list.setAttribute('data-talk-list', '');
+        group.append(summary, list);
+        archive.append(group);
+        groups.set(year, group);
+      }
+      return group.querySelector('[data-talk-list]');
+    };
 
     for (const item of items) {
-      const isUpcoming = Number(item.getAttribute('data-talk-start')) >= today.getTime();
+      const isUpcoming = (item.getAttribute('data-talk-end') || '') >= todayKey;
       if (isUpcoming) {
         upcomingList.append(item);
         continue;
       }
       const year = item.getAttribute('data-talk-year');
-      const group = year ? groups.get(year) : null;
-      const list = group?.querySelector('[data-talk-list]');
+      const list = listForYear(year);
       if (list) list.append(item);
     }
 
-    const sortNewest = (a: Element, b: Element) => Number(b.getAttribute('data-talk-start')) - Number(a.getAttribute('data-talk-start'));
-    [...document.querySelectorAll('[data-talk-list], [data-talk-upcoming-list]')].forEach(list => {
+    const sortNewest = (a: Element, b: Element) => (b.getAttribute('data-talk-start') || '').localeCompare(a.getAttribute('data-talk-start') || '');
+    const sortSoonest = (a: Element, b: Element) => (a.getAttribute('data-talk-start') || '').localeCompare(b.getAttribute('data-talk-start') || '');
+    [...document.querySelectorAll('[data-talk-list]')].forEach(list => {
       [...list.children].sort(sortNewest).forEach(item => list.append(item));
     });
+    [...upcomingList.children].sort(sortSoonest).forEach(item => upcomingList.append(item));
+
+    for (const group of groups.values()) {
+      const count = group.querySelectorAll('[data-talk-item]').length;
+      const countNode = group.querySelector('[data-talk-count]');
+      if (countNode) countNode.textContent = `(${count})`;
+      group.hidden = count === 0;
+    }
+    // Keep generated year groups in descending order beside the server groups.
+    [...archive.querySelectorAll('[data-talk-year-group]')]
+      .sort((a, b) => Number(b.getAttribute('data-talk-year-group')) - Number(a.getAttribute('data-talk-year-group')))
+      .forEach(group => archive.append(group));
+    archive.hidden = [...groups.values()].every(group => group.hidden);
     upcomingSection.hidden = upcomingList.children.length === 0;
+    const upcomingLink = document.querySelector<HTMLElement>('[data-talk-upcoming-link]');
+    const archiveLink = document.querySelector<HTMLElement>('[data-talk-archive-link]');
+    if (upcomingLink) upcomingLink.hidden = upcomingSection.hidden;
+    if (archiveLink) archiveLink.hidden = archive.hidden;
   }
 </script>
-<style>
+<style is:global>
   .talk-year > summary {
     display: flex;
     align-items: baseline;

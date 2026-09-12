@@ -479,6 +479,12 @@ const WIN95_STYLE = `
   box-shadow: inset -1px -1px #fff, inset 1px 1px #2b2b2b,
               inset -2px -2px #c3c6ca, inset 2px 2px #86898d;
 }
+.win95-view-btn { width: auto; min-width: 44px; padding: 0 8px; flex-shrink: 0; font-family: MSSerif, Arial, sans-serif; font-size: 12px; }
+.win95-view-btn[aria-pressed="true"] { box-shadow: inset -1px -1px #fff, inset 1px 1px #2b2b2b; background: #dedede; }
+@media (max-width: 600px), (max-height: 440px) {
+  .win95-window { min-width: 0; min-height: 0; }
+}
+@media (max-width: 480px) { .win95-clock { display: none; } }
 /* volume slider — Win95 styling instead of the modern blue native
    range control, which broke the period illusion (G6) */
 .win95-vol-slider {
@@ -1329,6 +1335,8 @@ interface InnerDesktopProps {
   active?: boolean;
   /** Fullscreen fallback hosted directly by the room on touch or composite=0. */
   embedded?: boolean;
+  readingMode?: boolean;
+  onToggleReading?: () => void;
 }
 
 // ── Multi-window state types ──────────────────────────────────────
@@ -1376,7 +1384,7 @@ function WindowIframe({ src, title }: { src: string; title: string }) {
   );
 }
 
-export default function InnerDesktop({ onClose, embedded = false, active = true }: InnerDesktopProps) {
+export default function InnerDesktop({ onClose, embedded = false, active = true, readingMode = false, onToggleReading }: InnerDesktopProps) {
   const [time, setTime] = useState(getTime);
   // Container ref so we can measure the desktop bounding rect for
   // window cascade defaults + animation origin transforms.
@@ -1793,7 +1801,7 @@ export default function InnerDesktop({ onClose, embedded = false, active = true 
   const inertiaRafRef = useRef<Record<string, number>>({});
   const startDragWin = (id: AppId) => (e: React.MouseEvent) => {
     const w = wins.find(x => x.id === id);
-    if (!w || w.maximized) return;
+    if (!w || w.maximized || containerSize.w < 600 || containerSize.h < 440) return;
     e.preventDefault(); e.stopPropagation();
     focusApp(id);
     // cancel any in-flight inertia for this window
@@ -1873,7 +1881,7 @@ export default function InnerDesktop({ onClose, embedded = false, active = true 
   );
   const startResizeEdge = (id: AppId, edge: ResizeEdge) => (e: React.MouseEvent) => {
     const w = wins.find(x => x.id === id);
-    if (!w || w.maximized) return;
+    if (!w || w.maximized || containerSize.w < 600 || containerSize.h < 440) return;
     e.preventDefault(); e.stopPropagation();
     focusApp(id);
     const sx = e.clientX, sy = e.clientY;
@@ -1996,14 +2004,22 @@ export default function InnerDesktop({ onClose, embedded = false, active = true 
         const isTop = topId === w.id;
         if (w.minimized && w.state !== 'minimizing') return null;
         // Position/size. maximized fills the desktop minus taskbar.
-        const style: React.CSSProperties = w.maximized
+        // View changes resize this same document. Fit existing windows too,
+        // without remounting their iframe or losing the reading position.
+        const fitWindow = containerSize.w < 600 || containerSize.h < 440;
+        const maximized = w.maximized || fitWindow;
+        const width = Math.min(w.w, containerSize.w - 16);
+        const height = Math.min(w.h, containerSize.h - 46);
+        const style: React.CSSProperties = maximized
           ? { left: 0, top: 0, width: '100%', height: 'calc(100% - 30px)', zIndex: w.zIndex }
-          : { left: w.x, top: w.y, width: w.w, height: w.h, zIndex: w.zIndex };
+          : { left: Math.max(8, Math.min(w.x, containerSize.w - width - 8)),
+              top: Math.max(8, Math.min(w.y, containerSize.h - height - 38)),
+              width, height, zIndex: w.zIndex };
         // transform-origin for opening/closing zoom anim — anchored to the
         // icon position where the window was launched from.
         if (w.openFrom) {
-          (style as any)['--from-x'] = `${w.openFrom.x - (w.maximized ? 0 : w.x)}px`;
-          (style as any)['--from-y'] = `${w.openFrom.y - (w.maximized ? 0 : w.y)}px`;
+          (style as any)['--from-x'] = `${w.openFrom.x - (maximized ? 0 : w.x)}px`;
+          (style as any)['--from-y'] = `${w.openFrom.y - (maximized ? 0 : w.y)}px`;
         }
         const classes = ['win95-window'];
         if (w.state === 'opening')    classes.push('opening');
@@ -2018,7 +2034,7 @@ export default function InnerDesktop({ onClose, embedded = false, active = true 
             onMouseDown={e => { e.stopPropagation(); focusApp(w.id); }}
           >
             {/* 8 invisible resize edges + corners (only when not maximized) */}
-            {!w.maximized && (
+            {!maximized && (
               <>
                 {(['n','s','e','w','ne','nw','se','sw'] as const).map(edge => (
                   <div
@@ -2032,9 +2048,9 @@ export default function InnerDesktop({ onClose, embedded = false, active = true 
             {/* title bar */}
             <div
               className="win95-titlebar"
-              style={{ background: titleBg, cursor: w.maximized ? 'default' : 'move' }}
+              style={{ background: titleBg, cursor: maximized ? 'default' : 'move' }}
               onMouseDown={startDragWin(w.id)}
-              onDoubleClick={e => { e.stopPropagation(); toggleMaximize(w.id); }}
+              onDoubleClick={e => { e.stopPropagation(); if (!fitWindow) toggleMaximize(w.id); }}
             >
               <span style={{ display: 'flex', flexShrink: 0, transform: 'scale(0.7)', transformOrigin: 'center' }}><app.Icon /></span>
               <span className="win95-titlebar-title">{app.title}</span>
@@ -2048,8 +2064,9 @@ export default function InnerDesktop({ onClose, embedded = false, active = true 
               >_</button>
               <button
                 className="win95-titlebtn"
-                title={w.maximized ? 'Restore' : 'Maximise'}
-                aria-label={w.maximized ? 'Restore' : 'Maximise'}
+                title={maximized ? 'Restore' : 'Maximise'}
+                aria-label={maximized ? 'Restore' : 'Maximise'}
+                disabled={fitWindow}
                 onMouseDown={e => { e.stopPropagation(); playUiClick('down', 'titlebtn'); }}
                 onMouseUp={() => playUiClick('up', 'titlebtn')}
                 onClick={e => { e.stopPropagation(); toggleMaximize(w.id); }}
@@ -2089,7 +2106,7 @@ export default function InnerDesktop({ onClose, embedded = false, active = true 
               <span className="win95-statusbar-cell wide">Ready</span>
               <span className="win95-statusbar-cell">prashantgarg.os</span>
               <span className="win95-statusbar-cell sm" />
-              {!w.maximized && (
+              {!maximized && (
                 <div className="win95-resize-grip" onMouseDown={startResizeWin(w.id)}>
                   <ResizeGripIcon />
                 </div>
@@ -2318,7 +2335,7 @@ export default function InnerDesktop({ onClose, embedded = false, active = true 
           Home
         </button>
 
-        {embedded && <a className="win95-start-btn win95-text-btn" href="/standard/"
+        {(embedded || readingMode) && <a className="win95-start-btn win95-text-btn" href="/standard/"
           title="Text version" aria-label="Text version">Text</a>}
 
         {/* Scroll the open-window chips without pushing the tray off-screen. */}
@@ -2361,23 +2378,13 @@ export default function InnerDesktop({ onClose, embedded = false, active = true 
         })}
 
         </div>
-        {/* Always-visible exit back to the 3D office — reliable even when a
-            window is maximized (clicking the room can't be reached then) and
-            mirrors the Esc shortcut. */}
-        <button
-          className="win95-tray-btn"
-          title="Back to the office (Esc)"
-          aria-label="Back to the office"
-          onMouseDown={() => playUiClick('down')}
-          onMouseUp={() => playUiClick('up')}
-          onClick={shutDown}
-        >
-          <svg width="16" height="16" viewBox="0 0 16 16">
-            <rect x="1.5" y="3" width="13" height="9" rx="1" fill="none" stroke="#2b2b2b" strokeWidth="1.4"/>
-            <rect x="6" y="12.5" width="4" height="1.4" fill="#2b2b2b"/>
-            <path d="M5.6 7.4 L8 5 L10.4 7.4 M8 5 V9.6" fill="none" stroke="#2b2b2b" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        </button>
+        <button className="win95-tray-btn win95-view-btn"
+          title="Back to the office (Esc)" aria-label="Back to the office"
+          onClick={shutDown}>Room</button>
+        {onToggleReading && <button className="win95-tray-btn win95-view-btn"
+          title={readingMode ? 'Show desktop in monitor' : 'Fit desktop to window'}
+          aria-label="Desktop view" aria-pressed={readingMode}
+          onClick={onToggleReading}>Desktop</button>}
         {/* system tray: volume slider + icon (click icon = mute toggle) */}
         <VolumeTray />
         <div className="win95-clock">{time}</div>

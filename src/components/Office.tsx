@@ -301,7 +301,8 @@ const _COMPOSITE_CZ = (() => {
 })();
 const CAM_COMPOSITE_POS = new THREE.Vector3(MONITOR_WORLD.x, MONITOR_WORLD.y + 0.02, DESK_Z + _COMPOSITE_CZ);
 const CAM_COMPOSITE_TGT = new THREE.Vector3(MONITOR_WORLD.x, MONITOR_WORLD.y + 0.02, MONITOR_WORLD.z);
-// Composited monitor is the DEFAULT on pointer devices. Escape hatch:
+// Composited monitor is available on pointer devices. Its DOM stays mounted
+// when adaptive reading expands it to the viewport. Escape hatch:
 // ?composite=0 forces the legacy fullscreen-overlay desktop. Touch
 // devices always use the overlay (composite is a desktop-GPU experience;
 // phones get the fullscreen desktop via the G7 skip path).
@@ -2332,8 +2333,9 @@ function MdrPanel({ w, h, fabric }: { w: number; h: number; fabric: any }) {
 
 
 /* ---------- main 3-D scene ------------------------------------------- */
-function MonitorDesktop({ phase, onEnter, onReady }: {
-  phase: Phase; onEnter: () => void; onReady: () => void;
+function MonitorDesktop({ phase, reading, compact, onEnter, onReady, onToggleReading }: {
+  phase: Phase; reading: boolean; compact: boolean;
+  onEnter: () => void; onReady: () => void; onToggleReading: () => void;
 }) {
   const frame = useRef<HTMLIFrameElement>(null);
   const [ready, setReady] = useState(false);
@@ -2344,20 +2346,23 @@ function MonitorDesktop({ phase, onEnter, onReady }: {
     return '/os' + (query.size ? '?' + query.toString() : '');
   }, []);
   const sendFocus = useCallback(() => {
-    frame.current?.contentWindow?.postMessage({ type: 'pg-office-focus', active }, window.location.origin);
-  }, [active]);
+    frame.current?.contentWindow?.postMessage({ type: 'pg-office-focus', active, reading, canToggleReading: !compact }, window.location.origin);
+  }, [active, reading, compact]);
   useEffect(() => {
     const receive = (event: MessageEvent) => {
       if (event.origin !== window.location.origin || event.source !== frame.current?.contentWindow) return;
+      if (event.data?.type === 'pg-reading-toggle') { onToggleReading(); return; }
       if (event.data?.type !== 'pg-desktop-ready') return;
       setReady(true); onReady(); sendFocus();
     };
     window.addEventListener('message', receive);
     sendFocus();
     return () => window.removeEventListener('message', receive);
-  }, [sendFocus, onReady]);
+  }, [sendFocus, onReady, onToggleReading]);
   return (
     <Html transform occlude="blending"
+      wrapperClass={`office-monitor-layer${reading && active ? ' is-reading' : ''}`}
+      className="office-monitor-content"
       position={[MONITOR_WORLD.x, MONITOR_WORLD.y + 0.02, MONITOR_WORLD.z + 0.218]}
       rotation={[0, 0, 0]} scale={MONITOR_VIEWPORT.scale} zIndexRange={[100, 0]}
       pointerEvents={phase === 'idle' || active ? 'auto' : 'none'}
@@ -2376,8 +2381,9 @@ function MonitorDesktop({ phase, onEnter, onReady }: {
   );
 }
 
-function OfficeScene({ phase, onMonitorClick, onDesktopReady }: {
-  phase: Phase; onMonitorClick: () => void; onDesktopReady: () => void;
+function OfficeScene({ phase, reading, compact, onMonitorClick, onDesktopReady, onToggleReading }: {
+  phase: Phase; reading: boolean; compact: boolean;
+  onMonitorClick: () => void; onDesktopReady: () => void; onToggleReading: () => void;
 }) {
   // Engraved nameplate texture (real text on the chrome face)
   const nameTex = useMemo(() => getEngravedTex('P. GARG'), []);
@@ -2595,7 +2601,8 @@ function OfficeScene({ phase, onMonitorClick, onDesktopReady }: {
           so it's mounted OUTSIDE this group.) */}
       <CrtMonitor phase={phase} onClick={onMonitorClick} />
 
-      {COMPOSITE && <MonitorDesktop phase={phase} onEnter={onMonitorClick} onReady={onDesktopReady} />}
+      {COMPOSITE && <MonitorDesktop phase={phase} reading={reading} compact={compact}
+        onEnter={onMonitorClick} onReady={onDesktopReady} onToggleReading={onToggleReading} />}
 
       <group position={[SOUTH_DX, 0, 0]}>
       {/* ── DESK ACCESSORIES — all on the south booth only ──────────
@@ -3294,8 +3301,24 @@ function ExitHint({ onExit }: { onExit: () => void }) {
    ================================================================ */
 const SS_PHASE = 'pg_phase';
 const SS_MUTED = 'pg_muted';
+const READING_QUERY = '(max-width: 900px), (max-height: 600px)';
 
 export default function Office() {
+  const [compact, setCompact] = useState(() => window.matchMedia(READING_QUERY).matches);
+  const [preferReading, setPreferReading] = useState(() => {
+    try { return sessionStorage.getItem('pg_reading') === '1'; } catch { return false; }
+  });
+  const reading = !COMPOSITE || compact || preferReading;
+  const toggleReading = useCallback(() => setPreferReading(value => !value), []);
+  useEffect(() => {
+    const media = window.matchMedia(READING_QUERY);
+    const update = () => setCompact(media.matches);
+    media.addEventListener('change', update);
+    return () => media.removeEventListener('change', update);
+  }, []);
+  useEffect(() => {
+    try { sessionStorage.setItem('pg_reading', preferReading ? '1' : '0'); } catch { /* */ }
+  }, [preferReading]);
   const [monitorReady, setMonitorReady] = useState(!COMPOSITE);
   const handleDesktopReady = useCallback(() => setMonitorReady(true), []);
   const [phase, setPhase] = useState<Phase>(() => {
@@ -3316,7 +3339,7 @@ export default function Office() {
     // (composite is gated off for touch anyway, and the heavy 3D intro is
     // janky on phones) — content is one tap away. The 3D office stays
     // reachable via the Start menu's "View office (3D)" item.
-    try { if (window.matchMedia('(hover: none) and (pointer: coarse)').matches) return 'desktop'; } catch { /* */ }
+    try { if (window.matchMedia('(hover: none) and (pointer: coarse)').matches || window.matchMedia(READING_QUERY).matches) return 'desktop'; } catch { /* */ }
     return 'splash';
   });
   // Lazy init is safe — this component renders client:only (no SSR
@@ -3350,7 +3373,8 @@ export default function Office() {
   }, []);
 
   const handleEntryDone    = () => setPhase('idle');
-  const handleClick        = () => { if (phase === 'idle') setPhase(reducedMotion ? 'desktop' : 'dollying'); };
+  const handleClick        = () => { if (phase === 'idle') setPhase(reducedMotion || reading ? 'desktop' : 'dollying'); };
+  const showReading = () => { setPreferReading(true); setPhase('desktop'); };
   const handleArrived      = () => setPhase('desktop');
   // Persist 'desktop' for ALL visitors (was touch-only) so that returning
   // within the session lands straight on the monitor — no replayed
@@ -3373,7 +3397,7 @@ export default function Office() {
   };
   const handleDesktopClose = () => {
     try { sessionStorage.removeItem(SS_PHASE); } catch { /* */ }
-    setPhase(isTouch || reducedMotion ? 'idle' : 'returning');
+    setPhase(isTouch || reducedMotion || reading ? 'idle' : 'returning');
     document.getElementById('office')?.focus({ preventScroll: true });
   };
   // Composite mode: the desktop lives in the /os iframe, so its Shut Down
@@ -3386,7 +3410,7 @@ export default function Office() {
     };
     window.addEventListener('message', onMsg);
     return () => window.removeEventListener('message', onMsg);
-  }, []); // eslint-disable-line
+  }, [phase, reading, reducedMotion, isTouch]); // Current presentation determines the return transition.
   // Esc steps back out of the composite desktop to the room — mirrors the
   // click-the-room affordance and gives keyboard users a way out (M22).
   useEffect(() => {
@@ -3395,7 +3419,7 @@ export default function Office() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [phase]);
+  }, [phase, reading, reducedMotion, isTouch]);
   // Keyboard entry: at idle, Enter/Space dollies into the monitor — the
   // mouse path is a 3D mesh click, which isn't keyboard-reachable (M11).
   // (The server-rendered #entry layer is intentionally LEFT in the DOM so
@@ -3408,7 +3432,7 @@ export default function Office() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [phase]);
+  }, [phase, reading, reducedMotion]);
   // Mount the 3D scene only when it can be seen: on touch, skip it
   // during BIOS (so the models never download unless asked for) and
   // while the fullscreen desktop covers everything.
@@ -3453,11 +3477,12 @@ export default function Office() {
   }
 
   return (
-    <div id="office" className="office" data-phase={phase} tabIndex={-1}
+    <div id="office" className="office" data-phase={phase}
+      data-view={phase === 'desktop' && reading ? 'desktop' : 'room'} tabIndex={-1}
       style={{ position: 'fixed', inset: 0, background: '#C8CAC4' }}>
       {/* Keep the room's fluorescent color grade continuous through the
           approach. Only the legacy overlay view dims its background. */}
-      {mount3d && <div
+      {mount3d && <div className="office-scene"
         onPointerDown={() => {
           // COMPOSITE desktop: clicking the room AROUND the monitor steps back
           // out to the office. The composited desktop is a same-origin <iframe>
@@ -3465,16 +3490,14 @@ export default function Office() {
           // — so any pointerdown that bubbles up to this wrapper is, by
           // construction, a click outside the screen (canvas / drei container /
           // 3D room). That makes "click outside the monitor → exit" a one-liner.
-          if (COMPOSITE && phase === 'desktop') handleDesktopClose();
+          if (COMPOSITE && phase === 'desktop' && !reading) handleDesktopClose();
         }}
         style={{
         position: 'absolute', inset: 0,
         // The overlay desktop dims the room to ~30% so the bright HTML
         // window doesn't fight the scene behind it. In COMPOSITE mode the
         // room IS the frame (the screen is inside it), so keep it bright.
-        filter: (!COMPOSITE && phase === 'desktop')
-          ? 'contrast(1.03) saturate(1.02) brightness(0.32)'
-          : 'contrast(1.03) saturate(1.02)',
+        filter: reading && phase === 'desktop' ? 'none' : 'contrast(1.03) saturate(1.02)',
         transition: 'filter 0.55s ease-out',
       }}>
         <Canvas
@@ -3488,7 +3511,8 @@ export default function Office() {
         >
           <PerspectiveCamera makeDefault position={[CAM_ENTRY_POS.x, CAM_ENTRY_POS.y, CAM_ENTRY_POS.z]} fov={54} />
           <CameraRig phase={phase} onArrived={handleArrived} onEntryDone={handleEntryDone} reducedMotion={reducedMotion} />
-          <OfficeScene phase={phase} onMonitorClick={handleClick} onDesktopReady={handleDesktopReady} />
+          <OfficeScene phase={phase} reading={reading} compact={compact}
+            onMonitorClick={handleClick} onDesktopReady={handleDesktopReady} onToggleReading={toggleReading} />
           {/* Post-processing: Bloom only. N8AO (screen-space AO) was the
               source of the floor "flicker in various places" — as the camera
               parallaxes/breathes, the denoised SSAO samples crawl across the
@@ -3513,13 +3537,17 @@ export default function Office() {
         muted={muted}
         focusMode={phase === 'desktop'}
       />
-      {phase !== 'splash' && (
+      {phase !== 'splash' && !(phase === 'desktop' && reading) && (
         <HudOverlay muted={muted} onMuteToggle={() => setMuted(m => !m)} focused={phase === 'desktop'} />
       )}
-      {COMPOSITE && phase === 'desktop' && <ExitHint onExit={handleDesktopClose} />}
+      {COMPOSITE && phase === 'desktop' && !reading && <ExitHint onExit={handleDesktopClose} />}
       {phase === 'idle' && <TapHint onEnter={handleClick} />}
+      {phase === 'idle' && <button className="office-control office-desktop-shortcut" onClick={showReading}>Desktop</button>}
       {phase === 'splash'  && <BiosScreen onDone={handleBiosDone} ready={monitorReady} />}
-      {phase === 'desktop' && !COMPOSITE && <InnerDesktop onClose={handleDesktopClose} embedded />}
+      {!COMPOSITE && <div className="office-desktop-overlay"
+        style={{ visibility: phase === 'desktop' ? 'visible' : 'hidden' }} aria-hidden={phase !== 'desktop'}>
+        <InnerDesktop onClose={handleDesktopClose} embedded active={phase === 'desktop'} />
+      </div>}
     </div>
   );
 }

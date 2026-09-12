@@ -11,11 +11,17 @@ import InnerDesktop from './InnerDesktop';
  */
 export default function OsPage() {
   const [active, setActive] = useState(() => window.parent === window);
+  const [reading, setReading] = useState(false);
+  const [canToggleReading, setCanToggleReading] = useState(false);
   useEffect(() => {
     if (window.parent === window) return;
     const receive = (event: MessageEvent) => {
       if (event.origin !== window.location.origin || event.source !== window.parent) return;
-      if (event.data?.type === 'pg-office-focus') setActive(event.data.active === true);
+      if (event.data?.type === 'pg-office-focus') {
+        setActive(event.data.active === true);
+        setReading(event.data.reading === true);
+        setCanToggleReading(event.data.canToggleReading === true);
+      }
     };
     window.addEventListener('message', receive);
     // The child and its styles have committed before the room reveals it.
@@ -30,5 +36,7 @@ export default function OsPage() {
   const onClose = () => {
     try { window.parent?.postMessage({ type: 'pg-shutdown' }, window.location.origin); } catch { /* */ }
   };
-  return <InnerDesktop embedded={false} active={active} onClose={onClose} />;
+  const toggleReading = () => window.parent.postMessage({ type: 'pg-reading-toggle' }, window.location.origin);
+  return <InnerDesktop embedded={false} active={active} onClose={onClose}
+    readingMode={reading} onToggleReading={canToggleReading ? toggleReading : undefined} />;
 }
