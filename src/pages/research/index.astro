@@ -11,7 +11,14 @@ const sectionTitles: Record<PaperStatus, string> = {
   working:   'Working papers',
   other:     'Essays & other writing',
 };
-const grouped = order.map(s => ({ status: s, items: papers.filter(p => p.status === s) }))
+const grouped = order.map(s => ({
+  status: s,
+  // Keep the author's hand-curated order everywhere else. Published work is
+  // the one section where a current reader benefits from newest-first order.
+  items: papers.filter(p => p.status === s).sort((a, b) => s === 'published'
+    ? (b.year ?? 0) - (a.year ?? 0)
+    : 0),
+}))
                      .filter(g => g.items.length > 0);
 const toolFor = (slug?: string) => slug ? tools.find(t => t.slug === slug) : undefined;
 ---
@@ -19,8 +26,15 @@ const toolFor = (slug?: string) => slug ? tools.find(t => t.slug === slug) : und
   <article class="max-w-3xl mx-auto px-4 pt-8 pb-16">
     <h1 class="font-display text-3xl md:text-4xl font-bold mb-6">Research</h1>
 
+    <nav aria-label="Research sections" class="research-index mb-10 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
+      <span class="text-ink/60 dark:text-cream/60">Jump to</span>
+      {grouped.map(group => (
+        <a href={`#research-${group.status}`} class="text-brand-red hover:underline underline-offset-2">{sectionTitles[group.status]}</a>
+      ))}
+    </nav>
+
     {grouped.map(group => (
-      <section class="mb-10">
+      <section id={`research-${group.status}`} class="mb-10 scroll-mt-4">
         <h2 class="font-display text-xl md:text-2xl font-bold mb-4 pb-1 border-b border-ink/20 dark:border-cream/20">{sectionTitles[group.status]}</h2>
         <ul class="space-y-6">
           {group.items.map(p => {
@@ -40,11 +54,14 @@ const toolFor = (slug?: string) => slug ? tools.find(t => t.slug === slug) : und
                 </div>
                 <PaperLinks links={p.links} tool={tool} />
                 {p.coverage && p.coverage.length > 0 && (
-                  <div class="mt-2 text-sm leading-relaxed text-ink/70 dark:text-cream/70">
-                    Coverage: {p.coverage.map((c, i) => (
-                      <>{i > 0 && <span>, </span>}<a href={c.url} target="_blank" rel="noopener" class="hover:underline">{c.outlet}</a></>
-                    ))}
-                  </div>
+                  <details class="paper-coverage mt-2 text-sm text-ink/70 dark:text-cream/70">
+                    <summary>Coverage ({p.coverage.length})</summary>
+                    <div class="mt-2 flex flex-wrap gap-x-3 gap-y-1 leading-relaxed">
+                      {p.coverage.map(c => (
+                        <a href={c.url} target="_blank" rel="noopener" class="hover:underline">{c.outlet}</a>
+                      ))}
+                    </div>
+                  </details>
                 )}
                 <details class="paper-abstract mt-2 text-sm">
                   <summary>Abstract</summary>
@@ -79,4 +96,24 @@ const toolFor = (slug?: string) => slug ? tools.find(t => t.slug === slug) : und
   .paper-abstract[open] summary::before { transform: rotate(45deg); }
   .paper-abstract summary:hover { text-decoration: underline; text-underline-offset: 0.2em; }
   .paper-abstract summary:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
+  .paper-coverage summary {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: fit-content;
+    cursor: pointer;
+    list-style: none;
+  }
+  .paper-coverage summary::-webkit-details-marker { display: none; }
+  .paper-coverage summary::before {
+    content: '';
+    width: 0.375rem;
+    height: 0.375rem;
+    border-right: 1.5px solid currentColor;
+    border-bottom: 1.5px solid currentColor;
+    transform: rotate(-45deg);
+  }
+  .paper-coverage[open] summary::before { transform: rotate(45deg); }
+  .paper-coverage summary:hover { text-decoration: underline; text-underline-offset: 0.2em; }
+  .paper-coverage summary:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
 </style>

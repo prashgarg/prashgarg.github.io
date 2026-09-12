@@ -1,5 +1,6 @@
 ---
 import Layout from '../layouts/Win95Layout.astro';
+import TalkRow from '../components/TalkRow.astro';
 import { talks, type Talk } from '../data/site';
 
 const MONTHS = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
@@ -9,31 +10,108 @@ function monthIndex(date: string): number {
 }
 function sortValue(t: Talk): number { return t.year * 12 + monthIndex(t.date); }
 
-// Year-grouped chronological list (like the old site).
+// Store a precise start date in the markup so the small client enhancement can
+// reclassify events after the static build has gone stale. Month-only entries
+// use the first of the month; entries without a month remain in their year.
+function startTimestamp(t: Talk): number {
+  const full = t.date.match(/(\d{1,2})\s*(?:[–-]\s*\d{1,2})?\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{4})/i);
+  if (full) return Date.UTC(Number(full[3]), MONTHS.indexOf(full[2].toLowerCase()), Number(full[1]));
+  const monthYear = t.date.match(/\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{4})/i);
+  if (monthYear) return Date.UTC(Number(monthYear[2]), MONTHS.indexOf(monthYear[1].toLowerCase()), 1);
+  return Date.UTC(t.year, 6, 1);
+}
+
 const sorted = [...talks].sort((a, b) => sortValue(b) - sortValue(a));
+const buildToday = new Date();
+buildToday.setHours(0, 0, 0, 0);
+const upcoming = sorted.filter(t => startTimestamp(t) >= buildToday.getTime());
+const archive = sorted.filter(t => startTimestamp(t) < buildToday.getTime());
 const byYear: Record<number, Talk[]> = {};
-for (const t of sorted) (byYear[t.year] ||= []).push(t);
+for (const t of archive) (byYear[t.year] ||= []).push(t);
 const yearsDesc = Object.keys(byYear).map(Number).sort((a, b) => b - a);
+const startFor = (t: Talk) => startTimestamp(t);
 ---
 <Layout title="Talks — Prashant Garg" current="talks">
   <article class="max-w-3xl mx-auto px-4 pt-14 pb-20">
     <h1 class="font-display text-3xl md:text-4xl font-bold mb-8">Talks &amp; seminars</h1>
 
-    {yearsDesc.map(y => (
-      <section class="mb-8">
-        <h2 class="font-display text-xl font-bold mb-3 pb-1 border-b border-ink/20 dark:border-cream/20">{y}</h2>
-        <ul class="space-y-2.5 text-sm text-ink/85 dark:text-cream/85 leading-relaxed">
-          {byYear[y].map(t => (
-            <li>
-              <span class="text-ink/70 dark:text-cream/65">{t.date}</span> —
-              {t.url
-                ? <a href={t.url} target="_blank" rel="noopener" class="hover:underline">{t.venue}</a>
-                : <span>{t.venue}</span>}, {t.location}
-              {t.title && <span class="text-ink/60 dark:text-cream/60"> — {t.title}</span>}
-            </li>
-          ))}
-        </ul>
-      </section>
-    ))}
+    <nav aria-label="Talks sections" class="talks-index mb-10 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
+      <span class="text-ink/60 dark:text-cream/60">Jump to</span>
+      <a href="#upcoming" class="text-brand-red hover:underline underline-offset-2">Upcoming</a>
+      <a href="#archive" class="text-brand-red hover:underline underline-offset-2">Archive</a>
+    </nav>
+
+    <section id="upcoming" data-talk-upcoming-section class="mb-10 scroll-mt-4">
+      <h2 class="font-display text-xl font-bold mb-3 pb-1 border-b border-ink/20 dark:border-cream/20">Upcoming</h2>
+      <ul data-talk-upcoming-list class="space-y-2.5 text-sm text-ink/85 dark:text-cream/85 leading-relaxed">
+        {upcoming.map(t => <TalkRow talk={t} start={startFor(t)} />)}
+      </ul>
+    </section>
+
+    <section id="archive" data-talk-archive class="scroll-mt-4">
+      <h2 class="font-display text-xl font-bold mb-3 pb-1 border-b border-ink/20 dark:border-cream/20">Archive</h2>
+      {yearsDesc.map(y => (
+        <details data-talk-year-group={y} class="talk-year mb-5" open={y === buildToday.getFullYear()}>
+          <summary class="font-display text-lg font-bold pb-1 border-b border-ink/15 dark:border-cream/15">{y} <span class="text-sm font-sans font-normal text-ink/55 dark:text-cream/55">({byYear[y].length})</span></summary>
+          <ul data-talk-list class="mt-3 space-y-2.5 text-sm text-ink/85 dark:text-cream/85 leading-relaxed">
+            {byYear[y].map(t => <TalkRow talk={t} start={startFor(t)} />)}
+          </ul>
+        </details>
+      ))}
+    </section>
   </article>
 </Layout>
+<script>
+  // Keep the Upcoming/Archive split accurate as the static page ages. The
+  // server-rendered classification remains the no-JS fallback.
+  const upcomingSection = document.querySelector('[data-talk-upcoming-section]');
+  const upcomingList = document.querySelector('[data-talk-upcoming-list]');
+  const archive = document.querySelector('[data-talk-archive]');
+  if (upcomingSection instanceof HTMLElement && upcomingList instanceof HTMLUListElement && archive instanceof HTMLElement) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const items = [...document.querySelectorAll('[data-talk-item]')];
+    const groups = new Map([...archive.querySelectorAll('[data-talk-year-group]')].map(group => [group.getAttribute('data-talk-year'), group]));
+
+    for (const item of items) {
+      const isUpcoming = Number(item.getAttribute('data-talk-start')) >= today.getTime();
+      if (isUpcoming) {
+        upcomingList.append(item);
+        continue;
+      }
+      const year = item.getAttribute('data-talk-year');
+      const group = year ? groups.get(year) : null;
+      const list = group?.querySelector('[data-talk-list]');
+      if (list) list.append(item);
+    }
+
+    const sortNewest = (a: Element, b: Element) => Number(b.getAttribute('data-talk-start')) - Number(a.getAttribute('data-talk-start'));
+    [...document.querySelectorAll('[data-talk-list], [data-talk-upcoming-list]')].forEach(list => {
+      [...list.children].sort(sortNewest).forEach(item => list.append(item));
+    });
+    upcomingSection.hidden = upcomingList.children.length === 0;
+  }
+</script>
+<style>
+  .talk-year > summary {
+    display: flex;
+    align-items: baseline;
+    gap: 0.35rem;
+    cursor: pointer;
+    list-style: none;
+  }
+  .talk-year > summary::-webkit-details-marker { display: none; }
+  .talk-year > summary::before {
+    content: '';
+    width: 0.4rem;
+    height: 0.4rem;
+    flex: 0 0 auto;
+    margin-right: 0.15rem;
+    border-right: 1.5px solid currentColor;
+    border-bottom: 1.5px solid currentColor;
+    transform: rotate(-45deg);
+  }
+  .talk-year[open] > summary::before { transform: rotate(45deg); }
+  .talk-year > summary:hover { text-decoration: underline; text-underline-offset: 0.2em; }
+  .talk-year > summary:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
+</style>
