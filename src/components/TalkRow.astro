@@ -5,13 +5,14 @@ interface Props {
   talk: Talk;
   start: string;
   end: string;
+  anchor?: string;
 }
 
-const { talk, start, end } = Astro.props;
+const { talk, start, end, anchor } = Astro.props;
 const topic = topicForTalk(talk.title);
 const paperHref = topic.paperSlug ? `/research/${topic.paperSlug}` : undefined;
 ---
-<li data-talk-item data-talk-start={start} data-talk-end={end} data-talk-year={talk.year}>
+<li id={anchor} class="scroll-mt-4" data-talk-item data-talk-start={start} data-talk-end={end} data-talk-year={talk.year}>
   <span class="text-ink/70 dark:text-cream/65">{talk.date}</span> —
   {talk.url
     ? <a href={talk.url} target="_blank" rel="noopener" class="hover:underline">{talk.venue}</a>

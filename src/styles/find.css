@@ -1,0 +1,126 @@
+.pg-find-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 12000;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: clamp(16px, 9vh, 88px) 16px 16px;
+  background: rgba(0, 0, 0, 0.38);
+  font-family: MSSerif, 'MS Sans Serif', Arial, sans-serif;
+  color: #000;
+}
+
+.pg-find-dialog {
+  width: min(620px, 100%);
+  max-height: min(660px, calc(100dvh - 32px));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #c3c6ca;
+  box-shadow: inset -1px -1px #2b2b2b, inset 1px 1px #fff,
+    inset -2px -2px #86898d, inset 2px 2px #c3c6ca, 4px 5px 0 rgba(0, 0, 0, .35);
+}
+
+.pg-find-titlebar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 25px;
+  padding: 3px 4px 3px 7px;
+  background: #0000a3;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.pg-find-title { flex: 1; min-width: 0; }
+
+.pg-find-close,
+.pg-find-result,
+.pg-find-clear {
+  border: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.pg-find-close {
+  width: 22px;
+  height: 19px;
+  padding: 0;
+  background: #c3c6ca;
+  color: #000;
+  font-size: 12px;
+  line-height: 19px;
+  box-shadow: inset -1px -1px #2b2b2b, inset 1px 1px #fff;
+}
+
+.pg-find-close:active,
+.pg-find-result:active,
+.pg-find-clear:active { box-shadow: inset 1px 1px #2b2b2b, inset -1px -1px #fff; }
+
+.pg-find-content { padding: 9px; min-height: 0; display: flex; flex-direction: column; box-shadow: inset -2px -2px #86898d, inset 2px 2px #fff; }
+
+.pg-find-search-row { display: flex; gap: 6px; align-items: center; }
+
+.pg-find-label { font-size: 12px; white-space: nowrap; }
+
+.pg-find-input {
+  min-width: 0;
+  flex: 1;
+  height: 28px;
+  padding: 3px 7px;
+  border: 0;
+  border-radius: 0;
+  background: #fff;
+  color: #000;
+  font: 16px MSSerif, 'MS Sans Serif', Arial, sans-serif;
+  box-shadow: inset -1px -1px #fff, inset 1px 1px #2b2b2b, inset -2px -2px #c3c6ca, inset 2px 2px #86898d;
+}
+
+.pg-find-clear { width: 29px; height: 28px; padding: 0; background: #c3c6ca; color: #000; box-shadow: inset -1px -1px #2b2b2b, inset 1px 1px #fff; }
+
+.pg-find-status { min-height: 18px; margin: 7px 2px 3px; color: #333; font-size: 11px; }
+
+.pg-find-results {
+  min-height: 0;
+  max-height: min(480px, calc(100dvh - 160px));
+  margin: 0;
+  padding: 2px;
+  overflow-y: auto;
+  list-style: none;
+  background: #fff;
+  box-shadow: inset -1px -1px #fff, inset 1px 1px #2b2b2b, inset -2px -2px #c3c6ca, inset 2px 2px #86898d;
+}
+
+.pg-find-result { display: block; width: 100%; padding: 8px 9px; text-align: left; background: #fff; color: #000; }
+.pg-find-result:hover, .pg-find-result.is-active { background: #000080; color: #fff; }
+.pg-find-result-title { display: block; font-size: 14px; line-height: 1.2; }
+.pg-find-result-subtitle { display: block; margin-top: 3px; color: #444; font-size: 11px; line-height: 1.25; }
+.pg-find-result:hover .pg-find-result-subtitle, .pg-find-result.is-active .pg-find-result-subtitle { color: #e4e4ff; }
+.pg-find-empty { padding: 14px 10px; color: #333; font-size: 12px; }
+.pg-find-hint { margin-top: 6px; color: #555; font-size: 11px; }
+
+.pg-find-close:focus-visible, .pg-find-input:focus-visible, .pg-find-clear:focus-visible, .pg-find-result:focus-visible {
+  outline: 2px dotted #000;
+  outline-offset: -2px;
+}
+.pg-find-result:hover:focus-visible, .pg-find-result.is-active:focus-visible { outline-color: #fff; }
+
+@media (hover: none) and (pointer: coarse) {
+  .pg-find-titlebar { min-height: 48px; }
+  .pg-find-close, .pg-find-clear { width: 44px; height: 44px; flex: 0 0 44px; }
+  .pg-find-input { height: 44px; }
+  .pg-find-result { min-height: 44px; }
+}
+
+@media (max-width: 420px) {
+  .pg-find-backdrop { padding: 8px; }
+  .pg-find-dialog { max-height: calc(100dvh - 16px); }
+  .pg-find-content { padding: 7px; }
+  .pg-find-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .pg-find-result { padding: 10px 8px; }
+  .pg-find-result-title { font-size: 15px; }
+  .pg-find-results { max-height: calc(100dvh - 132px); }
+}

@@ -5,8 +5,10 @@ interface Props {
   links: PaperLink[];
   tool?: { name: string; url: string };
   bibtex?: string;
+  /** Canonical URL to copy; falls back to the page's <link rel=canonical>. */
+  shareUrl?: string;
 }
-const { links, tool, bibtex } = Astro.props;
+const { links, tool, bibtex, shareUrl } = Astro.props;
 const primary = links.filter(link => /\bpaper\b|\bpreprint\b|\bessay\b/i.test(link.label));
 if (!primary.length && links.length) primary.push(links[0]);
 const supporting = links.filter(link => !primary.includes(link));
@@ -19,7 +21,12 @@ if (tool && !links.some(link => normalized(link.url) === normalized(tool.url))) 
 <div class="paper-links">
   <div class="paper-primary-links">
     {primary.map(link => <a href={link.url} target="_blank" rel="noopener">{link.label}</a>)}
-    {bibtex && <button type="button" id="cite-btn" data-bibtex={bibtex}>BibTeX</button>}
+    {bibtex && <>
+      <button type="button" id="cite-btn" data-bibtex={bibtex}>BibTeX</button>
+      <button type="button" id="copy-link-btn" data-share-url={shareUrl}>Copy link</button>
+      <span id="copy-link-status" class="paper-link-status" aria-live="polite"></span>
+      <input id="copy-link-fallback" class="paper-link-fallback" type="url" readonly aria-label="Canonical paper link" hidden />
+    </>}
   </div>
   {supporting.length > 0 && (
     <div class="paper-supporting-links">
@@ -51,8 +58,109 @@ if (tool && !links.some(link => normalized(link.url) === normalized(tool.url))) 
   .paper-primary-links button, .paper-supporting-links {
     color: color-mix(in srgb, var(--paper-ink) 75%, transparent);
   }
-  .paper-primary-links button { cursor: pointer; }
+  .paper-primary-links button {
+    cursor: pointer;
+    border: 0;
+    padding: 0;
+    background: transparent;
+    font: inherit;
+    text-decoration: underline;
+    text-decoration-color: var(--color-brand-red);
+    text-underline-offset: 0.25em;
+  }
+  .paper-link-status {
+    color: color-mix(in srgb, var(--paper-ink) 75%, transparent);
+    font-size: 0.8em;
+    align-self: center;
+  }
+  .paper-link-fallback {
+    width: min(100%, 28rem);
+    min-width: 12rem;
+    border: 1px solid color-mix(in srgb, var(--paper-ink) 35%, transparent);
+    padding: 0.15rem 0.35rem;
+    color: var(--paper-ink);
+    background: var(--color-cream);
+    font: inherit;
+    font-size: 0.8em;
+  }
   .paper-supporting-links { margin-top: 0.4rem; }
   a:hover, button:hover { text-decoration: underline; text-underline-offset: 0.25em; }
   a:focus-visible, button:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
+  .paper-link-fallback:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+  @media (hover: none) and (pointer: coarse) {
+    .paper-primary-links a,
+    .paper-primary-links button { min-height: 44px; display: inline-flex; align-items: center; }
+  }
 </style>
+
+{bibtex && <script is:inline>
+  (function () {
+    var button = document.getElementById('copy-link-btn');
+    var status = document.getElementById('copy-link-status');
+    var fallbackField = document.getElementById('copy-link-fallback');
+    if (!button) return;
+    var original = button.textContent || 'Copy link';
+    var timer;
+    function canonicalUrl() {
+      var explicit = button.getAttribute('data-share-url');
+      if (explicit) return explicit;
+      var canonical = document.querySelector('link[rel="canonical"]');
+      if (canonical && canonical.href) return canonical.href;
+      return new URL(window.location.pathname, 'https://prashantgarg.org').href;
+    }
+    function fallbackCopy(value) {
+      var previous = document.activeElement;
+      var area = document.createElement('textarea');
+      area.value = value;
+      area.setAttribute('readonly', '');
+      area.style.position = 'fixed';
+      area.style.opacity = '0';
+      document.body.appendChild(area);
+      area.select();
+      var copied = false;
+      try { copied = document.execCommand('copy'); } finally {
+        area.remove();
+        if (previous && typeof previous.focus === 'function') previous.focus();
+      }
+      if (!copied) throw new Error('Clipboard unavailable');
+    }
+    async function writeClipboard(value) {
+      if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        try {
+          await navigator.clipboard.writeText(value);
+          return;
+        } catch (_) {
+          // Permissions and insecure contexts can reject the modern API;
+          // still try the legacy selection-based route before giving up.
+        }
+      }
+      fallbackCopy(value);
+    }
+    button.addEventListener('click', async function () {
+      var value = canonicalUrl();
+      try {
+        await writeClipboard(value);
+        button.textContent = 'Copied';
+        if (status) status.textContent = 'Link copied';
+        if (fallbackField) { fallbackField.hidden = true; fallbackField.value = ''; }
+      } catch (_) {
+        button.textContent = 'Copy failed';
+        if (fallbackField) {
+          fallbackField.hidden = false;
+          fallbackField.value = value;
+          fallbackField.focus();
+          fallbackField.select();
+        }
+        if (status) status.textContent = 'Link selected; press Ctrl+C or ⌘C';
+      }
+      clearTimeout(timer);
+      timer = setTimeout(function () {
+        button.textContent = original;
+        // Keep the selected URL available after a failed copy. It is hidden
+        // only after a later successful attempt, so the user has time to use
+        // the manual Ctrl+C/⌘C fallback.
+        if (status && fallbackField && fallbackField.hidden) status.textContent = '';
+      }, 2200);
+    });
+  })();
+</script>}

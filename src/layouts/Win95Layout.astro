@@ -7,8 +7,9 @@
  * portfolio-inner-site (MIT). All CSS and markup original.
  */
 import '../styles/global.css';
-import { site, papers, talks, pageMeta } from '../data/site';
+import { site, pageMeta } from '../data/site';
 import PersonJsonLd from '../components/PersonJsonLd.astro';
+import StandaloneFind from '../components/StandaloneFind';
 
 interface Props {
   title?: string;
@@ -48,27 +49,6 @@ const navItems = [
   { href: '/cv',       label: 'CV',        id: 'cv'       },
 ];
 
-// Searchable index for the Cmd+K palette. Flatten papers + talks + pages
-// into a single array of {type, label, sub, url, haystack} records that
-// the client-side palette can fuzzy-match against.
-const paletteIndex = [
-  ...navItems.filter(n => n.id !== 'home').map(n => ({
-    type: 'page', label: n.label, sub: 'page', url: n.href,
-    haystack: `${n.label} ${n.id}`.toLowerCase(),
-  })),
-  ...papers.map(p => ({
-    type: 'paper', label: p.title,
-    sub: `${p.venue || 'working'}${p.year ? ' · ' + p.year : ''}`,
-    url: `/research/${p.slug}`,
-    haystack: `${p.title} ${p.coauthors.join(' ')} ${p.venue || ''} ${p.year || ''}`.toLowerCase(),
-  })),
-  ...talks.map(t => ({
-    type: 'talk', label: t.venue,
-    sub: `${t.location} · ${t.date}`,
-    url: t.url || '/talks',
-    haystack: `${t.venue} ${t.location} ${t.date} ${t.title || ''}`.toLowerCase(),
-  })),
-];
 ---
 <!doctype html>
 <html lang="en">
@@ -317,6 +297,27 @@ const paletteIndex = [
       color: #000;
     }
     .w95-startbtn:hover { background: #d4d8dc; }
+    .w95-taskbar-btn {
+      display: inline-flex;
+      align-items: center;
+      min-width: 46px;
+      height: 22px;
+      margin-left: 4px;
+      padding: 2px 8px;
+      font-family: MSSerif, Arial, sans-serif;
+      font-size: 12px;
+      color: #000;
+      background: var(--face);
+      border: none;
+      cursor: pointer;
+      box-shadow: inset -1px -1px var(--fr), inset 1px 1px var(--hi),
+                  inset -2px -2px var(--sh), inset 2px 2px var(--face);
+    }
+    .w95-taskbar-btn:active,
+    .w95-taskbar-btn:focus-visible {
+      box-shadow: inset 1px 1px var(--fr), inset -1px -1px var(--hi),
+                  inset 2px 2px var(--sh), inset -2px -2px var(--face);
+    }
     .w95-taskbar-spacer { flex: 1; }
     .w95-clock {
       font-family: MSSerif, Arial, sans-serif;
@@ -350,6 +351,10 @@ const paletteIndex = [
 
     /* keep layout intact when taskbar present */
     .w95-shell { padding-bottom: 36px; }
+    @media (max-width: 420px) {
+      .w95-taskbar-btn { min-width: 42px; padding-left: 6px; padding-right: 6px; }
+      .w95-startbtn { padding-left: 6px; padding-right: 6px; }
+    }
   </style>
 
   <body>
@@ -447,6 +452,9 @@ const paletteIndex = [
         </svg>
         Start
       </a>
+      <button type="button" class="w95-taskbar-btn" id="cmdk-hint-btn" aria-label="Find papers, talks, and pages">
+        Find
+      </button>
       <div class="w95-taskbar-spacer"></div>
       <!-- system tray: mute button -->
       <button class="w95-traybtn" id="w95-mute" title="Mute/Unmute ambient">
@@ -484,6 +492,9 @@ const paletteIndex = [
           var a = e.target && e.target.closest && e.target.closest('a');
           if (!a) return;
           var href = a.getAttribute('href') || '';
+          // Preserve browser affordances for opening a link in a new tab,
+          // copying its address, or activating it with the keyboard.
+          if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || a.hasAttribute('download')) return;
           var isExternal = a.target === '_blank' || /^https?:|^mailto:|^tel:/i.test(href);
           if (!href || isExternal) return;
           if (href.indexOf('/') !== 0) return;
@@ -525,7 +536,7 @@ const paletteIndex = [
           src.start(now);
         }
         document.querySelectorAll(
-          '.w95-menuitem, .w95-titlebtn, .w95-titlebtn-close, .w95-startbtn'
+          '.w95-menuitem, .w95-titlebtn, .w95-titlebtn-close, .w95-startbtn, .w95-taskbar-btn'
         ).forEach(function(el) {
           el.addEventListener('mousedown', function() { playClick('down'); });
           el.addEventListener('mouseup',   function() { playClick('up');   });
@@ -672,198 +683,28 @@ const paletteIndex = [
       })();
     </script>
 
-    <!-- ===== Cmd+K palette hint (discoverability) ===== -->
-    <style>
-      .cmdk-hint-btn {
-        position: fixed;
-        bottom: 64px;
-        right: 14px;
-        z-index: 90;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        padding: 5px 9px 5px 11px;
-        font-family: 'Inter', system-ui, sans-serif;
-        font-size: 11px;
-        color: #1a1a1a;
-        background: rgba(255, 255, 255, 0.94);
-        border: 1px solid rgba(0,0,0,0.30);
-        border-radius: 4px;
-        cursor: pointer;
-        box-shadow: 0 1px 4px rgba(0,0,0,0.10);
-        transition: background 0.14s ease, border-color 0.14s ease;
-        opacity: 0;
-        animation: cmdk-hint-in 0.6s ease 1.2s forwards;
-      }
-      .cmdk-hint-btn:hover { background: #fff; border-color: rgba(0,0,0,0.55); }
-      .cmdk-hint-btn kbd {
-        font-family: inherit;
-        font-size: 10px;
-        padding: 1px 5px;
-        border: 1px solid rgba(0,0,0,0.25);
-        background: rgba(0,0,0,0.04);
-        border-radius: 3px;
-      }
-      @keyframes cmdk-hint-in { to { opacity: 1; } }
-      @media (max-width: 640px) { .cmdk-hint-btn { display: none; } }
-    </style>
-    <button class="cmdk-hint-btn" id="cmdk-hint-btn" aria-label="Open command palette">
-      <kbd>⌘K</kbd> <span>search</span>
-    </button>
-
-    <!-- ===== Cmd+K command palette ===== -->
-    <!-- G6: is:global is REQUIRED — the result rows are injected via
-         innerHTML at runtime, so they never receive Astro's scoped
-         data-astro-* attribute. A scoped block would not match them and
-         the 3-column grid would collapse (type/label/sub run together). -->
-    <style is:global>
-      .cmdk-backdrop {
-        position: fixed; inset: 0; z-index: 200;
-        background: rgba(0,0,0,0.55);
-        display: none;
-        align-items: flex-start;
-        justify-content: center;
-        padding-top: 12vh;
-        animation: cmdk-fade 0.14s ease-out;
-      }
-      .cmdk-backdrop.open { display: flex; }
-      @keyframes cmdk-fade { from { opacity: 0 } to { opacity: 1 } }
-      .cmdk-panel {
-        width: min(92vw, 620px);
-        background: var(--color-cream, #f8f4ec);
-        border: 2px solid #2b2b2b;
-        box-shadow: 0 24px 60px rgba(0,0,0,0.45);
-        font-family: 'Inter', system-ui, sans-serif;
-        animation: cmdk-rise 0.18s cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      @keyframes cmdk-rise { from { transform: translateY(8px); opacity: 0 } to { transform: translateY(0); opacity: 1 } }
-      .cmdk-input-wrap { display: flex; align-items: center; gap: 10px; padding: 14px 18px; border-bottom: 1px solid rgba(0,0,0,0.15); }
-      .cmdk-input { flex: 1; background: transparent; border: none; outline: none; font-size: 16px; font-family: inherit; color: #1a1a1a; }
-      .cmdk-input::placeholder { color: rgba(0,0,0,0.40); }
-      .cmdk-hint { font-size: 11px; color: rgba(0,0,0,0.45); border: 1px solid rgba(0,0,0,0.20); padding: 2px 6px; border-radius: 3px; }
-      .cmdk-results { max-height: 50vh; overflow-y: auto; padding: 6px 0; }
-      .cmdk-result {
-        display: grid;
-        grid-template-columns: 60px 1fr auto;
-        align-items: baseline;
-        gap: 14px;
-        padding: 10px 18px;
-        cursor: pointer;
-        border-left: 3px solid transparent;
-        min-height: 38px;
-      }
-      .cmdk-result.active { background: rgba(0,0,0,0.06); border-left-color: #d99300; }
-      .cmdk-result-type {
-        font-size: 10px; text-transform: uppercase; letter-spacing: 0.10em;
-        color: rgba(0,0,0,0.50); font-weight: 600;
-      }
-      .cmdk-result-label {
-        font-size: 14px; color: #1a1a1a; line-height: 1.3;
-        overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-      }
-      .cmdk-result-sub {
-        font-size: 11px; color: rgba(0,0,0,0.55); white-space: nowrap;
-        max-width: 200px; overflow: hidden; text-overflow: ellipsis;
-      }
-      .cmdk-empty { padding: 24px 18px; text-align: center; font-size: 13px; color: rgba(0,0,0,0.45); }
-      .cmdk-footer { padding: 8px 18px; border-top: 1px solid rgba(0,0,0,0.15); display: flex; gap: 12px; font-size: 11px; color: rgba(0,0,0,0.50); }
-      .cmdk-footer kbd {
-        font-family: inherit; padding: 1px 5px; border: 1px solid rgba(0,0,0,0.25);
-        border-radius: 3px; background: rgba(0,0,0,0.04); font-size: 10px;
-      }
-    </style>
-    <div class="cmdk-backdrop" id="cmdk-backdrop" role="dialog" aria-label="Command palette">
-      <div class="cmdk-panel" onclick="event.stopPropagation()">
-        <div class="cmdk-input-wrap">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(0,0,0,0.45)" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
-          <input id="cmdk-input" class="cmdk-input" type="text" placeholder="Search papers, talks, pages..." autocomplete="off" spellcheck="false" />
-          <span class="cmdk-hint">Esc</span>
-        </div>
-        <div class="cmdk-results" id="cmdk-results"></div>
-        <div class="cmdk-footer">
-          <span><kbd>↑↓</kbd> navigate</span>
-          <span><kbd>↵</kbd> open</span>
-          <span style="margin-left: auto;"><kbd>⌘K</kbd> toggle</span>
-        </div>
-      </div>
-    </div>
-    <script is:inline define:vars={{ paletteIndex }}>
-      (function cmdkPalette() {
-        const backdrop = document.getElementById('cmdk-backdrop');
-        const input    = document.getElementById('cmdk-input');
-        const list     = document.getElementById('cmdk-results');
-        let active = 0;
-        let filtered = paletteIndex;
-
-        function render(q) {
-          q = (q || '').trim().toLowerCase();
-          filtered = q === ''
-            ? paletteIndex.slice(0, 8)
-            : paletteIndex.filter(r => r.haystack.indexOf(q) !== -1).slice(0, 20);
-          active = 0;
-          if (filtered.length === 0) {
-            list.innerHTML = '<div class="cmdk-empty">No matches for "' + q + '"</div>';
-            return;
+    <!-- Find is owned by the shared desktop dialog. This bridge keeps the
+         standalone page and the embedded page on the same opening path. -->
+    <script is:inline>
+      (function findBridge() {
+        var inIframe = window.top !== window;
+        function requestFind() {
+          if (inIframe) {
+            try { window.parent.postMessage({ type: 'pg-find' }, window.location.origin); } catch (_) {}
+          } else {
+            window.dispatchEvent(new CustomEvent('pg-find'));
           }
-          list.innerHTML = filtered.map((r, i) =>
-            '<div class="cmdk-result' + (i === 0 ? ' active' : '') + '" data-i="' + i + '">' +
-              '<span class="cmdk-result-type">' + r.type + '</span>' +
-              '<span class="cmdk-result-label">' + escapeHtml(r.label) + '</span>' +
-              '<span class="cmdk-result-sub">' + escapeHtml(r.sub) + '</span>' +
-            '</div>'
-          ).join('');
-          list.querySelectorAll('.cmdk-result').forEach(el => {
-            el.addEventListener('click', () => {
-              const i = parseInt(el.getAttribute('data-i'), 10);
-              go(filtered[i]);
-            });
-            el.addEventListener('mouseenter', () => {
-              setActive(parseInt(el.getAttribute('data-i'), 10));
-            });
-          });
         }
-        function escapeHtml(s) {
-          return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
-        }
-        function setActive(i) {
-          active = Math.max(0, Math.min(filtered.length - 1, i));
-          list.querySelectorAll('.cmdk-result').forEach((el, idx) => {
-            el.classList.toggle('active', idx === active);
-          });
-        }
-        function go(r) {
-          if (!r) return;
-          close();
-          if (/^https?:/.test(r.url)) window.open(r.url, '_blank');
-          else window.location.href = r.url;
-        }
-        function open() {
-          backdrop.classList.add('open');
-          input.value = '';
-          render('');
-          setTimeout(() => input.focus(), 30);
-        }
-        function close() { backdrop.classList.remove('open'); }
-
-        window.addEventListener('keydown', (e) => {
-          // Cmd+K or Ctrl+K toggles
-          if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        var button = document.getElementById('cmdk-hint-btn');
+        if (button) button.addEventListener('click', requestFind);
+        window.addEventListener('keydown', function (e) {
+          if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
             e.preventDefault();
-            backdrop.classList.contains('open') ? close() : open();
-            return;
+            requestFind();
           }
-          if (!backdrop.classList.contains('open')) return;
-          if (e.key === 'Escape') { e.preventDefault(); close(); }
-          else if (e.key === 'ArrowDown') { e.preventDefault(); setActive(active + 1); }
-          else if (e.key === 'ArrowUp')   { e.preventDefault(); setActive(active - 1); }
-          else if (e.key === 'Enter')     { e.preventDefault(); go(filtered[active]); }
         });
-        backdrop.addEventListener('click', close);
-        input.addEventListener('input', e => render(e.target.value));
-        // wire up the discoverability hint button
-        const hintBtn = document.getElementById('cmdk-hint-btn');
-        if (hintBtn) hintBtn.addEventListener('click', open);
       })();
     </script>
+    <StandaloneFind client:load />
   </body>
 </html>

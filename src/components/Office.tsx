@@ -52,6 +52,25 @@ function playUiClick(type: 'down' | 'up' = 'down') {
 /* ---------- phase type ------------------------------------------------ */
 type Phase = 'splash' | 'entering' | 'idle' | 'dollying' | 'desktop' | 'returning';
 
+/**
+ * Keep the scene alive while it is visible, but stop asking WebGL to draw
+ * behind the fullscreen reading desktop. The iframe and its Html wrapper
+ * stay mounted; demand mode still allows a state change (or a return to the
+ * room) to invalidate one fresh frame.
+ */
+function RenderBudget({ mode }: { mode: 'always' | 'demand' | 'never' }) {
+  const { invalidate } = useThree();
+
+  useEffect(() => {
+    // A mode transition needs one frame so the camera and Drei's Html
+    // projection are current before a reader sees the new presentation.
+    // This is also the resume path after a background tab becomes visible.
+    if (mode !== 'never') invalidate();
+  }, [mode, invalidate]);
+
+  return null;
+}
+
 /* ---------- room constants ------------------------------------------- */
 const ROOM_W = 36;
 const ROOM_D = 46;
@@ -3305,6 +3324,8 @@ const READING_QUERY = '(max-width: 900px), (max-height: 600px)';
 
 export default function Office() {
   const [compact, setCompact] = useState(() => window.matchMedia(READING_QUERY).matches);
+  const [documentHidden, setDocumentHidden] = useState(() =>
+    typeof document !== 'undefined' && document.visibilityState === 'hidden');
   const [preferReading, setPreferReading] = useState(() => {
     try { return sessionStorage.getItem('pg_reading') === '1'; } catch { return false; }
   });
@@ -3315,6 +3336,11 @@ export default function Office() {
     const update = () => setCompact(media.matches);
     media.addEventListener('change', update);
     return () => media.removeEventListener('change', update);
+  }, []);
+  useEffect(() => {
+    const update = () => setDocumentHidden(document.visibilityState === 'hidden');
+    document.addEventListener('visibilitychange', update);
+    return () => document.removeEventListener('visibilitychange', update);
   }, []);
   useEffect(() => {
     try { sessionStorage.setItem('pg_reading', preferReading ? '1' : '0'); } catch { /* */ }
@@ -3342,6 +3368,9 @@ export default function Office() {
     try { if (window.matchMedia('(hover: none) and (pointer: coarse)').matches || window.matchMedia(READING_QUERY).matches) return 'desktop'; } catch { /* */ }
     return 'splash';
   });
+  const frameLoop: 'always' | 'demand' | 'never' = documentHidden
+    ? 'never'
+    : phase === 'desktop' && reading ? 'demand' : 'always';
   // Lazy init is safe — this component renders client:only (no SSR
   // hydration to mismatch), and G7 needs the value on FIRST render to
   // decide whether the 3D canvas mounts at all.
@@ -3502,6 +3531,7 @@ export default function Office() {
       }}>
         <Canvas
           shadows="percentage"
+          frameloop={frameLoop}
           dpr={[1, 1.75]}
           gl={{
             antialias: true,
@@ -3509,6 +3539,7 @@ export default function Office() {
             toneMappingExposure: 1.38,
           }}
         >
+          <RenderBudget mode={frameLoop} />
           <PerspectiveCamera makeDefault position={[CAM_ENTRY_POS.x, CAM_ENTRY_POS.y, CAM_ENTRY_POS.z]} fov={54} />
           <CameraRig phase={phase} onArrived={handleArrived} onEntryDone={handleEntryDone} reducedMotion={reducedMotion} />
           <OfficeScene phase={phase} reading={reading} compact={compact}

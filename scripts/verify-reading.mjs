@@ -36,7 +36,7 @@ try {
   assert(close && close.x>=0 && close.x+close.width<=412);
   await shot('narrow-research');
   await article.locator('.paper-abstract summary').first().click();
-  await article.locator('html').evaluate(()=>window.scrollTo(0,320));
+  await article.locator('html').evaluate(()=>window.scrollTo({top:320,behavior:'instant'}));
   const originalScroll=await article.locator('html').evaluate(()=>window.scrollY);
   await page.setViewportSize({width:1400,height:900});
   await page.locator('#office[data-view="room"]').waitFor();

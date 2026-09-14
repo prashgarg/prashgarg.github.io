@@ -17,6 +17,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { papers, talks, site } from '../data/site';
 import { MONITOR_VIEWPORT } from '../lib/monitor';
+import FindDialog from './FindDialog';
+import WindowDocument, { type ReadingSnapshot } from './WindowDocument';
+import { navigationHost, cleanPath, pathAtLocation, writeLocation } from '../lib/desktopNavigation';
 
 
 /* ---------- Win95 CSS injected once ----------------------------------- */
@@ -484,7 +487,7 @@ const WIN95_STYLE = `
 @media (max-width: 600px), (max-height: 440px) {
   .win95-window { min-width: 0; min-height: 0; }
 }
-@media (max-width: 480px) { .win95-clock { display: none; } }
+@media (max-width: 480px) { .win95-clock { display: none; } .win95-text-btn { display: none; } }
 /* volume slider — Win95 styling instead of the modern blue native
    range control, which broke the period illusion (G6) */
 .win95-vol-slider {
@@ -667,8 +670,10 @@ const WIN95_STYLE = `
   padding: 2px;
   display: flex;
   flex-direction: column;
+  max-height: calc(100dvh - 46px); overflow-y: auto;
 }
 .win95-startmenu-item {
+  border: 0; background: transparent; width: 100%; text-align: left; flex-shrink: 0;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -679,7 +684,7 @@ const WIN95_STYLE = `
   cursor: pointer;
   user-select: none;
 }
-.win95-startmenu-item:hover {
+.win95-startmenu-item:hover, .win95-startmenu-item:focus-visible {
   background: #000080;
   color: #fff;
 }
@@ -706,6 +711,7 @@ const WIN95_STYLE = `
   animation: w95-startmenu-in 0.12s ease-out;
 }
 .win95-context-item {
+  border: 0; background: transparent; width: 100%; text-align: left; font: inherit;
   display: flex;
   align-items: center;
   padding: 4px 16px 4px 22px;
@@ -713,7 +719,7 @@ const WIN95_STYLE = `
   user-select: none;
   color: #000;
 }
-.win95-context-item:hover { background: #000080; color: #fff; }
+.win95-context-item:hover, .win95-context-item:focus-visible { background: #000080; color: #fff; }
 .win95-context-item.disabled { color: #86898d; cursor: default; }
 .win95-context-item.disabled:hover { background: transparent; color: #86898d; }
 .win95-context-sep { height: 0; border-top: 1px solid #86898d; border-bottom: 1px solid #fff; margin: 3px 2px; }
@@ -745,7 +751,8 @@ const WIN95_STYLE = `
 /* ---------- dialogs: Run…, System Properties, Wellness (G30/34/35) -- */
 .win95-dialog {
   position: absolute;
-  left: 50%; top: 38%;
+  left: 50%; top: 50%;
+  max-height: calc(100dvh - 64px); overflow-y: auto;
   transform: translate(-50%, -50%);
   width: min(360px, calc(100vw - 24px));
   background: #c3c6ca;
@@ -777,11 +784,21 @@ const WIN95_STYLE = `
   box-shadow: inset 1px 1px #2b2b2b, inset -1px -1px #fff;
   min-width: 0;
 }
+.win95-start-btn:focus-visible, .win95-tray-btn:focus-visible, .win95-taskbar-chip:focus-visible, .win95-btn:focus-visible { outline: 1px dotted #000; outline-offset: -4px; }
 .win95-dialog-error { margin-top: 8px; color: #a00000; }
 .win95-dialog-buttons { display: flex; justify-content: flex-end; gap: 6px; margin-top: 12px; align-items: center; }
 .win95-dialog-section { margin-bottom: 10px; line-height: 1.55; }
 .win95-wellness-line { margin: 4px 0 10px; font-size: 13px; line-height: 1.6; }
 
+@media (hover: none) and (pointer: coarse) {
+  .win95-toolbar { height: 44px; }
+  .win95-start-btn, .win95-taskbar-chip, .win95-tray-btn { min-height: 40px; }
+  .win95-tray-btn { min-width: 44px; }
+  .win95-startmenu { bottom: 44px; }
+  .win95-startmenu-list { max-height: calc(100dvh - 60px); }
+  .win95-context-item, .win95-btn { min-height: 44px; }
+  .win95-window { max-height: calc(100% - 44px); }
+}
 /* ---------- G33: CRT flicker (Overtime Contingency) ----------------- */
 .win95-crt-flicker {
   position: absolute; inset: 0;
@@ -1358,32 +1375,6 @@ interface OpenWin {
   path?: string;
 }
 
-/** A window's content iframe + a Win95 'Loading…' layer shown until it
- *  fires onLoad, so opening an app no longer flashes a blank cream panel
- *  while the inner Astro page + webfonts paint. Remounts (via key) on path
- *  change, which resets the loading state. */
-function WindowIframe({ src, title }: { src: string; title: string }) {
-  const [loading, setLoading] = useState(true);
-  return (
-    <>
-      <iframe
-        src={src}
-        className="win95-iframe"
-        title={title}
-        onLoad={() => setLoading(false)}
-        style={{ width: '100%', height: '100%', border: 0, display: 'block', background: '#EFEAD8' }}
-      />
-      {loading && (
-        <div aria-hidden="true" style={{
-          position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-          background: '#EFEAD8', color: '#6a675f', pointerEvents: 'none',
-          fontFamily: 'MSSerif, Arial, sans-serif', fontSize: 13, letterSpacing: '0.04em',
-        }}>Loading…</div>
-      )}
-    </>
-  );
-}
-
 export default function InnerDesktop({ onClose, embedded = false, active = true, readingMode = false, onToggleReading }: InnerDesktopProps) {
   const [time, setTime] = useState(getTime);
   // Container ref so we can measure the desktop bounding rect for
@@ -1411,7 +1402,16 @@ export default function InnerDesktop({ onClose, embedded = false, active = true,
 
   // Open windows + zIndex counter + Start-menu visibility
   const [wins, setWins] = useState<OpenWin[]>([]);
-  const [topZ, setTopZ] = useState(100);
+  const zCounter = useRef(100);
+  const winsRef = useRef(wins);
+  winsRef.current = wins;
+  const readingSnapshots = useRef(new Map<string, ReadingSnapshot>());
+  const [findOpen, setFindOpen] = useState(false);
+  const startRef = useRef<HTMLButtonElement>(null);
+  const findRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const contextRef = useRef<HTMLDivElement>(null);
+  const openFind = useCallback(() => { setStartOpen(false); setCtxMenu(null); setDialog(null); setFindOpen(true); }, []);
   const [startOpen, setStartOpen] = useState(false);
   const [selectedIcon, setSelectedIcon] = useState<AppId | null>(null);
   // Right-click context menu state — {x,y} of the menu top-left in
@@ -1424,9 +1424,58 @@ export default function InnerDesktop({ onClose, embedded = false, active = true,
   const [flicker, setFlicker] = useState(false);
   const runInputRef = useRef<HTMLInputElement | null>(null);
   useEffect(() => {
-    if (dialog === 'run') setTimeout(() => runInputRef.current?.focus(), 60);
     if (dialog !== 'run') setRunError('');
+    if (!dialog) return;
+    const timer = setTimeout(() => {
+      (runInputRef.current || containerRef.current?.querySelector<HTMLElement>('.win95-dialog button'))?.focus();
+    }, 0);
+    return () => clearTimeout(timer);
   }, [dialog]);
+  // Native menu buttons support Tab; arrows/Home/End follow desktop menu conventions.
+  const menuKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    const items = [...event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')];
+    const current = items.indexOf(document.activeElement as HTMLButtonElement);
+    let next = current;
+    if (event.key === 'ArrowDown') next = (current + 1) % items.length;
+    else if (event.key === 'ArrowUp') next = (current - 1 + items.length) % items.length;
+    else if (event.key === 'Home') next = 0;
+    else if (event.key === 'End') next = items.length - 1;
+    else if (event.key === 'Escape' || event.key === 'Tab') {
+      event.preventDefault(); event.stopPropagation(); setStartOpen(false); setCtxMenu(null); startRef.current?.focus(); return;
+    } else return;
+    event.preventDefault(); items[next]?.focus();
+  };
+  useEffect(() => {
+    const menu = startOpen ? menuRef.current : ctxMenu ? contextRef.current : null;
+    menu?.querySelector<HTMLButtonElement>('[role="menuitem"]')?.focus();
+  }, [startOpen, ctxMenu]);
+
+  const hasDialog = !!dialog;
+  useEffect(() => {
+    if (!hasDialog) return;
+    const previous = document.activeElement as HTMLElement | null;
+    const focusables = () => [...(containerRef.current?.querySelectorAll<HTMLElement>('.win95-dialog button, .win95-dialog input, .win95-dialog a[href]') || [])]
+      .filter(el => !el.hasAttribute('disabled') && el.getClientRects().length > 0);
+    const timer = setTimeout(() => {
+      (containerRef.current?.querySelector<HTMLInputElement>('.win95-dialog input') || focusables()[0])?.focus();
+    }, 0);
+    const trap = (event: KeyboardEvent) => {
+      if (event.key !== 'Tab') return;
+      const items = focusables();
+      const index = items.indexOf(document.activeElement as HTMLElement);
+      event.preventDefault();
+      items[(index + (event.shiftKey ? -1 : 1) + items.length) % items.length]?.focus();
+    };
+    document.addEventListener('keydown', trap, true);
+    return () => {
+      clearTimeout(timer); document.removeEventListener('keydown', trap, true);
+      requestAnimationFrame(() => {
+        if (previous?.isConnected && previous !== document.body && previous !== document.documentElement
+          && !previous.closest('[inert]') && previous.getClientRects().length) previous.focus();
+        else startRef.current?.focus();
+      });
+    };
+  }, [hasDialog]);
   const [refreshFlash, setRefreshFlash] = useState(false);   // flash anim on "Refresh"
 
   // ── Multi-window management ──────────────────────────────────────
@@ -1451,169 +1500,125 @@ export default function InnerDesktop({ onClose, embedded = false, active = true,
     return { x, y, w, h };
   }, [containerSize]);
 
-  // Bring a window to the front by bumping its z-index.
-  const focusApp = useCallback((id: AppId) => {
-    setTopZ(z => {
-      const nz = z + 1;
-      setWins(ws => ws.map(w => w.id === id ? { ...w, zIndex: nz, minimized: false } : w));
-      return nz;
-    });
+  const focusWindowContent = useCallback((id: AppId) => {
+    requestAnimationFrame(() => containerRef.current?.querySelector<HTMLElement>(`[data-app-window="${id}"] .win95-titlebar`)?.focus());
   }, []);
 
-  // Open an app — restore + focus if already open, otherwise add a
-  // new window to the array. `fromPoint` (icon centre) anchors the
-  // zoom-in animation's transform-origin.
-  const openApp = useCallback((id: AppId, fromPoint?: { x: number; y: number }, pathOverride?: string) => {
+  // Browser history belongs to the outer page, even when this desktop lives
+  // in the monitor iframe. Popstate opens content without adding another entry.
+  const focusApp = useCallback((id: AppId) => {
+    const win = winsRef.current.find(w => w.id === id);
+    if (!win) return;
+    const zIndex = ++zCounter.current;
+    setWins(ws => ws.map(w => w.id === id ? { ...w, zIndex, minimized: false } : w));
+    writeLocation(win.path || APP_BY_ID[id].path);
+  }, []);
+
+  const openApp = useCallback((id: AppId, fromPoint?: { x: number; y: number }, pathOverride?: string, historyMode: 'push' | 'none' = 'push') => {
     const app = APP_BY_ID[id]; if (!app) return;
-    // HOME = the desktop itself. The home content lives ON the desktop
-    // (win95-desktop-home), so "opening" Home just clears the view:
-    // minimize every window to reveal it. No Home window exists.
     if (id === 'home') {
       setWins(ws => ws.map(w => ({ ...w, minimized: true })));
-      try { window.history.pushState({}, '', '/'); } catch { /* */ }
+      if (historyMode === 'push') writeLocation('/');
+      requestAnimationFrame(() => containerRef.current?.querySelector<HTMLButtonElement>('[data-home-button]')?.focus());
       return;
     }
-    let wasOpen = false;
-    setWins(ws => {
-      const existing = ws.find(w => w.id === id);
-      if (existing) {
-        wasOpen = true;
-        // already open → restore + focus. If a pathOverride is supplied,
-        // update the sub-path so the iframe navigates to the new URL.
-        return ws.map(w => w.id === id
-          ? { ...w, minimized: false, state: 'open' as const, path: pathOverride || w.path }
-          : w);
-      }
-      const geo = defaultGeo(app);
-      const nextZ = topZ + 1;
-      // Open new windows MAXIMIZED on a narrow viewport OR any touch device:
-      // drag/resize are mouse-only (no pointer/touch handlers), so a floating
-      // window on a tablet would be stuck where it opens. Maximized = usable.
-      const isTouch = typeof window !== 'undefined'
-        && window.matchMedia('(hover: none) and (pointer: coarse)').matches;
-      const autoMax = containerSize.w < 600 || isTouch;
-      return [...ws, {
-        id, zIndex: nextZ,
-        minimized: false, maximized: autoMax,
-        ...geo,
-        openFrom: fromPoint, state: 'opening',
-        path: pathOverride,
-      }];
-    });
-    setTopZ(z => z + 1);
-    // play the classic Windows "ding" only for genuinely new windows
-    if (!wasOpen) setTimeout(() => playWindowOpenDing(), 30);
-    // promote to URL after a tick so opening animations show.
-    // URL is the sub-path override (if any), else the app's root path.
-    setTimeout(() => {
-      try { window.history.pushState({}, '', pathOverride || app.path); } catch { /* */ }
-      // mark animation done
-      setWins(ws => ws.map(w => w.id === id ? { ...w, state: 'open' as const } : w));
-    }, 220);
-    if (fromPoint) focusApp(id);
-  }, [defaultGeo, topZ, focusApp, containerSize]);
+    const existing = winsRef.current.find(w => w.id === id);
+    const path = cleanPath(pathOverride ?? existing?.path ?? app.path);
+    const zIndex = ++zCounter.current;
+    if (existing) {
+      setWins(ws => ws.map(w => w.id === id ? { ...w, path, zIndex, minimized: false, state: 'open' } : w));
+    } else {
+      const isTouch = window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+      setWins(ws => [...ws, { id, path, zIndex, minimized: false, maximized: containerSize.w < 600 || isTouch,
+        ...defaultGeo(app), openFrom: fromPoint, state: 'opening' }]);
+      setTimeout(() => playWindowOpenDing(), 30);
+      setTimeout(() => setWins(ws => ws.map(w => w.id === id ? { ...w, state: 'open' } : w)), 220);
+    }
+    if (historyMode === 'push') writeLocation(path);
+    focusWindowContent(id);
+  }, [defaultGeo, containerSize.w, focusWindowContent]);
 
-  // Close an app — play closing animation, then remove from array
-  // and update URL to whatever is now the topmost open window (or '/').
   const closeApp = useCallback((id: AppId) => {
     playWindowCloseSound('close');
-    setWins(ws => ws.map(w => w.id === id ? { ...w, state: 'closing' as const } : w));
+    setWins(ws => ws.map(w => w.id === id ? { ...w, state: 'closing' } : w));
     setTimeout(() => {
-      setWins(ws => {
-        const remaining = ws.filter(w => w.id !== id);
-        // pick new top window, URL follows
-        const top = [...remaining].filter(w => !w.minimized).sort((a,b) => b.zIndex - a.zIndex)[0];
-        const newPath = top ? APP_BY_ID[top.id].path : '/';
-        try { window.history.pushState({}, '', newPath); } catch { /* */ }
-        return remaining;
-      });
+      const remaining = winsRef.current.filter(w => w.id !== id);
+      setWins(remaining);
+      const top = [...remaining].filter(w => !w.minimized).sort((a,b) => b.zIndex - a.zIndex)[0];
+      writeLocation(top ? top.path || APP_BY_ID[top.id].path : '/');
+      if (top) focusWindowContent(top.id);
+      else containerRef.current?.querySelector<HTMLElement>(`[data-app-icon="${id}"]`)?.focus();
     }, 220);
-  }, []);
+  }, [focusWindowContent]);
 
-  // Minimize / restore / maximize toggle
   const minimizeApp = useCallback((id: AppId) => {
     playWindowCloseSound('minimize');
-    setWins(ws => ws.map(w => w.id === id ? { ...w, state: 'minimizing' as const } : w));
+    setWins(ws => ws.map(w => w.id === id ? { ...w, state: 'minimizing' } : w));
     setTimeout(() => {
-      setWins(ws => ws.map(w => w.id === id ? { ...w, minimized: true, state: 'open' as const } : w));
+      const next = winsRef.current.map(w => w.id === id ? { ...w, minimized: true, state: 'open' as const } : w);
+      setWins(next);
+      const top = [...next].filter(w => !w.minimized).sort((a,b) => b.zIndex - a.zIndex)[0];
+      writeLocation(top ? top.path || APP_BY_ID[top.id].path : '/');
+      containerRef.current?.querySelector<HTMLButtonElement>(`[data-app-task="${id}"]`)?.focus();
     }, 200);
   }, []);
   const toggleMaximize = useCallback((id: AppId) => {
     setWins(ws => ws.map(w => w.id === id ? { ...w, maximized: !w.maximized } : w));
   }, []);
 
-  // Receive in-iframe link clicks (Win95Layout embed-mode bootstrap
-  // posts {type:'pg-nav', href}) and route them as app openings.
-  // Supports sub-paths (e.g. /research/some-paper) by finding the
-  // longest-prefix app and passing the full href as a path override.
+  const navigate = useCallback((href: string) => {
+    const url = new URL(href, window.location.origin);
+    if (url.origin !== window.location.origin) { window.open(url.href, '_blank', 'noopener'); return; }
+    const path = cleanPath(url.pathname + url.search + url.hash);
+    const app = findAppForPath(path);
+    if (app) openApp(app.id, undefined, path);
+    else navigationHost().location.assign(path);
+  }, [openApp]);
+
   useEffect(() => {
-    const onMsg = (e: MessageEvent) => {
-      const d = e.data as any;
-      if (!d || d.type !== 'pg-nav' || typeof d.href !== 'string') return;
-      const href = d.href;
-      const app = findAppForPath(href);
-      if (!app) return;            // not under any app — ignore
-      // Pass href as override so iframe navigates to sub-path (e.g.
-      // a paper detail) inside the matched app's window.
-      const overridePath = href !== app.path ? href : undefined;
-      openApp(app.id, undefined, overridePath);
+    const onMsg = (event: MessageEvent) => {
+      if (!active || event.origin !== window.location.origin) return;
+      const knownFrame = [...(containerRef.current?.querySelectorAll<HTMLIFrameElement>('iframe.win95-iframe') || [])]
+        .some(frame => frame.contentWindow === event.source);
+      if (!knownFrame) return;
+      if (event.data?.type === 'pg-find') { openFind(); return; }
+      if (event.data?.type === 'pg-nav' && typeof event.data.href === 'string') navigate(event.data.href);
     };
     window.addEventListener('message', onMsg);
     return () => window.removeEventListener('message', onMsg);
-  }, [openApp]);
+  }, [active, navigate, openFind]);
 
-  // Initial-load app: only auto-open if the URL points to a specific
-  // app (not '/'). '/' shows the empty desktop with icons so the user
-  // can pick a section — like a real Windows desktop.
-  // G30: '?app=research&paper=<slug>' query params work as a shareable
-  // alias for the path form (handy when the path is owned by the boot
-  // flow, e.g. linking someone straight into a windowed paper).
   const didAutoOpen = useRef(false);
   useEffect(() => {
-    if (typeof window === 'undefined' || didAutoOpen.current) return;
-    didAutoOpen.current = true;   // once; containerSize is sane by now
-    const q = new URLSearchParams(window.location.search);
-    const qApp = q.get('app');
-    if (qApp && APP_BY_ID[qApp as AppId]) {
-      const paper = q.get('paper');
-      openApp(qApp as AppId, undefined, paper ? `/research/${paper}` : undefined);
-      return;
-    }
-    const path = window.location.pathname || '/';
-    if (path === '/') return;     // empty desktop on home url
+    if (didAutoOpen.current) return;
+    didAutoOpen.current = true;
+    const host = navigationHost();
+    const path = pathAtLocation(host.location);
     const app = findAppForPath(path);
-    if (app) {
-      const overridePath = path !== app.path ? path : undefined;
-      openApp(app.id, undefined, overridePath);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [containerSize]);
+    if (app && app.id !== 'home') openApp(app.id, undefined, path, 'none');
+    // Do not rewrite an entry URL or add history while preloading the monitor.
+    host.history.scrollRestoration = 'manual';
+  }, [openApp]);
 
-  // Startup chime once per session, when the visitor enters the desktop.
   useEffect(() => {
     if (!active) return;
     try {
       if (sessionStorage.getItem('pg_chimed') === '1') return;
       sessionStorage.setItem('pg_chimed', '1');
     } catch { /* */ }
-    const t = setTimeout(() => playStartupChime(), 600);
-    return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const timer = setTimeout(() => playStartupChime(), 600);
+    return () => clearTimeout(timer);
   }, [active]);
 
-  // popstate (back/forward) — open the app for the new path if not
-  // already, else focus it.
   useEffect(() => {
+    const host = navigationHost();
     const onPop = () => {
-      const path = window.location.pathname || '/';
+      const path = pathAtLocation(host.location);
       const app = findAppForPath(path);
-      if (app) {
-        const overridePath = path !== app.path ? path : undefined;
-        openApp(app.id, undefined, overridePath);
-      }
+      if (app) openApp(app.id, undefined, path, 'none');
     };
-    window.addEventListener('popstate', onPop);
-    return () => window.removeEventListener('popstate', onPop);
+    host.addEventListener('popstate', onPop);
+    return () => host.removeEventListener('popstate', onPop);
   }, [openApp]);
 
   // ── G33: Overtime Contingency — CRT flicker, then innie/outie swap.
@@ -1672,6 +1677,11 @@ export default function InnerDesktop({ onClose, embedded = false, active = true,
         tgt.isContentEditable
       );
 
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault(); setFindOpen(value => !value); setStartOpen(false); setCtxMenu(null); setDialog(null); return;
+      }
+      if (findOpen || e.defaultPrevented) return;
+
       // Alt+Tab — cycle visible windows
       if (e.altKey && e.key === 'Tab') {
         e.preventDefault();
@@ -1686,7 +1696,7 @@ export default function InnerDesktop({ onClose, embedded = false, active = true,
       // when the parent window's Esc handler can't (focus is in the monitor).
       if (e.key === 'Escape') {
         if (dialog)    { setDialog(null);     e.preventDefault(); return; }
-        if (startOpen) { setStartOpen(false); e.preventDefault(); return; }
+        if (startOpen) { setStartOpen(false); startRef.current?.focus(); e.preventDefault(); return; }
         if (ctxMenu)   { setCtxMenu(null);    e.preventDefault(); return; }
         if (inText) return;
         if (focusedId) { closeApp(focusedId); e.preventDefault(); return; }
@@ -1721,7 +1731,7 @@ export default function InnerDesktop({ onClose, embedded = false, active = true,
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [active, wins, startOpen, ctxMenu, dialog, focusApp, closeApp, toggleMaximize, onClose]);
+  }, [active, wins, startOpen, ctxMenu, dialog, findOpen, focusApp, closeApp, toggleMaximize, onClose]);
 
   // ---------- ambient audio (continues from the study) ----------
   const [muted, setMuted] = useState<boolean>(() => {
@@ -1951,6 +1961,7 @@ export default function InnerDesktop({ onClose, embedded = false, active = true,
       inert={!active}
       onMouseDown={() => { setStartOpen(false); setSelectedIcon(null); setCtxMenu(null); }}
       onContextMenu={(e) => {
+        if (findOpen || dialog || (e.target as HTMLElement).closest('.win95-window, .win95-desktop-home, button, a, input')) return;
         // Only show context menu when right-clicking the empty desktop
         // (not on a window or icon). Stop the browser's native menu.
         e.preventDefault();
@@ -1968,7 +1979,7 @@ export default function InnerDesktop({ onClose, embedded = false, active = true,
 
       <style id="win95-styles">{WIN95_STYLE}</style>
       {/* ───────────── desktop icons ───────────── */}
-      <div className="win95-icons" onMouseDown={e => e.stopPropagation()}>
+      <div className="win95-icons" inert={!!dialog || findOpen} onMouseDown={e => e.stopPropagation()}>
         {/* (declutter) Home dropped from the icon column — the home panel is
             permanently on the desktop and the taskbar Home button shows it. */}
         {APPS.filter(a => a.id !== 'home').map(app => (
@@ -1978,6 +1989,7 @@ export default function InnerDesktop({ onClose, embedded = false, active = true,
             role="button"
             tabIndex={0}
             aria-label={app.label}
+            data-app-icon={app.id}
             onMouseDown={e => { e.stopPropagation(); setSelectedIcon(app.id); playUiClick('down', 'tap'); }}
             onMouseUp={() => playUiClick('up', 'tap')}
             onClick={e => onIconActivate(app.id, e)}
@@ -1992,7 +2004,7 @@ export default function InnerDesktop({ onClose, embedded = false, active = true,
       </div>
 
       {/* ───────────── home content ON the desktop ───────────── */}
-      <div className="win95-desktop-home">
+      <div className="win95-desktop-home" inert={!!dialog || findOpen}>
         <div className="win95-desktop-home-inner" onMouseDown={e => e.stopPropagation()}>
           <HomeContent />
         </div>
@@ -2029,6 +2041,8 @@ export default function InnerDesktop({ onClose, embedded = false, active = true,
         return (
           <div
             key={w.id}
+            data-app-window={w.id}
+            inert={!!dialog || findOpen}
             className={classes.join(' ')}
             style={style}
             onMouseDown={e => { e.stopPropagation(); focusApp(w.id); }}
@@ -2048,6 +2062,7 @@ export default function InnerDesktop({ onClose, embedded = false, active = true,
             {/* title bar */}
             <div
               className="win95-titlebar"
+              tabIndex={-1}
               style={{ background: titleBg, cursor: maximized ? 'default' : 'move' }}
               onMouseDown={startDragWin(w.id)}
               onDoubleClick={e => { e.stopPropagation(); if (!fitWindow) toggleMaximize(w.id); }}
@@ -2090,14 +2105,8 @@ export default function InnerDesktop({ onClose, embedded = false, active = true,
                    detail under /research/...), the iframe loads that
                    instead of the app's root path. Add ?embed=1 so
                    Win95Layout strips its chrome. */
-                <WindowIframe
-                  key={w.path || app.path}      /* force reload on path change */
-                  src={(() => {
-                    const base = w.path || app.path;
-                    return base + (base.includes('?') ? '&' : '?') + 'embed=1';
-                  })()}
-                  title={app.title}
-                />
+                <WindowDocument key={w.path || app.path}
+                  path={w.path || app.path} title={app.title} snapshots={readingSnapshots.current} />
               )}
             </div>
 
@@ -2119,12 +2128,14 @@ export default function InnerDesktop({ onClose, embedded = false, active = true,
       {/* ───────────── G32/G33: screensaver + CRT flicker ───────────── */}
       {/* Documents and dialogs stay readable even when their iframe does
           not relay input to the desktop. Closing them starts a fresh timer. */}
-      {active && wins.length === 0 && !dialog && !startOpen && !ctxMenu && <Screensaver />}
+      {active && wins.length === 0 && !dialog && !findOpen && !startOpen && !ctxMenu && <Screensaver />}
       {flicker && <div className="win95-crt-flicker" />}
+
+      <FindDialog open={findOpen && active} onClose={() => setFindOpen(false)} onNavigate={navigate} />
 
       {/* ───────────── G30: Run… dialog ───────────── */}
       {dialog === 'run' && (
-        <div className="win95-dialog" role="dialog" aria-label="Run">
+        <div className="win95-dialog" role="dialog" aria-modal="true" aria-label="Run" onMouseDown={e => e.stopPropagation()}>
           <div className="win95-dialog-titlebar">
             <span>Run</span>
             <button className="win95-titlebtn" onClick={() => setDialog(null)} aria-label="Close">✕</button>
@@ -2148,7 +2159,7 @@ export default function InnerDesktop({ onClose, embedded = false, active = true,
 
       {/* ───────────── G34: System Properties ───────────── */}
       {dialog === 'sysprops' && (
-        <div className="win95-dialog wide" role="dialog" aria-label="System Properties">
+        <div className="win95-dialog wide" role="dialog" aria-modal="true" aria-label="System Properties" onMouseDown={e => e.stopPropagation()}>
           <div className="win95-dialog-titlebar">
             <span>System Properties</span>
             <button className="win95-titlebtn" onClick={() => setDialog(null)} aria-label="Close">✕</button>
@@ -2184,11 +2195,11 @@ export default function InnerDesktop({ onClose, embedded = false, active = true,
 
       {/* ───────────── Start menu ───────────── */}
       {startOpen && (
-        <div className="win95-startmenu" onMouseDown={e => e.stopPropagation()}>
+        <div id="desktop-start-menu" ref={menuRef} role="menu" aria-label="Start" className="win95-startmenu" onKeyDown={menuKeyDown} onMouseDown={e => e.stopPropagation()}>
           <div className="win95-startmenu-spine"><span><b>prashant</b>garg.os</span></div>
           <div className="win95-startmenu-list">
             {APPS.filter(a => a.id !== 'home').map(app => (
-              <div
+              <button type="button" role="menuitem"
                 key={app.id}
                 className="win95-startmenu-item"
                 onMouseDown={() => playUiClick('down', 'menu')}
@@ -2197,11 +2208,14 @@ export default function InnerDesktop({ onClose, embedded = false, active = true,
               >
                 <div className="win95-startmenu-icon"><app.Icon /></div>
                 {app.label}
-              </div>
+              </button>
             ))}
             <div className="win95-startmenu-sep" />
+            <button type="button" role="menuitem" className="win95-startmenu-item" onClick={openFind}>
+              <span className="win95-startmenu-icon" aria-hidden="true">⌕</span>Find…
+            </button>
             {/* G30/G34/G35/G36: system items */}
-            <div
+            <button type="button" role="menuitem"
               className="win95-startmenu-item"
               onMouseDown={() => playUiClick('down', 'menu')}
               onMouseUp={() => playUiClick('up', 'menu')}
@@ -2211,13 +2225,13 @@ export default function InnerDesktop({ onClose, embedded = false, active = true,
                 <svg width="20" height="20" viewBox="0 0 20 20"><rect x="2" y="5" width="16" height="10" fill="#fff" stroke="#2b2b2b" strokeWidth="1.5"/><path d="M5 9l3 2-3 2" fill="none" stroke="#2b2b2b" strokeWidth="1.5"/></svg>
               </div>
               Run…
-            </div>
+            </button>
             {/* (declutter) Wellness Session + System Properties removed from the
                 always-visible Start menu — demoted to the Run command (type
                 "wellness" / "properties"). Wellness copy is still DRAFT, so it
                 should not sit at-rest in the menu. Run… kept: it's the genuine
                 launcher and the mechanism the two are demoted into. */}
-            <div
+            <button type="button" role="menuitem"
               className="win95-startmenu-item"
               onMouseDown={() => playUiClick('down', 'menu')}
               onMouseUp={() => playUiClick('up', 'menu')}
@@ -2228,14 +2242,14 @@ export default function InnerDesktop({ onClose, embedded = false, active = true,
                 <svg width="20" height="20" viewBox="0 0 20 20"><rect x="3" y="3" width="14" height="14" fill="#fff" stroke="#2b2b2b" strokeWidth="1.5"/><line x1="5.5" y1="7" x2="14.5" y2="7" stroke="#2b2b2b" strokeWidth="1.2"/><line x1="5.5" y1="10" x2="14.5" y2="10" stroke="#2b2b2b" strokeWidth="1.2"/><line x1="5.5" y1="13" x2="11" y2="13" stroke="#2b2b2b" strokeWidth="1.2"/></svg>
               </div>
               Standard Issue View
-            </div>
+            </button>
             <div className="win95-startmenu-sep" />
             {/* The 3D office needs an explicit door from the desktop for
                 EVERY device: touch boots straight here, and returning desktop
                 visitors are persisted past the intro (so they'd otherwise have
                 no way back). Shutting down lands on the idle room. */}
             {typeof window !== 'undefined' && (
-              <div
+              <button type="button" role="menuitem"
                 className="win95-startmenu-item"
                 onMouseDown={() => playUiClick('down', 'menu')}
                 onMouseUp={() => playUiClick('up', 'menu')}
@@ -2245,9 +2259,9 @@ export default function InnerDesktop({ onClose, embedded = false, active = true,
                   <svg width="20" height="20" viewBox="0 0 20 20"><rect x="2" y="3" width="16" height="11" fill="none" stroke="#2b2b2b" strokeWidth="2"/><rect x="7" y="16" width="6" height="2" fill="#2b2b2b"/></svg>
                 </div>
                 View office (3D)
-              </div>
+              </button>
             )}
-            <div
+            <button type="button" role="menuitem"
               className="win95-startmenu-item"
               onMouseDown={() => playUiClick('down', 'menu')}
               onMouseUp={() => playUiClick('up', 'menu')}
@@ -2257,7 +2271,7 @@ export default function InnerDesktop({ onClose, embedded = false, active = true,
                 <svg width="20" height="20" viewBox="0 0 20 20"><circle cx="10" cy="10" r="7" fill="none" stroke="#c00" strokeWidth="2"/><line x1="10" y1="3" x2="10" y2="10" stroke="#c00" strokeWidth="2"/></svg>
               </div>
               Shut Down…
-            </div>
+            </button>
           </div>
         </div>
       )}
@@ -2265,12 +2279,13 @@ export default function InnerDesktop({ onClose, embedded = false, active = true,
       {/* ───────────── right-click desktop context menu ───────────── */}
       {ctxMenu && (
         <div
+          ref={contextRef} role="menu" aria-label="Desktop" onKeyDown={menuKeyDown}
           className="win95-context"
           style={{ left: ctxMenu.x, top: ctxMenu.y }}
           onMouseDown={e => e.stopPropagation()}
           onContextMenu={e => e.preventDefault()}
         >
-          <div
+          <button type="button" role="menuitem"
             className="win95-context-item"
             onClick={() => {
               setCtxMenu(null);
@@ -2278,18 +2293,18 @@ export default function InnerDesktop({ onClose, embedded = false, active = true,
               setTimeout(() => setRefreshFlash(false), 280);
               playUiClick('down');
             }}
-          >Refresh</div>
+          >Refresh</button>
           {/* (declutter) removed the 3 greyed dead stubs — Arrange Icons,
               New, Properties — only real actions remain. */}
           <div className="win95-context-sep" />
-          <div
+          <button type="button" role="menuitem"
             className="win95-context-item"
             onClick={() => { setCtxMenu(null); onStartMenuItem('home' as AppId); }}
-          >Open Home</div>
-          <div
+          >Open Home</button>
+          <button type="button" role="menuitem"
             className="win95-context-item"
             onClick={() => { setCtxMenu(null); onClose(); }}
-          >Back to Study…</div>
+          >Back to Study…</button>
         </div>
       )}
       {refreshFlash && (
@@ -2303,11 +2318,13 @@ export default function InnerDesktop({ onClose, embedded = false, active = true,
       )}
 
       {/* ───────────── taskbar ───────────── */}
-      <div className="win95-toolbar" onMouseDown={e => e.stopPropagation()}>
+      <div className="win95-toolbar" inert={!!dialog || findOpen} onMouseDown={e => e.stopPropagation()}>
         <button
           className="win95-start-btn"
           onMouseDown={() => playUiClick('down')}
           onMouseUp={() => playUiClick('up')}
+          ref={startRef} aria-haspopup="menu" aria-expanded={startOpen} aria-controls="desktop-start-menu"
+          onKeyDown={e => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') { e.preventDefault(); setStartOpen(true); } }}
           onClick={() => setStartOpen(o => !o)}
         >
           <svg width="16" height="16" viewBox="0 0 16 16">
@@ -2324,7 +2341,7 @@ export default function InnerDesktop({ onClose, embedded = false, active = true,
             icons, so this is the guaranteed way back. */}
         <button
           className="win95-start-btn win95-home-btn"
-          title="Home — show the desktop"
+          data-home-button title="Home — show the desktop"
           onMouseDown={() => playUiClick('down')}
           onMouseUp={() => playUiClick('up')}
           onClick={() => openApp('home')}
@@ -2334,6 +2351,8 @@ export default function InnerDesktop({ onClose, embedded = false, active = true,
           </svg>
           Home
         </button>
+
+        <button ref={findRef} data-find-trigger className="win95-start-btn win95-find-btn" onClick={openFind} title="Find (Ctrl/⌘ K)">Find</button>
 
         {(embedded || readingMode) && <a className="win95-start-btn win95-text-btn" href="/standard/"
           title="Text version" aria-label="Text version">Text</a>}
@@ -2346,6 +2365,7 @@ export default function InnerDesktop({ onClose, embedded = false, active = true,
           return (
             <button
               key={w.id}
+              data-app-task={w.id}
               className={`win95-taskbar-chip ${focused ? 'focused' : ''}`}
               onMouseDown={() => playUiClick('down')}
               onMouseUp={() => playUiClick('up')}
@@ -2476,7 +2496,7 @@ function WellnessDialog({ onClose }: { onClose: () => void }) {
   const last = i >= WELLNESS_LINES.length - 1;
   const line = WELLNESS_LINES[Math.min(i, WELLNESS_LINES.length - 1)];
   return (
-    <div className="win95-dialog" role="dialog" aria-label="Wellness Session">
+    <div className="win95-dialog" role="dialog" aria-modal="true" aria-label="Wellness Session" onMouseDown={e => e.stopPropagation()}>
       <div className="win95-dialog-titlebar">
         <span>Wellness Session</span>
         <button className="win95-titlebtn" onClick={onClose} aria-label="Close">✕</button>

@@ -2,6 +2,7 @@
 import Layout from '../layouts/Win95Layout.astro';
 import TalkRow from '../components/TalkRow.astro';
 import { talks, type Talk } from '../data/site';
+import { talkAnchor } from '../lib/search';
 
 const MONTHS = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
 // Keep a local calendar date in the markup so the small client enhancement can
@@ -36,6 +37,7 @@ for (const t of archive) (byYear[t.year] ||= []).push(t);
 const yearsDesc = Object.keys(byYear).map(Number).sort((a, b) => b - a);
 const startFor = (t: Talk) => dateKey(t);
 const endFor = (t: Talk) => dateKey(t, true);
+const anchorFor = (t: Talk) => talkAnchor(t);
 ---
 <Layout title="Talks — Prashant Garg" current="talks">
   <article class="max-w-3xl mx-auto px-4 pt-14 pb-20">
@@ -49,7 +51,7 @@ const endFor = (t: Talk) => dateKey(t, true);
     <section id="upcoming" data-talk-upcoming-section hidden={!upcoming.length} class="mb-10 scroll-mt-4">
       <h2 class="font-display text-xl font-bold mb-3 pb-1 border-b border-ink/20 dark:border-cream/20">Upcoming</h2>
       <ul data-talk-upcoming-list class="space-y-2.5 text-sm text-ink/85 dark:text-cream/85 leading-relaxed">
-        {upcoming.map(t => <TalkRow talk={t} start={startFor(t)} end={endFor(t)} />)}
+        {upcoming.map(t => <TalkRow talk={t} anchor={anchorFor(t)} start={startFor(t)} end={endFor(t)} />)}
       </ul>
     </section>
 
@@ -59,7 +61,7 @@ const endFor = (t: Talk) => dateKey(t, true);
         <details data-talk-year-group={y} class="talk-year mb-5" open={y === buildToday.getFullYear()}>
           <summary class="font-display text-lg font-bold pb-1 border-b border-ink/15 dark:border-cream/15">{y} <span data-talk-count class="text-sm font-sans font-normal text-ink/55 dark:text-cream/55">({byYear[y].length})</span></summary>
           <ul data-talk-list class="mt-3 space-y-2.5 text-sm text-ink/85 dark:text-cream/85 leading-relaxed">
-            {byYear[y].map(t => <TalkRow talk={t} start={startFor(t)} end={endFor(t)} />)}
+            {byYear[y].map(t => <TalkRow talk={t} anchor={anchorFor(t)} start={startFor(t)} end={endFor(t)} />)}
           </ul>
         </details>
       ))}
@@ -73,6 +75,18 @@ const endFor = (t: Talk) => dateKey(t, true);
   const upcomingList = document.querySelector('[data-talk-upcoming-list]');
   const archive = document.querySelector('[data-talk-archive]');
   if (upcomingSection instanceof HTMLElement && upcomingList instanceof HTMLUListElement && archive instanceof HTMLElement) {
+    const openTalkFromHash = () => {
+      let targetId = window.location.hash.slice(1);
+      try { targetId = decodeURIComponent(targetId); } catch { /* Ignore malformed URL escapes. */ }
+      if (!targetId) return;
+      const target = document.getElementById(targetId);
+      if (!target) return;
+      target.closest('details')?.setAttribute('open', '');
+      window.requestAnimationFrame(() => target.scrollIntoView({ block: 'start' }));
+    };
+    openTalkFromHash();
+    window.addEventListener('hashchange', openTalkFromHash);
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
@@ -139,6 +153,9 @@ const endFor = (t: Talk) => dateKey(t, true);
     const archiveLink = document.querySelector<HTMLElement>('[data-talk-archive-link]');
     if (upcomingLink) upcomingLink.hidden = upcomingSection.hidden;
     if (archiveLink) archiveLink.hidden = archive.hidden;
+    // A hash target can move between Upcoming and Archive when the static
+    // build ages. Re-open its year group and scroll after that move as well.
+    openTalkFromHash();
   }
 </script>
 <style is:global>
