@@ -47,6 +47,9 @@ const canonical  = Astro.site ? new URL(path === '/' ? '/' : `${path}/`, Astro.s
         padding: 7vh 24px; box-sizing: border-box; overflow-y: auto;
         font-family: ui-monospace, 'SF Mono', Menlo, Monaco, Consolas, monospace;
       }
+      /* Hide the fallback after the client takes over. Native dialogs inside
+         the desktop iframe can otherwise reveal it during compositing. */
+      #entry[aria-hidden="true"] { display: none; }
       #entry .ef { max-width: 620px; }
       #entry h1 { font-size: 22px; letter-spacing: 0.02em; margin: 0 0 4px; color: #E8DBB6; font-weight: 600; }
       #entry .ef-tag { font-size: 13px; line-height: 1.5; color: rgba(232,219,182,0.62); margin: 0 0 18px; }
