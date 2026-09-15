@@ -719,6 +719,7 @@ export const teaching: CvEntry[] = [
 ];
 
 export const experience: CvEntry[] = [
+  { period: '2026–', title: 'Postdoctoral Researcher', org: 'Bocconi University', detail: 'Since September 2026.' },
   { period: '2026', title: 'Research Associate', org: 'University of Cambridge', detail: 'Postdoctoral appointment beginning in May 2026.' },
   { period: '2025–', title: 'Visiting Researcher', org: 'University of Cambridge, Computer Science Department', detail: 'Hosted by Neil Lawrence.' },
   { period: '2024–2025', title: 'Visiting Researcher', org: 'International Finance Corporation (IFC), Paris / Washington DC', detail: 'Economics Research Unit; hosted by Ralf Martin.' },

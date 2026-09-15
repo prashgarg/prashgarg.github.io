@@ -48,9 +48,9 @@ const years = Object.keys(talksByYear).map(Number).sort((a, b) => b - a);
         <h2 class="cv-name font-display text-4xl md:text-5xl font-bold tracking-tight">{site.name}</h2>
         <p class="cv-tagline mt-2 text-sm md:text-base text-ink/75 dark:text-cream/75 max-w-3xl">{site.tagline}</p>
         <div class="cv-contacts mt-3 text-sm flex flex-wrap items-center gap-x-4 gap-y-1 text-ink/80 dark:text-cream/80">
-          <span>{site.email}</span>
+          <a href={`mailto:${site.email}`} class="hover:underline">{site.email}</a>
           <span class="opacity-50">·</span>
-          <span>{site.origin.replace(/^https?:\/\//, '')}</span>
+          <a href={site.origin} class="hover:underline">{site.origin.replace(/^https?:\/\//, '')}</a>
           <span class="opacity-50">·</span>
           <span>{site.twitterHandle}</span>
         </div>
@@ -100,7 +100,9 @@ const years = Object.keys(talksByYear).map(Number).sort((a, b) => b - a);
           <ol class="cv-pub-list">
             {g.items.map(p => (
               <li class="cv-pub">
-                <div class="cv-pub-title">{p.title}</div>
+                <div class="cv-pub-title">
+                  <a href={`/research/${p.slug}`} class="text-brand-red hover:underline">{p.title}</a>
+                </div>
                 <div class="cv-pub-meta">
                   {p.coauthors.length ? `with ${p.coauthors.join(', ')}` : ''}
                   {p.venue ? ` · ${p.venue}` : ''}
@@ -179,7 +181,11 @@ const years = Object.keys(talksByYear).map(Number).sort((a, b) => b - a);
             {talksByYear[y].map(t => (
               <li class="cv-talk">
                 <span class="cv-talk-date">{t.date}</span>
-                <span class="cv-talk-venue">{t.venue}</span>
+                <span class="cv-talk-venue">
+                  {t.url ? (
+                    <a href={t.url} target="_blank" rel="noopener" class="text-brand-red hover:underline">{t.venue}</a>
+                  ) : t.venue}
+                </span>
                 <span class="cv-talk-loc"> · {t.location}</span>
               </li>
             ))}

@@ -7,7 +7,10 @@ const base=(process.argv[2] || 'http://localhost:4325').replace(/\/$/,'');
 const shots=process.argv[3] || 'shots/reading-sandbox/adaptive';
 await mkdir(shots,{recursive:true});
 const browser=await chromium.launch({headless:true});
-const ctx=await browser.newContext({viewport:{width:411,height:650},deviceScaleFactor:1});
+const ctx=await browser.newContext({viewport:{width:1400,height:900},deviceScaleFactor:1});
+// Enter the real monitor first, then test resizing its live desktop. Narrow
+// first visits now have a separate lightweight entry covered by verify-arrival.
+await ctx.addInitScript(()=>sessionStorage.setItem('pg_phase','desktop'));
 const page=await ctx.newPage();
 page.setDefaultTimeout(60000);
 const errors=[];
@@ -16,8 +19,9 @@ const shot=name=>page.screenshot({path:`${shots}/${name}.png`});
 const screen=page.locator('iframe[title="prashantgarg.os"]');
 const desktop=page.frameLocator('iframe[title="prashantgarg.os"]');
 try {
-  await page.goto(`${base}/?app=home`,{waitUntil:'load'});
+  await page.goto(`${base}/`,{waitUntil:'load'});
   await page.locator('.office-monitor[data-ready="true"]').waitFor();
+  await page.setViewportSize({width:411,height:650});
   await desktop.locator('.win95-desktop:not([inert])').waitFor();
   await desktop.locator('body').evaluate(()=>document.fonts.ready);
   await page.locator('#office[data-view="desktop"]').waitFor();

@@ -71,6 +71,72 @@ function RenderBudget({ mode }: { mode: 'always' | 'demand' | 'never' }) {
   return null;
 }
 
+/**
+ * Project the persistent fullscreen desktop onto the physical CRT plane while
+ * the room is visible. This deliberately moves only CSS: the desktop DOM
+ * and its iframe stay mounted in their normal overlay, so its window state,
+ * focus, and reading snapshots are exactly the same when the visitor enters
+ * the monitor.
+ */
+function ExternalDesktopProjection({ enabled, phase }: { enabled: boolean; phase: Phase }) {
+  const { camera, size } = useThree();
+  const model = useMemo(() => new THREE.Matrix4(), []);
+  const scale = useMemo(() => new THREE.Matrix4(), []);
+  const clip = useMemo(() => new THREE.Matrix4(), []);
+  const screen = useMemo(() => new THREE.Matrix4(), []);
+  const css = useMemo(() => new THREE.Matrix4(), []);
+  const cleanup = useCallback(() => {
+    const element = document.querySelector<HTMLElement>('[data-entry-desktop]');
+    if (!element) return;
+    element.style.transform = 'none';
+    element.style.transformOrigin = '';
+    element.style.pointerEvents = '';
+    element.style.visibility = '';
+  }, []);
+
+  useEffect(() => cleanup, [cleanup]);
+  useFrame(() => {
+    const element = document.querySelector<HTMLElement>('[data-entry-desktop]');
+    if (!element) return;
+    if (!enabled || phase === 'desktop') {
+      cleanup();
+      return;
+    }
+
+    const width = size.width || window.innerWidth;
+    const height = size.height || window.innerHeight;
+    const physicalWidth = MONITOR_VIEWPORT.width * MONITOR_VIEWPORT.scale * 10 / 400;
+    const physicalHeight = MONITOR_VIEWPORT.height * MONITOR_VIEWPORT.scale * 10 / 400;
+
+    // The CSS element's local origin is its top-left corner. Flip its local
+    // y axis so increasing CSS y travels down the physical screen.
+    scale.makeScale(
+      physicalWidth / width,
+      -physicalHeight / height,
+      1,
+    );
+    model.makeTranslation(MONITOR_WORLD.x - physicalWidth / 2, MONITOR_WORLD.y + 0.02 + physicalHeight / 2, MONITOR_WORLD.z + 0.218)
+      .multiply(scale);
+    camera.updateMatrixWorld();
+    clip.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse).multiply(model);
+
+    // Convert clip coordinates to CSS viewport pixels while retaining the
+    // homogeneous w coordinate. CSS performs the final perspective divide.
+    screen.set(
+      width / 2, 0, 0, width / 2,
+      0, -height / 2, 0, height / 2,
+      0, 0, 1, 0,
+      0, 0, 0, 1,
+    );
+    css.multiplyMatrices(screen, clip);
+    element.style.transformOrigin = '0 0';
+    element.style.transform = `matrix3d(${css.elements.join(',')})`;
+    element.style.pointerEvents = 'none';
+    element.style.visibility = 'visible';
+  });
+  return null;
+}
+
 /* ---------- room constants ------------------------------------------- */
 const ROOM_W = 36;
 const ROOM_D = 46;
@@ -940,7 +1006,7 @@ function PowerLed({ position }: { position: [number, number, number] }) {
 }
 
 /* ---------- CRT monitor (click target) ------------------------------- */
-function CrtMonitor({ phase, onClick }: { phase: Phase; onClick?: () => void }) {
+function CrtMonitor({ phase, onClick, quiet = false }: { phase: Phase; onClick?: () => void; quiet?: boolean }) {
   const [hovered, setHovered] = useState(false);
   const clickable = phase === 'idle';
   // Subtle plastic micro-detail on the beige CRT shell — breaks up the
@@ -1009,7 +1075,12 @@ function CrtMonitor({ phase, onClick }: { phase: Phase; onClick?: () => void }) 
     crtMat.uniforms.uTime.value = state.clock.elapsedTime;
     // dimmed so the CRT reads as a calm recessed panel, not the brightest
     // thing in frame (was 1.85/2.85) — the ceiling is the hero now.
-    const target = clickable ? (hovered ? 2.0 : 1.35) : 0.12;
+    // In the lightweight desktop handoff the live screen is kept outside the
+    // room so the CRT must remain a visual placeholder. Keep its phosphor
+    // quiet while preserving the same generous click target.
+    const target = quiet
+      ? (clickable && hovered ? 0.55 : 0.32)
+      : (clickable ? (hovered ? 2.0 : 1.35) : 0.12);
     crtTargetRef.current += (target - crtTargetRef.current) * Math.min(1, dt * 6);
     crtMat.uniforms.uIntensity.value = crtTargetRef.current;
   });
@@ -1107,7 +1178,7 @@ function CrtMonitor({ phase, onClick }: { phase: Phase; onClick?: () => void }) 
         <primitive object={crtMat} attach="material" />
       </mesh>
       {/* subtle screen glow light — teal/blue to match the new CRT colour */}
-      {clickable && (
+      {clickable && !quiet && (
         <pointLight
           position={[0, 0.02, 0.35]}
           intensity={hovered ? 1.0 : 0.5}
@@ -2400,9 +2471,10 @@ function MonitorDesktop({ phase, reading, compact, onEnter, onReady, onToggleRea
   );
 }
 
-function OfficeScene({ phase, reading, compact, onMonitorClick, onDesktopReady, onToggleReading }: {
+function OfficeScene({ phase, reading, compact, onMonitorClick, onDesktopReady, onToggleReading, externalDesktop }: {
   phase: Phase; reading: boolean; compact: boolean;
   onMonitorClick: () => void; onDesktopReady: () => void; onToggleReading: () => void;
+  externalDesktop?: boolean;
 }) {
   // Engraved nameplate texture (real text on the chrome face)
   const nameTex = useMemo(() => getEngravedTex('P. GARG'), []);
@@ -2618,9 +2690,9 @@ function OfficeScene({ phase, reading, compact, onMonitorClick, onDesktopReady, 
           rides with the south station's pinwheel shift. (CrtMonitor
           uses MONITOR_WORLD internally which already includes SOUTH_DX,
           so it's mounted OUTSIDE this group.) */}
-      <CrtMonitor phase={phase} onClick={onMonitorClick} />
+      <CrtMonitor phase={phase} onClick={onMonitorClick} quiet={externalDesktop} />
 
-      {COMPOSITE && <MonitorDesktop phase={phase} reading={reading} compact={compact}
+      {COMPOSITE && !externalDesktop && <MonitorDesktop phase={phase} reading={reading} compact={compact}
         onEnter={onMonitorClick} onReady={onDesktopReady} onToggleReading={onToggleReading} />}
 
       <group position={[SOUTH_DX, 0, 0]}>
@@ -3322,7 +3394,18 @@ const SS_PHASE = 'pg_phase';
 const SS_MUTED = 'pg_muted';
 const READING_QUERY = '(max-width: 900px), (max-height: 600px)';
 
-export default function Office() {
+export interface OfficeProps {
+  /** The lightweight entry keeps the one desktop instance mounted itself. */
+  externalDesktop?: boolean;
+  /** Start on the room after a lightweight desktop visitor asks for it. */
+  startInRoom?: boolean;
+  /** Report room/monitor state so the external desktop can be shown. */
+  onPhaseChange?: (phase: Phase) => void;
+  /** Controlled monitor state for the external desktop instance. */
+  desktopOpen?: boolean;
+}
+
+export default function Office({ externalDesktop = false, startInRoom = false, onPhaseChange, desktopOpen = true }: OfficeProps = {}) {
   const [compact, setCompact] = useState(() => window.matchMedia(READING_QUERY).matches);
   const [documentHidden, setDocumentHidden] = useState(() =>
     typeof document !== 'undefined' && document.visibilityState === 'hidden');
@@ -3349,6 +3432,7 @@ export default function Office() {
   const handleDesktopReady = useCallback(() => setMonitorReady(true), []);
   const [phase, setPhase] = useState<Phase>(() => {
     if (typeof window === 'undefined') return 'splash';
+    if (startInRoom) return 'idle';
     // If the user landed directly on an inner URL (e.g. /research,
     // /talks, /now, /cv, /research/some-paper), skip BIOS + entry +
     // dolly and drop them straight into the desktop phase so
@@ -3368,9 +3452,23 @@ export default function Office() {
     try { if (window.matchMedia('(hover: none) and (pointer: coarse)').matches || window.matchMedia(READING_QUERY).matches) return 'desktop'; } catch { /* */ }
     return 'splash';
   });
+  useEffect(() => { onPhaseChange?.(phase); }, [onPhaseChange, phase]);
+  // In the lightweight entry the desktop remains mounted outside this room.
+  // Closing it must return the camera to the room before it can be opened
+  // again; keeping this controlled edge here avoids a stale desktop phase.
+  const previousDesktopOpen = useRef(desktopOpen);
+  useEffect(() => {
+    // Do not reset the camera during the same render in which it arrives at
+    // the monitor: the external desktop is notified in a sibling effect and
+    // its `desktopOpen` prop necessarily lags by one render. Only a genuine
+    // true → false close request should send the room back to idle.
+    const closed = previousDesktopOpen.current && !desktopOpen;
+    previousDesktopOpen.current = desktopOpen;
+    if (externalDesktop && closed && phase === 'desktop') setPhase('idle');
+  }, [desktopOpen, externalDesktop, phase]);
   const frameLoop: 'always' | 'demand' | 'never' = documentHidden
     ? 'never'
-    : phase === 'desktop' && reading ? 'demand' : 'always';
+    : phase === 'desktop' && (reading || externalDesktop) ? 'demand' : 'always';
   // Lazy init is safe — this component renders client:only (no SSR
   // hydration to mismatch), and G7 needs the value on FIRST render to
   // decide whether the 3D canvas mounts at all.
@@ -3444,11 +3542,15 @@ export default function Office() {
   // click-the-room affordance and gives keyboard users a way out (M22).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && COMPOSITE && phase === 'desktop') handleDesktopClose();
+      // InnerDesktop gets first refusal when a window, dialog, or menu is
+      // open. In the lightweight handoff it shares the top-level document,
+      // so closing the child window must not also eject the visitor from the
+      // room in the same key event.
+      if (e.key === 'Escape' && !e.defaultPrevented && !externalDesktop && COMPOSITE && phase === 'desktop') handleDesktopClose();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [phase, reading, reducedMotion, isTouch]);
+  }, [externalDesktop, phase, reading, reducedMotion, isTouch]);
   // Keyboard entry: at idle, Enter/Space dollies into the monitor — the
   // mouse path is a 3D mesh click, which isn't keyboard-reachable (M11).
   // (The server-rendered #entry layer is intentionally LEFT in the DOM so
@@ -3494,6 +3596,21 @@ export default function Office() {
               &gt; 3D workstation unavailable on this device (no WebGL).<br />
               &gt; Browse directly:
             </div>
+            {externalDesktop && (
+              <button
+                type="button"
+                onClick={showReading}
+                style={{
+                  marginBottom: 16,
+                  padding: '8px 12px',
+                  border: '1px solid #A4D9C5',
+                  background: 'transparent',
+                  color: '#E8EEDF',
+                  font: 'inherit',
+                  cursor: 'pointer',
+                }}
+              >Back to desktop</button>
+            )}
             {[['Everything on one page', '/standard'], ['Research', '/research'], ['Talks', '/talks'], ['Library', '/library'], ['Now', '/now'], ['CV', '/cv']].map(([label, href]) => (
               <div key={href} style={{ marginBottom: 6 }}>
                 &gt;&nbsp;<a href={href} style={{ color: '#E8EEDF', textDecoration: 'underline' }}>{label}</a>
@@ -3542,7 +3659,8 @@ export default function Office() {
           <RenderBudget mode={frameLoop} />
           <PerspectiveCamera makeDefault position={[CAM_ENTRY_POS.x, CAM_ENTRY_POS.y, CAM_ENTRY_POS.z]} fov={54} />
           <CameraRig phase={phase} onArrived={handleArrived} onEntryDone={handleEntryDone} reducedMotion={reducedMotion} />
-          <OfficeScene phase={phase} reading={reading} compact={compact}
+          <ExternalDesktopProjection enabled={externalDesktop} phase={phase} />
+          <OfficeScene phase={phase} reading={reading} compact={compact} externalDesktop={externalDesktop}
             onMonitorClick={handleClick} onDesktopReady={handleDesktopReady} onToggleReading={toggleReading} />
           {/* Post-processing: Bloom only. N8AO (screen-space AO) was the
               source of the floor "flicker in various places" — as the camera
@@ -3575,7 +3693,7 @@ export default function Office() {
       {phase === 'idle' && <TapHint onEnter={handleClick} />}
       {phase === 'idle' && <button className="office-control office-desktop-shortcut" onClick={showReading}>Desktop</button>}
       {phase === 'splash'  && <BiosScreen onDone={handleBiosDone} ready={monitorReady} />}
-      {!COMPOSITE && <div className="office-desktop-overlay"
+      {!COMPOSITE && !externalDesktop && <div className="office-desktop-overlay"
         style={{ visibility: phase === 'desktop' ? 'visible' : 'hidden' }} aria-hidden={phase !== 'desktop'}>
         <InnerDesktop onClose={handleDesktopClose} embedded active={phase === 'desktop'} />
       </div>}

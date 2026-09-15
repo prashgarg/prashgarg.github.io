@@ -20,6 +20,7 @@ import { MONITOR_VIEWPORT } from '../lib/monitor';
 import FindDialog from './FindDialog';
 import WindowDocument, { type ReadingSnapshot } from './WindowDocument';
 import { navigationHost, cleanPath, pathAtLocation, writeLocation } from '../lib/desktopNavigation';
+import { readViewPreference, setViewPreference, VIEW_PREFERENCE_EVENT } from '../lib/viewPreference';
 
 
 /* ---------- Win95 CSS injected once ----------------------------------- */
@@ -1328,8 +1329,9 @@ function VolumeTray() {
       <button
         className="win95-tray-btn"
         title={vol > 0 ? 'Mute ambient' : 'Unmute ambient'}
-        onMouseDown={() => { playUiClick('down'); toggleMute(); }}
+        onMouseDown={() => playUiClick('down')}
         onMouseUp={() => playUiClick('up')}
+        onClick={toggleMute}
         style={{ flexShrink: 0 }}
       >
         {vol > 0 ? <VolumeOnIcon /> : <VolumeOffIcon />}
@@ -1377,6 +1379,17 @@ interface OpenWin {
 
 export default function InnerDesktop({ onClose, embedded = false, active = true, readingMode = false, onToggleReading }: InnerDesktopProps) {
   const [time, setTime] = useState(getTime);
+  const [startInDesktop, setStartInDesktop] = useState(() => readViewPreference() === 'desktop');
+  const [preferenceError, setPreferenceError] = useState(false);
+  useEffect(() => {
+    const update = () => setStartInDesktop(readViewPreference() === 'desktop');
+    window.addEventListener('storage', update);
+    window.addEventListener(VIEW_PREFERENCE_EVENT, update);
+    return () => {
+      window.removeEventListener('storage', update);
+      window.removeEventListener(VIEW_PREFERENCE_EVENT, update);
+    };
+  }, []);
   // Container ref so we can measure the desktop bounding rect for
   // window cascade defaults + animation origin transforms.
   const containerRef = useRef<HTMLDivElement>(null);
@@ -1433,7 +1446,7 @@ export default function InnerDesktop({ onClose, embedded = false, active = true,
   }, [dialog]);
   // Native menu buttons support Tab; arrows/Home/End follow desktop menu conventions.
   const menuKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
-    const items = [...event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')];
+    const items = [...event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="menuitem"], [role="menuitemcheckbox"]')];
     const current = items.indexOf(document.activeElement as HTMLButtonElement);
     let next = current;
     if (event.key === 'ArrowDown') next = (current + 1) % items.length;
@@ -2244,6 +2257,18 @@ export default function InnerDesktop({ onClose, embedded = false, active = true,
               Standard Issue View
             </button>
             <div className="win95-startmenu-sep" />
+            <button type="button" role="menuitemcheckbox" aria-checked={startInDesktop}
+              className="win95-startmenu-item" title="Remember the starting view on this browser"
+              onClick={() => {
+                const next = !startInDesktop;
+                const saved = setViewPreference(next ? 'desktop' : 'office');
+                setPreferenceError(!saved);
+                if (saved) setStartInDesktop(next);
+              }}>
+              <span className="win95-startmenu-icon" aria-hidden="true">{startInDesktop ? '✓' : ''}</span>
+              Start in desktop view
+            </button>
+            {preferenceError && <div role="status" style={{ padding: '4px 10px', fontSize: 12 }}>This browser couldn’t save the setting.</div>}
             {/* The 3D office needs an explicit door from the desktop for
                 EVERY device: touch boots straight here, and returning desktop
                 visitors are persisted past the intro (so they'd otherwise have

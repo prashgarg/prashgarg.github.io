@@ -86,5 +86,20 @@
 }
 .office-monitor-layer.is-reading .office-crt-glass { display: none; }
 .office-desktop-overlay { position: absolute; inset: 0; z-index: 10000; }
+.website-entry-room-loading {
+  --office-paper: #e8eedf;
+  --office-panel: rgb(31 47 39 / 72%);
+  --office-line: rgb(199 213 195 / 24%);
+  --office-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  position: fixed;
+  inset: 0;
+  z-index: 10002;
+  display: grid;
+  place-items: center;
+  background: #0e0d0b;
+  color: #a4d9c5;
+  font: 13px/1.5 ui-monospace, 'SF Mono', Menlo, Monaco, Consolas, monospace;
+  letter-spacing: 0.08em;
+}
 .office-desktop-shortcut { position: fixed; top: 18px; right: 20px; z-index: 60; padding: 8px 14px; }
 body:has(#office[data-view="desktop"]) #text-version { display: none; }

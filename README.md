@@ -23,8 +23,11 @@ Windows 95-style desktop. The desktop is a real same-origin DOM iframe
 composited into the 3D monitor with drei's `<Html transform>`.
 It loads during the initial splash and stays visible through entry and exit;
 there is no second boot sequence. Open windows survive a trip back to the room.
-Touch devices and `?composite=0` use a fullscreen desktop, and reduced-motion
-mode skips the camera transitions.
+Touch devices, compact viewports, `?composite=0`, and explicit desktop visits
+start with the fullscreen desktop. `WebsiteEntry.tsx` keeps the 3D code behind
+a lazy import, so these visitors download the room only when they open it.
+Start → **Start in desktop view** saves this preference in the browser.
+Reduced-motion mode skips the camera transitions.
 
 The inner site has pages for research, talks, library, now, and CV. A plain
 fallback lives at [`/standard`](https://prashantgarg.org/standard) for readers
@@ -43,6 +46,11 @@ Most personal content is in [`src/data/site.ts`](src/data/site.ts):
 The editable PDF CV source is [`documents/cv/CV.tex`](documents/cv/CV.tex).
 See its [build instructions](documents/cv/README.md). Only the compiled
 `public/cv.pdf` is published on the website; the TeX source stays in Git.
+Citation exports use the verified records in `src/lib/citations.ts`; their
+sources are recorded in `documents/cv/citation-provenance.md`. Update these
+records when a paper's published version becomes available.
+The two figure pilots are configured in `src/data/paperFigures.ts`, with
+original-PDF provenance in `documents/figures-provenance.md`.
 
 To make your own version:
 
@@ -72,17 +80,25 @@ With the built site served locally, `node scripts/verify-office.mjs` checks
 monitor continuity, window persistence, keyboard focus, entry/exit, and reload.
 It saves entrance, transition, and desktop screenshots under `shots/office-check/`.
 Pass a different base URL as its first argument when comparing worktrees.
+`scripts/verify-arrival.mjs` checks deferred room loading, saved preferences,
+document continuity, and failure recovery. `scripts/verify-figures.mjs` checks
+figure enlargement; `scripts/measure-arrival.mjs` compares cold-browser
+JavaScript responses against another build. Its byte counts are uncompressed
+local responses, not production transfer sizes or device-speed benchmarks.
 
 On a Dropbox-synced checkout, local builds can occasionally stall. The GitHub
 Pages CI build is the deployment source of truth.
 
 ## Project Map
 
+- `src/components/WebsiteEntry.tsx` - lightweight entry and deferred room loading
 - `src/components/Office.tsx` - 3D office scene, camera, monitor projection,
   audio, room interactions
 - `src/components/InnerDesktop.tsx` - Windows 95-style desktop, windows, start
   menu, tray, keyboard shortcuts
 - `src/components/OsPage.tsx` - monitor readiness and keyboard-focus handoff
+- `src/components/PaperFigures.astro` - original figures and accessible enlargement
+- `src/lib/viewPreference.ts` - saved starting view and cross-tab updates
 - `src/styles/office.css` - room controls and the monitor's glass overlay
 - `src/layouts/Win95Layout.astro` - inner-page chrome and embed mode
 - `src/pages/*.astro` - public pages

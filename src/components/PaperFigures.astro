@@ -1,0 +1,196 @@
+---
+import type { PaperFigure } from '../data/paperFigures';
+
+interface Props {
+  figures?: PaperFigure[];
+}
+
+const { figures = [] } = Astro.props;
+const dialogId = `paper-figure-dialog-${Astro.url.pathname.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '') || 'page'}`;
+---
+
+{figures.length > 0 && (
+  <section class="paper-figures" aria-label="Figures">
+    {figures.map((figure, index) => {
+      const alt = figure.alt || figure.caption;
+      const buttonLabel = `Enlarge figure ${index + 1}`;
+      return (
+        <figure class="paper-figure">
+          <button
+            type="button"
+            class="paper-figure-trigger"
+            aria-haspopup="dialog"
+            aria-controls={dialogId}
+            aria-label={buttonLabel}
+            data-figure-src={figure.src}
+            data-figure-alt={alt}
+            data-figure-caption={figure.caption}
+          >
+            <img src={figure.src} alt={alt} loading="lazy" decoding="async" />
+          </button>
+          <figcaption>
+            <span>{figure.caption}</span>
+            {figure.source && figure.sourceUrl && (
+              <span class="paper-figure-source">Source: <a href={figure.sourceUrl} target="_blank" rel="noopener">{figure.source}</a>.</span>
+            )}
+          </figcaption>
+        </figure>
+      );
+    })}
+  </section>
+
+  <dialog id={dialogId} class="paper-figure-dialog" aria-label="Enlarged figure">
+    <button type="button" class="paper-figure-dialog-close" aria-label="Close enlarged figure">×</button>
+    <div class="paper-figure-dialog-inner">
+      <img class="paper-figure-dialog-image" alt="" />
+      <p class="paper-figure-dialog-caption"></p>
+    </div>
+  </dialog>
+)}
+
+<style>
+  .paper-figures {
+    margin-top: 2rem;
+    display: grid;
+    gap: 1.5rem;
+  }
+  .paper-figure {
+    margin: 0;
+  }
+  .paper-figure-trigger {
+    display: block;
+    width: 100%;
+    padding: 0;
+    border: 1px solid color-mix(in srgb, var(--color-ink) 18%, transparent);
+    background: #fff;
+    cursor: zoom-in;
+  }
+  .paper-figure-trigger:hover { border-color: var(--color-brand-red); }
+  .paper-figure-trigger:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 3px;
+  }
+  .paper-figure-trigger img {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+  .paper-figure figcaption {
+    margin-top: 0.55rem;
+    color: color-mix(in srgb, var(--color-ink) 68%, transparent);
+    font-size: 0.875rem;
+    line-height: 1.55;
+  }
+  :global(html.dark) .paper-figure figcaption {
+    color: color-mix(in srgb, var(--color-cream) 72%, transparent);
+  }
+  .paper-figure-source {
+    display: block;
+    margin-top: 0.2rem;
+    font-size: 0.8rem;
+  }
+  .paper-figure-source a {
+    color: var(--color-brand-red);
+    text-decoration: underline;
+    text-underline-offset: 0.18em;
+  }
+  .paper-figure-dialog {
+    position: fixed;
+    inset: 0;
+    margin: auto;
+    width: min(94vw, 1100px);
+    max-width: none;
+    max-height: 92dvh;
+    overflow: hidden;
+    padding: 0;
+    border: 2px solid var(--color-ink);
+    background: var(--color-cream);
+    color: var(--color-ink);
+    box-shadow: 6px 7px 0 rgba(0,0,0,0.22);
+  }
+  .paper-figure-dialog::backdrop { background: rgba(0,0,0,0.66); }
+  .paper-figure-dialog-inner {
+    max-height: 92dvh;
+    padding: 3.25rem 1rem 1rem;
+    overflow: auto;
+  }
+  .paper-figure-dialog-image {
+    display: block;
+    width: 100%;
+    height: auto;
+    background: #fff;
+  }
+  .paper-figure-dialog-caption {
+    margin: 0.75rem 0 0;
+    font-size: 0.875rem;
+    line-height: 1.5;
+  }
+  .paper-figure-dialog-close {
+    position: absolute;
+    z-index: 1;
+    top: 0.45rem;
+    right: 0.45rem;
+    width: 2rem;
+    height: 2rem;
+    border: 1px solid currentColor;
+    background: var(--color-cream);
+    color: inherit;
+    font: inherit;
+    font-size: 1.3rem;
+    line-height: 1;
+    cursor: pointer;
+  }
+  .paper-figure-dialog-close:focus-visible,
+  .paper-figure-dialog-close:hover {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+  }
+  @media (hover: none) and (pointer: coarse) {
+    .paper-figure-dialog-close { width: 44px; height: 44px; }
+    /* Keep enlargement useful on a phone: the source graphic can be
+       scrolled horizontally instead of being reduced to the viewport width. */
+    .paper-figure-dialog-image { width: 720px; max-width: none; }
+  }
+</style>
+
+<script>
+  const dialogs = [...document.querySelectorAll<HTMLDialogElement>('.paper-figure-dialog')];
+  for (const dialog of dialogs) {
+    const image = dialog.querySelector<HTMLImageElement>('.paper-figure-dialog-image');
+    const caption = dialog.querySelector<HTMLParagraphElement>('.paper-figure-dialog-caption');
+    const close = dialog.querySelector<HTMLButtonElement>('.paper-figure-dialog-close');
+    if (!image || !caption || !close) continue;
+    let opener: HTMLElement | null = null;
+
+    const closeDialog = () => {
+      if (dialog.open) dialog.close();
+      if (opener && opener.isConnected) opener.focus();
+      opener = null;
+    };
+
+    // The triggers sit beside the dialog, so bind through the stable
+    // aria-controls relationship rather than searching inside the dialog.
+    document.querySelectorAll<HTMLButtonElement>(`.paper-figure-trigger[aria-controls="${dialog.id}"]`).forEach(button => {
+      button.addEventListener('click', () => {
+        opener = button;
+        image.src = button.dataset.figureSrc || '';
+        image.alt = button.dataset.figureAlt || '';
+        caption.textContent = button.dataset.figureCaption || '';
+        dialog.showModal();
+        close.focus();
+      });
+    });
+    close.addEventListener('click', closeDialog);
+    dialog.addEventListener('click', event => {
+      if (event.target === dialog) closeDialog();
+    });
+    dialog.addEventListener('cancel', event => {
+      event.preventDefault();
+      closeDialog();
+    });
+    dialog.addEventListener('close', () => {
+      if (opener && opener.isConnected) opener.focus();
+      opener = null;
+    });
+  }
+</script>

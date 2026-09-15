@@ -13,11 +13,13 @@ try {
     const page = await ctx.newPage();
     page.setDefaultTimeout(30000);
     const errors=[]; page.on('pageerror', e=>errors.push(e.message));
-    const desktop = mobile ? page : page.frameLocator('iframe[title="prashantgarg.os"]');
-    const article = desktop.frameLocator('iframe.win95-iframe');
+    let desktop, article;
     const shot = name => page.screenshot({path:`${shots}/${mobile?'mobile':'desktop'}-${name}.png`});
     try {
       await page.goto(`${base}/?app=home`,{waitUntil:'load'});
+      await page.waitForFunction(()=>document.querySelector('.win95-desktop') || document.querySelector('iframe[title="prashantgarg.os"]'));
+      desktop = await page.locator('.win95-desktop').count() ? page : page.frameLocator('iframe[title="prashantgarg.os"]');
+      article = desktop.frameLocator('iframe.win95-iframe');
       await desktop.locator('.win95-desktop:not([inert])').waitFor();
       await desktop.getByRole('button',{name:'Research',exact:true}).click();
       await article.getByRole('heading',{name:'Research',exact:true}).waitFor();

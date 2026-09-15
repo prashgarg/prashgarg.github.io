@@ -1,7 +1,10 @@
 ---
 import Layout from '../../layouts/Win95Layout.astro';
 import PaperLinks from '../../components/PaperLinks.astro';
+import PaperFigures from '../../components/PaperFigures.astro';
+import { paperFigures } from '../../data/paperFigures';
 import { site, papers, tools, talks, topicForTalk, topicsForPaper, TOPIC_TAGS, type Paper, type Talk } from '../../data/site';
+import { bibtexForPaper, scholarlyArticleForPaper } from '../../lib/citations';
 
 export async function getStaticPaths() {
   return papers.map(p => ({ params: { slug: p.slug }, props: { paper: p } }));
@@ -30,47 +33,10 @@ const myTalks: Talk[] = talks
 // Absolute URLs use the canonical production origin.
 const pageUrl = `${site.origin}/research/${paper.slug}`;
 
-// JSON-LD ScholarlyArticle for academic indexing (Google Scholar, etc.)
-const scholarlyJsonLd = {
-  '@context': 'https://schema.org',
-  '@type': 'ScholarlyArticle',
-  headline: paper.title,
-  abstract: paper.blurb.slice(0, 600),
-  author: [
-    { '@type': 'Person', name: 'Prashant Garg', url: site.origin },
-    ...paper.coauthors.map(c => ({ '@type': 'Person', name: c })),
-  ],
-  ...(paper.year ? { datePublished: String(paper.year) } : {}),
-  ...(paper.status === 'published' && paper.venue ? { publisher: { '@type': 'Organization', name: paper.venue } } : {}),
-  url: pageUrl,
-};
-
-// BibTeX entry (server-rendered into a data attribute for the copy
-// button). Authors in consistent "Lastname, Firstname" form; DOI when
-// derivable (Nature article ids map 1:1 to 10.1038/<id>); url prefers
-// the canonical publisher/preprint link over this site.
-function bibName(full: string): string {
-  const parts = full.trim().split(/\s+/);
-  return parts.length < 2 ? full : `${parts[parts.length - 1]}, ${parts.slice(0, -1).join(' ')}`;
-}
-// Key off the full (unique) slug so two papers sharing a first word + year
-// can't collide (e.g. ai-production-networks vs ai-health-advice).
-const bibKey = `garg_${paper.slug.replace(/-/g, '_')}`;
-const bibEntryType = paper.venue && /journal|review|economics|nature|science|letters/i.test(paper.venue) ? 'article' : 'misc';
-const bibAuthor = ['Prashant Garg', ...paper.coauthors].map(bibName).join(' and ');
-const natureId = paper.links.map(l => l.url.match(/nature\.com\/articles\/([a-z0-9.-]+)/i)?.[1]).find(Boolean);
-const doi = natureId ? `10.1038/${natureId}` : undefined;
-const bibUrl = paper.links[0]?.url || pageUrl;
-const bibTeX = [
-  `@${bibEntryType}{${bibKey},`,
-  `  author = {${bibAuthor}},`,
-  `  title  = {${paper.title}},`,
-  ...(paper.venue ? [`  journal = {${paper.venue.replace(/\s*\((Forthcoming|R&R)\)\s*$/i, '')}},`] : []),
-  ...(paper.year ? [`  year   = {${paper.year}},`] : []),
-  ...(doi ? [`  doi    = {${doi}},`] : []),
-  `  url    = {${bibUrl}}`,
-  '}',
-].join('\n');
+// Citation metadata is explicit for published records and conservative for
+// work still under review, so structured data and BibTeX stay truthful.
+const scholarlyJsonLd = scholarlyArticleForPaper(paper, pageUrl);
+const bibTeX = bibtexForPaper(paper, pageUrl);
 ---
 <Layout title={`${paper.title} — Prashant Garg`} description={paper.blurb} current="research">
   <!-- JSON-LD structured data for academic indexing -->
@@ -123,16 +89,7 @@ const bibTeX = [
       </div>
     )}
 
-    {paper.figures && paper.figures.length > 0 && (
-      <div class="mt-8 space-y-6">
-        {paper.figures.map(f => (
-          <figure>
-            <img src={f.src} alt={f.caption} loading="lazy" class="w-full h-auto bg-white border border-ink/15 dark:border-cream/15" />
-            <figcaption class="mt-2 text-sm leading-relaxed text-ink/65 dark:text-cream/65">{f.caption}</figcaption>
-          </figure>
-        ))}
-      </div>
-    )}
+    <PaperFigures figures={paperFigures[paper.slug] ?? paper.figures} />
 
     {myTalks.length > 0 && (
       <section class="mt-10 pt-6 border-t border-ink/15 dark:border-cream/15">
