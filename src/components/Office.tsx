@@ -11,11 +11,13 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { PerspectiveCamera, ContactShadows, MeshReflectorMaterial, Environment, RoundedBox, useTexture, Html } from '@react-three/drei';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import * as THREE from 'three';
 import InnerDesktop from './InnerDesktop';
+import OfficeInfo from './OfficeInfo';
 import '../styles/office.css';
 import { MONITOR_VIEWPORT } from '../lib/monitor';
 
@@ -209,6 +211,34 @@ function ContactDecal({ position, r = 0.08, opacity = 0.5 }: {
       <meshBasicMaterial map={tex} transparent opacity={opacity} depthWrite={false} />
     </mesh>
   );
+}
+
+/** The composer disables automatic clears globally. Drei's contact-shadow
+ * and blur passes need transparent clears; otherwise repeated bakes retain
+ * pixels across the whole shadow plane. Restore the renderer before the
+ * composer's priority-1 frame so its normal render state is unchanged. */
+function DeskContactShadows() {
+  const saved = useRef({ autoClear: true, alpha: 0 });
+  useFrame(({ gl }) => {
+    saved.current.autoClear = gl.autoClear;
+    saved.current.alpha = gl.getClearAlpha();
+    gl.autoClear = true;
+    gl.setClearAlpha(0);
+  }, -1);
+  useFrame(({ gl }) => {
+    gl.autoClear = saved.current.autoClear;
+    gl.setClearAlpha(saved.current.alpha);
+  }, 0.5);
+  return <ContactShadows
+    position={[0.3, 0.012, DESK_Z + 0.7]}
+    frames={1}
+    opacity={0.65}
+    scale={7.0}
+    blur={3.2}
+    far={2.2}
+    resolution={1024}
+    color="#091812"
+  />;
 }
 
 /**
@@ -1177,12 +1207,13 @@ function CrtMonitor({ phase, onClick, quiet = false }: { phase: Phase; onClick?:
         <planeGeometry args={[0.62, 0.3875]} />
         <primitive object={crtMat} attach="material" />
       </mesh>
-      {/* subtle screen glow light — teal/blue to match the new CRT colour */}
-      {clickable && !quiet && (
+      {/* A small pool on the chin and keyboard ties the live DOM screen to
+          its physical shell, including the lightweight desktop projection. */}
+      {clickable && (
         <pointLight
           position={[0, 0.02, 0.35]}
-          intensity={hovered ? 1.0 : 0.5}
-          distance={3.0}
+          intensity={hovered ? 0.85 : 0.65}
+          distance={1.4}
           decay={2}
           color="#6CB8E0"
         />
@@ -2233,7 +2264,7 @@ function FloorSheen({ cx, cz, radius }: { cx: number; cz: number; radius: number
       void main() {
         vec2 d = vUv - 0.5;
         float r = length(d) * 2.0;          // 0 at centre, 1 at edge
-        float a = pow(1.0 - smoothstep(0.0, 1.0, r), 2.2) * 0.22;
+        float a = pow(1.0 - smoothstep(0.0, 1.0, r), 2.2) * 0.12;
         gl_FragColor = vec4(uTint, a);
       }
     `,
@@ -2270,7 +2301,7 @@ function TexturedCarpet({ width, depth }: { width: number; depth: number }) {
         {...(props as any)}
         color={C.carpet}
         roughness={0.92}
-        normalScale={[0.12, 0.12] as any}
+        normalScale={[0.08, 0.08] as any}
         aoMapIntensity={0.12}
       />
     </mesh>
@@ -2305,7 +2336,7 @@ function TexturedWallPlane({
         color={C.wall}
         roughness={0.78}
         envMapIntensity={0.45}
-        normalScale={[0.30, 0.30] as any}
+        normalScale={[0.14, 0.14] as any}
       />
     </mesh>
   );
@@ -2522,13 +2553,13 @@ function OfficeScene({ phase, reading, compact, onMonitorClick, onDesktopReady, 
       {/* ── LIGHTING ─────────────────────────────────────────────────── */}
       {/* Self-hosted CC0 HDR from pmndrs/drei-assets. Keep its warm
           reflections faint beneath the cool fluorescent light. */}
-      <Environment files="/hdri/lobby.hdr" background={false} environmentIntensity={0.18} />
+      <Environment files="/hdri/lobby.hdr" background={false} environmentIntensity={0.15} />
 
       {/* One shadow caster gives the furniture definition; the ceiling
           lights fill the room without additional shadow maps. */}
       <directionalLight
-        position={[8, 9, 4]}
-        intensity={0.95}
+        position={[3, 9, -1]}
+        intensity={1.2}
         color="#FFFFFF"
         castShadow
         shadow-mapSize={[4096, 4096]}
@@ -2540,14 +2571,13 @@ function OfficeScene({ phase, reading, compact, onMonitorClick, onDesktopReady, 
         shadow-camera-near={0.5}
         shadow-camera-far={30}
         shadow-bias={-0.0004}
-        shadow-normalBias={0.06}
+        shadow-normalBias={0.025}
       />
 
-      {/* Even, cool fill preserves the clinical brightness while leaving
-          some contrast beneath the desks. Neutral ground avoids green
-          bounce on the white surfaces. */}
-      <ambientLight intensity={1.35} color="#E6F1F7" />
-      <hemisphereLight args={['#EFF7FD', '#B8BEBE', 0.5]} />
+      {/* More ceiling fill and less uniform ambient light keep the upper
+          surfaces bright while giving the furniture undersides depth. */}
+      <ambientLight intensity={0.95} color="#E6F1F7" />
+      <hemisphereLight args={['#EFF7FD', '#B8BEBE', 0.65]} />
 
       {/* DESK POOL spotlight — a focused down-light right above the
           active SW station's desk surface. Penumbra creates a soft
@@ -2591,16 +2621,7 @@ function OfficeScene({ phase, reading, compact, onMonitorClick, onDesktopReady, 
 
       {/* Soft contact shadows anchor the desk and chair without a hard
           dark boundary on the carpet. */}
-      <ContactShadows
-        position={[0.3, 0.012, DESK_Z + 0.7]}
-        frames={1}
-        opacity={0.52}
-        scale={7.0}
-        blur={3.8}
-        far={2.2}
-        resolution={1024}
-        color="#091812"
-      />
+      <DeskContactShadows />
 
       {/* ── CEILING — actual 3-D coffered grid (recessed geometry) ──── */}
       <CofferedCeiling />
@@ -3245,7 +3266,7 @@ function GrainOverlay() {
     draw(); id = setInterval(draw, 66);
     return () => clearInterval(id);
   }, []);
-  return <canvas ref={ref} width={220} height={140} style={{ position: 'fixed', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 6, mixBlendMode: 'soft-light', opacity: 0.07, imageRendering: 'pixelated' }} />;
+  return <canvas ref={ref} width={220} height={140} style={{ position: 'fixed', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 6, mixBlendMode: 'soft-light', opacity: 0.035, imageRendering: 'pixelated' }} />;
 }
 
 /* ---------- ambient audio -------------------------------------------- */
@@ -3365,13 +3386,16 @@ function StudyAudio({ active, muted, focusMode }: { active: boolean; muted: bool
 function HudOverlay({ muted, onMuteToggle, focused }: {
   muted: boolean; onMuteToggle: () => void; focused: boolean;
 }) {
-  return <div className="office-hud">
+  // The projected desktop is a sibling of the room. Keep the HUD in the
+  // document layer so an expanded info panel can sit above that projection.
+  return createPortal(<div className="office-hud">
     <button className="office-control office-sound" onClick={onMuteToggle}
       aria-label={muted ? 'Unmute' : 'Mute'} title={muted ? 'Unmute' : 'Mute'}>
       {muted ? <VolumeOffIcon /> : <VolumeOnIcon />}
     </button>
+    {!focused && <OfficeInfo />}
     {!focused && <span>Prashant Garg</span>}
-  </div>;
+  </div>, document.body);
 }
 function TapHint({ onEnter }: { onEnter: () => void }) {
   const [visible, setVisible] = useState(false);
@@ -3653,7 +3677,7 @@ export default function Office({ externalDesktop = false, startInRoom = false, o
           gl={{
             antialias: true,
             toneMapping: THREE.ACESFilmicToneMapping,
-            toneMappingExposure: 1.38,
+            toneMappingExposure: 1.28,
           }}
         >
           <RenderBudget mode={frameLoop} />
