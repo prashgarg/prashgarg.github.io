@@ -37,10 +37,18 @@ try {
       const info = page.getByRole('button', {name:'About this room',exact:true});
       const triggerBox = await info.boundingBox();
       assert(triggerBox && triggerBox.x >= 0 && triggerBox.x + triggerBox.width <= size.width);
+      assert(size.width - triggerBox.x - triggerBox.width <= 24 && size.height - triggerBox.y - triggerBox.height <= 20, 'Info control is not in the bottom-right corner');
+      const plainLink = page.locator('#text-version');
+      if (await plainLink.isVisible()) {
+        const plainBox = await plainLink.boundingBox();
+        assert(plainBox && plainBox.x + plainBox.width + 8 <= triggerBox.x, 'Text-version link overlaps the info control');
+      }
       if (mobile) assert(triggerBox.width >= 44 && triggerBox.height >= 44, 'Touch target is too small');
       await info.focus();
       await page.waitForTimeout(200);
       await page.getByRole('tooltip').waitFor();
+      const hintBox = await page.getByRole('tooltip').boundingBox();
+      assert(hintBox && hintBox.x >= 0 && hintBox.x + hintBox.width <= size.width, 'Tooltip exceeds viewport');
       await page.screenshot({path:`${shots}/${label}-tooltip.png`});
       await page.keyboard.press('Escape');
       await page.getByRole('tooltip').waitFor({state:'hidden'});
@@ -88,7 +96,7 @@ try {
       // Touch uses the same control; closing on an outside pointer must leave the room intact.
       if (mobile) await info.tap(); else await info.click();
       await panel.waitFor();
-      await page.mouse.click(size.width - 20, Math.min(140, size.height/3));
+      await page.mouse.click(4, 4);
       await panel.waitFor({state:'detached'});
       assert.equal(await page.locator('#office').getAttribute('data-phase'), 'idle');
       if (mobile) {

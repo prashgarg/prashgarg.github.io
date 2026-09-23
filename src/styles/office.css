@@ -105,6 +105,11 @@
 }
 .office-desktop-shortcut { position: fixed; top: 18px; right: 20px; z-index: 60; padding: 8px 14px; }
 body:has(#office[data-view="desktop"]) #text-version { display: none; }
+/* Leave a gap beside the room info control in the lower-right corner. */
+body:has(.office-info) #text-version {
+  right: calc(max(20px, env(safe-area-inset-right)) + 44px);
+  bottom: 20px;
+}
 
 @media (max-width: 600px) {
   .office-hud {
@@ -117,4 +122,7 @@ body:has(#office[data-view="desktop"]) #text-version { display: none; }
 }
 @media (pointer: coarse) {
   .office-sound { width: 44px; height: 44px; }
+  body:has(.office-info) #text-version {
+    right: calc(max(20px, env(safe-area-inset-right)) + 56px);
+  }
 }
