@@ -436,6 +436,7 @@ export const talks: Talk[] = [
   // 2027
   { year: 2027, title: 'Global Automation Atlas', venue: 'STEG Annual Conference & Theme Workshops 2027', location: 'Manchester', date: '6–9 Jan 2027', url: 'https://cepr.org/events/steg-annual-conference-theme-workshops-2027' },
   // 2026
+  { year: 2026, title: 'Global Automation Atlas', venue: 'Inaugural IZA@LISER Conference in Labour Economics', location: 'Luxembourg', date: '10–11 Dec 2026', url: 'https://www.liser.lu/events/IZAatLISER2026' },
   { year: 2026, title: 'Title TBA', venue: 'Universitat de València Seminar', location: 'València', date: '4 Dec 2026', url: 'https://www.uv.es/uvweb/economic-analysis-department/en/department-economic-analysis-1285854461277.html' },
   { year: 2026, title: 'Generative AI and the Structure of Scientific Creativity', venue: 'Network Science & Economics', location: 'Luxembourg', date: '23–25 Oct 2026', url: 'https://nse-conference.github.io/' },
   { year: 2026, venue: 'Bocconi University, PE breakfast (internal)', location: 'Milan', date: '30 Sep 2026', url: 'https://economics.unibocconi.eu/' },
