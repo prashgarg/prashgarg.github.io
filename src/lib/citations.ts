@@ -72,6 +72,14 @@ export const verifiedCitations: Record<string, VerifiedCitation> = {
     year: 2026,
     sourceUrl: 'https://frontiergraph.com/paper/',
   },
+  'measuring-innovation-llms': {
+    kind: 'working-paper',
+    authors: ['Garg, Prashant', 'Lambert, Peter John', 'Martin, Ralf', 'Medvedev, Denis'],
+    year: 2026,
+    institution: 'Centre for Economic Performance, London School of Economics and Political Science',
+    workingPaperNumber: '2216',
+    sourceUrl: 'https://cep.lse.ac.uk/_NEW/PUBLICATIONS/abstract.asp?index=12572',
+  },
   'politicized-scientists': {
     kind: 'preprint',
     authors: ['Alabrese, Eleonora', 'Capozza, Francesco', 'Garg, Prashant'],
@@ -134,7 +142,7 @@ function recordNote(paper: Paper, verified?: VerifiedCitation): string | undefin
   if (!verified) return statusNote(paper.status, paper.venue);
   if (verified.kind === 'draft') return 'Draft for comments';
   if (verified.kind === 'preprint') {
-    return paper.status === 'rr'
+    return paper.status === 'rr' || paper.status === 'accepted'
       ? `${statusNote(paper.status, paper.venue)}; preprint`
       : 'Preprint';
   }

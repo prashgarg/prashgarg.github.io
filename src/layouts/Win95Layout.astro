@@ -261,7 +261,13 @@ const navItems = [
       line-height: 16px;
       box-shadow: var(--sunken);
     }
-    .w95-statuscell.wide { flex: 1; }
+    .w95-statuscell.wide {
+      flex: 1;
+      min-width: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
     .w95-statuscell-sm   { width: 18px; }
     .w95-statuscell-grip { width: 18px; display: flex; align-items: flex-end; justify-content: flex-end; padding: 1px; }
 

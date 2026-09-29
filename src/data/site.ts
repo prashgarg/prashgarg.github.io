@@ -203,6 +203,20 @@ export const papers: Paper[] = [
     tools: ['causalclaims'],
   },
   {
+    slug: 'measuring-innovation-llms',
+    title: 'Measuring the Prevalence and Direction of Innovation: A Pilot Approach Using LLMs',
+    status: 'working',
+    venue: 'CEP Discussion Paper No. 2216',
+    year: 2026,
+    coauthors: ['Peter John Lambert', 'Ralf Martin', 'Denis Medvedev'],
+    blurb:
+      'This paper pilots a method for measuring firms’ product and process innovation at scale. Our approach uses LLMs to complete a detailed innovation survey for a sample of 600,000 companies operating across 40 countries. The preliminary results contain 6 million individual instances of innovative activity along with rich textual descriptions. These responses carry signal, for example a one-standard-deviation increase in a firm’s product innovation index is associated with a 5% higher measured TFP residual. The data reveal that innovation is widespread: two-fifths of companies engage in product innovation and one-quarter in process innovation, far exceeding the share of patenting firms. Firms are more likely to have labor-augmenting than labor-saving introductions, while about 14% have green product innovation and 12% have green process innovation. Greenness and net labor augmentation are positively associated across countries. Beyond our specific application, this paper illustrates the potential for using LLMs to generate survey-level insights at population scale.',
+    links: [
+      { label: 'Paper (PDF)', url: 'https://cep.lse.ac.uk/pubs/download/dp2216.pdf' },
+      { label: 'CEP page', url: 'https://cep.lse.ac.uk/_NEW/PUBLICATIONS/abstract.asp?index=12572' },
+    ],
+  },
+  {
     slug: 'what-should-economics-ask-next',
     // DRAFT plain-English summary (G31) — flagged for user review
     tldr: 'Can the structure of past research tell us which open questions are worth pursuing next? I built a graph of 242,595 economics papers and ranked open questions using only what was known at each point in time. Graph-based screening beats ranking by popularity at predicting which questions later enter published work — and it shows economics more often deepens existing claims than closes obvious gaps.',
@@ -306,7 +320,7 @@ export const papers: Paper[] = [
     // DRAFT plain-English summary (G31) — flagged for user review
     tldr: 'We tested seven leading AI models on thousands of vetted health statements in 21 languages. They are accurate on English-language textbook material but slip in many non-European languages and on contested topics. Thorough multilingual validation should come before anyone relies on AI for health advice at global scale.',
     title: 'AI Health Advice Accuracy Varies Across Languages and Contexts',
-    status: 'rr',
+    status: 'accepted',
     venue: 'BMJ Health & Care Informatics',
     coauthors: ['Thiemo Fetzer'],
     blurb:
@@ -554,7 +568,7 @@ export type TopicTag = (typeof TOPIC_TAGS)[number]['slug'];
 export function topicsForPaper(p: Paper): TopicTag[] {
   const text = `${p.title} ${p.blurb}`.toLowerCase();
   const tags: TopicTag[] = [];
-  if (/\b(ai|llm|automation|automating|machine learning|chatgpt|language model)\b/.test(text)) tags.push('ai');
+  if (/\b(ai|llms?|automation|automating|machine learning|chatgpt|language model)\b/.test(text)) tags.push('ai');
   if (/\b(academic|academia|scholar|scientist|economics paper|economics scales|publication)\b/.test(text)) tags.push('academia');
   if (/\b(network|graph|production network|citation|claim graph|literature graph)\b/.test(text)) tags.push('networks');
   if (/\b(twitter|bluesky|social media|platform|media coverage)\b/.test(text)) tags.push('media');
