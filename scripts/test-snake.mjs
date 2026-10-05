@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {
   createSnakeGame,
+  DIFFICULTY_CONFIG,
   queueDirection,
   startGame,
   stepGame,
@@ -52,6 +53,23 @@ const running = options => startGame(createSnakeGame(options));
   assert.equal(wall.status, 'lost');
   const body = stepGame(running({ width: 5, height: 5, snake: [{ x: 2, y: 2 }, { x: 2, y: 3 }, { x: 1, y: 3 }, { x: 1, y: 2 }], direction: 'down', food: { x: 4, y: 4 } }));
   assert.equal(body.status, 'lost');
+}
+
+// Wrap mode carries the head to the opposite edge while preserving direction.
+{
+  const state = running({ width: 3, height: 3, snake: [{ x: 2, y: 1 }], direction: 'right', food: { x: 1, y: 0 }, mode: 'wrap', difficulty: 'fast' });
+  const next = stepGame(state);
+  assert.equal(next.status, 'running');
+  assert.deepEqual(next.snake[0], { x: 0, y: 1 });
+  assert.equal(next.direction, 'right');
+  assert.equal(next.difficulty, 'fast');
+}
+
+// Walls remain the default and the three speeds are ordered as advertised.
+{
+  assert.equal(createSnakeGame().mode, 'walls');
+  assert(DIFFICULTY_CONFIG.easy.tickMs > DIFFICULTY_CONFIG.classic.tickMs);
+  assert(DIFFICULTY_CONFIG.classic.tickMs > DIFFICULTY_CONFIG.fast.tickMs);
 }
 
 console.log('PASS snake engine: turns, tail-vacating, food, win, and collisions');

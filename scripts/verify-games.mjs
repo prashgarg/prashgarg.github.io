@@ -25,7 +25,7 @@ const open=async(page,game)=>{
 const fixture=()=>{
   const all=SUITS.flatMap(suit=>Array.from({length:13},(_,i)=>({id:`${suit}-${i+1}`,suit,rank:i+1,faceUp:false})));
   const take=(id,faceUp=true)=>{const i=all.findIndex(c=>c.id===id);return {...all.splice(i,1)[0],faceUp};};
-  const state={tableaus:[[take('hearts-7',false),take('hearts-1')],[take('clubs-2')],[take('diamonds-3')],[take('spades-13')],[],[take('clubs-1')],[take('diamonds-2')]],foundations:emptyFoundations(),stock:all,waste:[],moves:0,elapsed:0,won:false,history:[]};
+  const state={tableaus:[[take('hearts-7',false),take('hearts-1')],[take('clubs-2')],[take('diamonds-3')],[take('spades-13')],[],[take('clubs-1')],[take('diamonds-2')]],foundations:emptyFoundations(),stock:all,waste:[],moves:0,elapsed:0,won:false,history:[],drawCount:1,dailyDate:null};
   assert(validateState(state));return state;
 };
 const seed=async(ctx,state)=>ctx.addInitScript(data=>{
@@ -41,11 +41,11 @@ try {
   const ctx=await context();const page=await ctx.newPage();const requests=[];
   page.on('request',r=>requests.push(r.url()));
   await page.goto(`${base}/os/`,{waitUntil:'load'});await page.getByRole('button',{name:'Games',exact:true}).waitFor();
-  assert(!requests.some(url=>/\/(GamesApp|Snake|Solitaire)\./.test(url)),'Games should be lazy');
+  assert(!requests.some(url=>/\/(GamesApp|Snake|Solitaire|Minesweeper)\.[^/]+\.js$/.test(url)),'Games should be lazy');
   await page.getByRole('button',{name:'Start',exact:true}).click();
   await page.getByRole('menuitem',{name:'Games',exact:true}).click();
   await page.getByRole('button',{name:'Snake',exact:true}).waitFor();
-  assert(!requests.some(url=>/\/(Snake|Solitaire)\./.test(url)),'Individual games should be lazy');
+  assert(!requests.some(url=>/\/(Snake|Solitaire|Minesweeper)\.[^/]+\.js$/.test(url)),'Individual games should be lazy');
   await shot(page,'desktop-folder');
   await page.getByRole('button',{name:'Snake',exact:true}).click();
   await page.locator('.snake-board-ready').waitFor();
@@ -110,7 +110,7 @@ try {
     await p.goto(`${base}/os/`,{waitUntil:'load'});await p.getByRole('button',{name:'Games',exact:true}).waitFor();await shot(p,`home-${width}`);
     const gamesIcon=await p.getByRole('button',{name:'Games',exact:true}).boundingBox();assert(gamesIcon.x>=0&&gamesIcon.x+gamesIcon.width<=width);
     await p.getByRole('button',{name:'Games',exact:true}).tap();await p.getByRole('button',{name:'Snake',exact:true}).tap();await p.locator('.snake-board').waitFor();
-    await p.locator('.snake-action').tap();await p.getByRole('button',{name:'Down',exact:true}).tap();await p.locator('.snake-action').tap();await shot(p,`snake-${width}`);
+    await p.locator('.snake-action').tap();await p.locator('.snake-board-running').waitFor();await p.getByRole('button',{name:'Down',exact:true}).tap();await p.locator('.snake-action').tap();await shot(p,`snake-${width}`);
     for(const rect of await p.locator('.snake-pad').evaluateAll(els=>els.map(e=>({width:e.getBoundingClientRect().width,height:e.getBoundingClientRect().height}))))assert(rect.width>=44&&rect.height>=44);
     await p.getByRole('button',{name:'← Games',exact:true}).tap();await p.getByRole('button',{name:'Solitaire',exact:true}).tap();await p.locator('.solitaire-board').waitFor();
     await p.getByRole('button',{name:'Draw card',exact:true}).tap();assert.equal((await saved(p)).moves,1);await shot(p,`solitaire-${width}`);

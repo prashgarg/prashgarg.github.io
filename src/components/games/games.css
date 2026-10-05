@@ -28,8 +28,8 @@
 .games-header h1 { font: bold 16px MSSerif, Arial, sans-serif; margin: 0; letter-spacing: normal; }
 .games-content { flex: 1; overflow: auto; min-height: 0; overscroll-behavior: contain; }
 .games-pane { height: 100%; min-height: 100%; outline: none; }
-.games-folder { min-height: 240px; height: 100%; display: flex; align-items: flex-start; gap: 18px; padding: 30px 26px; background: var(--game-hi); }
-.games-shortcut { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 10px 15px; border: 1px solid transparent; background: transparent; color: var(--game-ink); font: inherit; cursor: pointer; min-width: 96px; }
+.games-folder { min-height: 240px; height: 100%; display: grid; grid-template-columns: repeat(auto-fill,minmax(88px,112px)); align-content: start; gap: 18px; padding: 30px 26px; background: var(--game-hi); }
+.games-shortcut { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 10px 4px; border: 1px solid transparent; background: transparent; color: var(--game-ink); font: inherit; cursor: pointer; min-width: 0; }
 .games-shortcut svg { width: 48px; height: 48px; }
 .games-shortcut:hover { background: var(--game-face); }
 .games-shortcut:focus-visible { outline: 2px solid var(--game-focus); outline-offset: 2px; }
@@ -38,11 +38,13 @@
 .games-button:not(:disabled):active { box-shadow: inset 1px 1px var(--game-border), inset -1px -1px var(--game-hi); }
 .games-button:disabled { opacity: .55; cursor: default; }
 .games-button:focus-visible { outline: 2px solid var(--game-focus); outline-offset: 2px; }
+.games-select { font:inherit; color:var(--game-ink); background:var(--game-hi); padding:5px; border:2px solid; border-color:var(--game-shadow) var(--game-hi) var(--game-hi) var(--game-shadow); min-height:34px; max-width:100%; }
+.games-select:focus-visible { outline:2px solid var(--game-focus); outline-offset:2px; }
 .games-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px; }
 .games-status { margin: 0; padding: 7px 10px; font-size: 13px; }
 .games-loading, .games-load-error { padding: 16px; margin: 0; }
 @media (pointer: coarse) {
-  .games-button { min-height: 44px; }
+  .games-button, .games-select { min-height: 44px; }
   .games-header { padding: 5px 7px; }
 }
 @media (max-width: 420px) {

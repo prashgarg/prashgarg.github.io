@@ -1,0 +1,72 @@
+.playing-card-face {
+  container-type: inline-size;
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 2px;
+  --playing-card-paper: color-mix(in srgb, var(--game-hi) 92%, var(--game-face));
+  --playing-card-panel: color-mix(in srgb, var(--game-hi) 75%, var(--game-light));
+  --playing-card-edge: color-mix(in srgb, var(--game-border) 30%, transparent);
+  --playing-card-blue: color-mix(in srgb, var(--game-accent) 45%, var(--game-felt));
+  --playing-card-gold: color-mix(in srgb, var(--game-accent) 60%, var(--game-red));
+  --playing-card-skin: color-mix(in srgb, var(--game-light) 68%, var(--game-red));
+  background: linear-gradient(135deg, var(--game-hi) 0%, var(--playing-card-paper) 62%, var(--game-face) 160%);
+  color: var(--game-ink);
+  font-family: Arial, Helvetica, sans-serif;
+  font-weight: 700;
+  pointer-events: none;
+}
+
+.playing-card-face.is-red { color: var(--game-red); }
+.playing-card-frame { position: absolute; inset: 2px; border: 1px solid var(--playing-card-edge); border-radius: 1px; }
+
+.playing-card-corner {
+  position: absolute;
+  z-index: 4;
+  left: 5px;
+  top: 2px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: .12em;
+  min-width: 12px;
+  font-size: clamp(10px, 19cqw, 15px);
+  line-height: 1;
+  letter-spacing: -.08em;
+}
+.playing-card-corner b { font-weight: 800; }
+.playing-card-corner span { font-size: .78em; line-height: 1; }
+.playing-card-corner-bottom { left: auto; top: auto; right: 2px; bottom: 2px; transform: rotate(180deg); }
+
+.playing-card-pips { position: absolute; z-index: 2; inset: 13% 13% 10%; }
+.playing-card-pip {
+  position: absolute;
+  width: 18%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  font-size: clamp(6px, 22cqw, 18px);
+  line-height: .8;
+}
+.playing-card-pip.is-inverted { transform: translate(-50%, -50%) rotate(180deg); }
+.playing-card-ace {
+  position: absolute;
+  z-index: 2;
+  inset: 50% auto auto 50%;
+  transform: translate(-50%, -50%);
+  font: 800 clamp(18px, 52cqw, 36px)/1 Georgia, serif;
+}
+
+.playing-card-court { position: absolute; z-index: 2; inset: 12% 11% 10%; width: 78%; height: 78%; }
+.court-panel { fill: var(--playing-card-panel); stroke: var(--playing-card-edge); stroke-width: 1.4; }
+.court-divider { fill: none; stroke: var(--playing-card-edge); stroke-width: 1; stroke-dasharray: 2 2; }
+.court-ink { fill: var(--game-ink); }
+.court-skin { fill: var(--playing-card-skin); stroke: var(--game-ink); stroke-width: 1; }
+.court-blue { fill: var(--playing-card-blue); stroke: var(--game-ink); stroke-width: 1; }
+.court-red { fill: var(--game-red); stroke: var(--game-ink); stroke-width: .8; }
+.court-gold { fill: var(--playing-card-gold); stroke: var(--game-ink); stroke-width: .7; }
+
+@media (max-width: 420px) {
+  .playing-card-corner { left: 2px; top: 2px; font-size: 11px; }
+  .playing-card-corner-bottom { left: auto; top: auto; right: 2px; bottom: 2px; }
+  .playing-card-court { inset: 12% 7% 9%; width: 86%; height: 79%; }
+}

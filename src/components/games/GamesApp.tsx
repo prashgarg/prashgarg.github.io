@@ -3,7 +3,8 @@ import './games.css';
 
 const Snake = lazy(() => import('./Snake'));
 const Solitaire = lazy(() => import('./Solitaire'));
-type Game = 'snake' | 'solitaire';
+const Minesweeper = lazy(() => import('./Minesweeper'));
+type Game = 'snake' | 'solitaire' | 'minesweeper';
 export interface GameProps {
   active: boolean;
   onSound?: (event: 'move' | 'win' | 'lose') => void;
@@ -23,6 +24,14 @@ function SolitaireIcon() {
     <rect x="13" y="9" width="27" height="35" fill="var(--game-hi)" stroke="var(--game-border)" />
     <path d="M26 20c-7-7-15 2 0 13 15-11 7-20 0-13z" fill="var(--game-red)" />
     <path d="M16 13h3v4h-3zM34 36h3v4h-3z" fill="var(--game-red)" />
+  </svg>;
+}
+function MinesweeperIcon() {
+  return <svg viewBox="0 0 48 48" aria-hidden="true">
+    <rect x="5" y="5" width="38" height="38" fill="var(--game-face)" stroke="var(--game-border)" />
+    <path d="M7 40V7h33" fill="none" stroke="var(--game-hi)" strokeWidth="3" />
+    <path d="M24 10v28M10 24h28M14 14l20 20M34 14L14 34" stroke="var(--game-ink)" strokeWidth="3" />
+    <circle cx="24" cy="24" r="10" fill="var(--game-ink)" /><path d="M19 18h5v5h-5z" fill="var(--game-hi)" />
   </svg>;
 }
 
@@ -52,7 +61,7 @@ export default function GamesApp({ active, onSound }: GameProps) {
   return <div ref={rootRef} className="pg-games" data-game={game || 'folder'}>
     {game && <div className="games-header">
       <button type="button" className="games-button games-back" onClick={back}>← Games</button>
-      <h1>{game === 'snake' ? 'Snake' : 'Solitaire'}</h1>
+      <h1>{game === 'snake' ? 'Snake' : game === 'solitaire' ? 'Solitaire' : 'Minesweeper'}</h1>
     </div>}
     <div className="games-content">
       {!game && <div className="games-folder" aria-label="Games folder">
@@ -61,6 +70,9 @@ export default function GamesApp({ active, onSound }: GameProps) {
         </button>
         <button type="button" className="games-shortcut" data-game-option="solitaire" onClick={() => choose('solitaire')}>
           <SolitaireIcon /><span>Solitaire</span>
+        </button>
+        <button type="button" className="games-shortcut" data-game-option="minesweeper" onClick={() => choose('minesweeper')}>
+          <MinesweeperIcon /><span>Minesweeper</span>
         </button>
       </div>}
       {opened.has('snake') && <div hidden={game !== 'snake'} className="games-pane" data-game-pane="snake" tabIndex={-1}>
@@ -73,7 +85,12 @@ export default function GamesApp({ active, onSound }: GameProps) {
           <Solitaire active={active && game === 'solitaire'} onSound={onSound} />
         </Suspense></GameBoundary>
       </div>}
+      {opened.has('minesweeper') && <div hidden={game !== 'minesweeper'} className="games-pane" data-game-pane="minesweeper" tabIndex={-1}>
+        <GameBoundary><Suspense fallback={<p className="games-loading" role="status">Loading Minesweeper…</p>}>
+          <Minesweeper active={active && game === 'minesweeper'} onSound={onSound} />
+        </Suspense></GameBoundary>
+      </div>}
     </div>
-    {!game && <div className="games-folder-status">2 items</div>}
+    {!game && <div className="games-folder-status">3 items</div>}
   </div>;
 }

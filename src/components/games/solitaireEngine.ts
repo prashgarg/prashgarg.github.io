@@ -15,6 +15,8 @@ export type Snapshot = {
   foundations: FoundationState;
   stock: Card[];
   waste: Card[];
+  drawCount: DrawCount;
+  dailyDate: string | null;
   moves: number;
   elapsed: number;
   won: boolean;
@@ -23,6 +25,20 @@ export type Snapshot = {
 export type GameState = Snapshot & { history: Snapshot[] };
 
 export type TableauMove = { from: number; cardIndex: number; to: number };
+export type DrawCount = 1 | 3;
+export type GameOptions = { drawCount?: DrawCount; dailyDate?: string | null };
+
+export type CardSource =
+  | { kind: 'tableau'; pile: number; cardIndex: number }
+  | { kind: 'waste' }
+  | { kind: 'foundation'; suit: Suit };
+export type CardDestination =
+  | { kind: 'tableau'; pile: number }
+  | { kind: 'foundation'; suit: Suit };
+export type Hint =
+  | { kind: 'move'; source: CardSource; destination: CardDestination }
+  | { kind: 'draw' }
+  | { kind: 'recycle' };
 
 export const emptyFoundations = (): FoundationState => ({
   clubs: [],
@@ -43,6 +59,8 @@ export function cloneSnapshot(snapshot: Snapshot): Snapshot {
     ) as FoundationState,
     stock: snapshot.stock.map(cloneCard),
     waste: snapshot.waste.map(cloneCard),
+    drawCount: snapshot.drawCount ?? 1,
+    dailyDate: snapshot.dailyDate ?? null,
     moves: snapshot.moves,
     elapsed: snapshot.elapsed,
     won: snapshot.won,
@@ -68,7 +86,7 @@ function standardDeck(): Card[] {
   );
 }
 
-export function createGame(random: () => number = Math.random): GameState {
+export function createGame(random: () => number = Math.random, options: GameOptions = {}): GameState {
   const deck = standardDeck();
   for (let i = deck.length - 1; i > 0; i -= 1) {
     const j = Math.floor(random() * (i + 1));
@@ -89,11 +107,37 @@ export function createGame(random: () => number = Math.random): GameState {
     foundations: emptyFoundations(),
     stock: deck.slice(cursor).map(cloneCard),
     waste: [],
+    drawCount: options.drawCount ?? 1,
+    dailyDate: options.dailyDate ?? null,
     moves: 0,
     elapsed: 0,
     won: false,
     history: [],
   };
+}
+
+function seededRandom(seed: number): () => number {
+  let value = seed >>> 0;
+  return () => {
+    value = (value + 0x6d2b79f5) | 0;
+    let t = Math.imul(value ^ (value >>> 15), 1 | value);
+    t ^= t + Math.imul(t ^ (t >>> 7), 61 | t);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function daySeed(day: string): number {
+  let hash = 2166136261;
+  for (let index = 0; index < day.length; index += 1) {
+    hash ^= day.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+export function createDailyGame(day: string, drawCount: DrawCount = 1): GameState {
+  if (!isValidDailyDate(day)) throw new RangeError('Daily deal date must be a valid ISO calendar date');
+  return createGame(seededRandom(daySeed(day)), { drawCount, dailyDate: day });
 }
 
 export function isRed(suit: Suit): boolean {
@@ -207,13 +251,169 @@ export function moveFoundationToTableau(state: GameState, suit: Suit, to: number
   return true;
 }
 
+function boardArrangement(snapshot: Snapshot): string {
+  return JSON.stringify({
+    tableaus: snapshot.tableaus,
+    foundations: snapshot.foundations,
+    stock: snapshot.stock,
+    waste: snapshot.waste,
+    drawCount: snapshot.drawCount,
+    dailyDate: snapshot.dailyDate,
+  });
+}
+
+function moveHint(
+  state: GameState,
+  source: CardSource,
+  destination: CardDestination,
+  mutate: (next: GameState) => boolean,
+): Hint | null {
+  const next = { ...cloneSnapshot(state), history: [] };
+  if (!mutate(next)) return null;
+  const previous = state.history.at(-1);
+  if (previous && boardArrangement(snapshotOf(next)) === boardArrangement(previous)) return null;
+  return { kind: 'move', source, destination };
+}
+
+/**
+ * Enumerate useful legal actions without changing the supplied state. Hints
+ * deliberately describe legality, not strategic optimality.
+ */
+export function getLegalHints(state: GameState): Hint[] {
+  if (!validateState(state) || state.won) return [];
+  const hints: Hint[] = [];
+
+  for (let pile = 0; pile < state.tableaus.length; pile += 1) {
+    const source = state.tableaus[pile];
+    const card = source.at(-1);
+    if (!card?.faceUp) continue;
+    const hint = moveHint(
+      state,
+      { kind: 'tableau', pile, cardIndex: source.length - 1 },
+      { kind: 'foundation', suit: card.suit },
+      (next) => moveTableauToFoundation(next, pile),
+    );
+    if (hint) hints.push(hint);
+  }
+
+  const wasteCard = state.waste.at(-1);
+  if (wasteCard) {
+    const hint = moveHint(
+      state,
+      { kind: 'waste' },
+      { kind: 'foundation', suit: wasteCard.suit },
+      (next) => moveWasteToFoundation(next),
+    );
+    if (hint) hints.push(hint);
+  }
+
+  for (let from = 0; from < state.tableaus.length; from += 1) {
+    const source = state.tableaus[from];
+    const firstFaceUp = source.findIndex((card) => card.faceUp);
+    if (firstFaceUp < 0) continue;
+    for (let cardIndex = firstFaceUp; cardIndex < source.length; cardIndex += 1) {
+      const moving = source.slice(cardIndex);
+      if (!isValidMovingStack(moving)) continue;
+      for (let to = 0; to < state.tableaus.length; to += 1) {
+        if (to === from) continue;
+        // Avoid suggesting a whole, already-exposed king pile to an empty
+        // column: it is legal but usually an obvious no-op for a hint.
+        if (!state.tableaus[to].length && cardIndex === 0 && source.every((card) => card.faceUp)) continue;
+        const hint = moveHint(
+          state,
+          { kind: 'tableau', pile: from, cardIndex },
+          { kind: 'tableau', pile: to },
+          (next) => moveTableauToTableau(next, { from, cardIndex, to }),
+        );
+        if (hint) hints.push(hint);
+      }
+    }
+  }
+
+  if (wasteCard) {
+    for (let to = 0; to < state.tableaus.length; to += 1) {
+      const hint = moveHint(
+        state,
+        { kind: 'waste' },
+        { kind: 'tableau', pile: to },
+        (next) => moveWasteToTableau(next, to),
+      );
+      if (hint) hints.push(hint);
+    }
+  }
+
+  for (const suit of SUITS) {
+    const card = state.foundations[suit].at(-1);
+    if (!card) continue;
+    for (let to = 0; to < state.tableaus.length; to += 1) {
+      const hint = moveHint(
+        state,
+        { kind: 'foundation', suit },
+        { kind: 'tableau', pile: to },
+        (next) => moveFoundationToTableau(next, suit, to),
+      );
+      if (hint) hints.push(hint);
+    }
+  }
+
+  if (state.stock.length) hints.push({ kind: 'draw' });
+  else if (state.waste.length) hints.push({ kind: 'recycle' });
+  return hints;
+}
+
+export function getHint(state: GameState): Hint | null {
+  return getLegalHints(state)[0] ?? null;
+}
+
+function autoFinishPlan(state: GameState): Array<{ pile: number; card: Card }> | null {
+  if (state.won || state.stock.length || state.waste.length || state.tableaus.some((pile) => pile.some((card) => !card.faceUp))) return null;
+  const plan: Array<{ pile: number; card: Card }> = [];
+  const tableau = state.tableaus.map((pile) => pile.map(cloneCard));
+  const foundations = Object.fromEntries(SUITS.map((suit) => [suit, state.foundations[suit].map(cloneCard)])) as FoundationState;
+  while (plan.length < 52) {
+    let found = false;
+    for (let pile = 0; pile < tableau.length; pile += 1) {
+      const card = tableau[pile].at(-1);
+      if (!card || !canPlaceOnFoundation(card, foundations[card.suit])) continue;
+      tableau[pile].pop();
+      foundations[card.suit].push(card);
+      plan.push({ pile, card });
+      found = true;
+      break;
+    }
+    if (!found) break;
+  }
+  return plan.length && plan.every(({ card }) => foundations[card.suit].length >= card.rank) && SUITS.every((suit) => foundations[suit].length === 13) ? plan : null;
+}
+
+export function canAutoFinish(state: GameState): boolean {
+  return autoFinishPlan(state) !== null;
+}
+
+/** Finish only a deterministic, fully exposed endgame in one undoable action. */
+export function autoFinish(state: GameState): boolean {
+  const plan = autoFinishPlan(state);
+  if (!plan) return false;
+  pushHistory(state);
+  for (const { pile, card } of plan) {
+    state.tableaus[pile].pop();
+    state.foundations[card.suit].push(card);
+  }
+  state.moves += plan.length;
+  state.won = true;
+  return true;
+}
+
 export function drawFromStock(state: GameState): 'draw' | 'recycle' | 'empty' {
   if (state.won) return 'empty';
   if (state.stock.length) {
     pushHistory(state);
-    const card = state.stock.pop()!;
-    card.faceUp = true;
-    state.waste.push(card);
+    const count = Math.min(state.drawCount, state.stock.length);
+    for (let index = 0; index < count; index += 1) {
+      const card = state.stock.pop()!;
+      card.faceUp = true;
+      state.waste.push(card);
+    }
     finishMove(state);
     return 'draw';
   }
@@ -246,6 +446,12 @@ function validCard(card: unknown): card is Card {
   return value.id === `${value.suit}-${value.rank}`;
 }
 
+function isValidDailyDate(value: unknown): value is string {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(`${value}T00:00:00.000Z`);
+  return Number.isFinite(date.valueOf()) && date.toISOString().slice(0, 10) === value;
+}
+
 function validSnapshot(snapshot: unknown): snapshot is Snapshot {
   if (!snapshot || typeof snapshot !== 'object' || Array.isArray(snapshot)) return false;
   const value = snapshot as Snapshot;
@@ -258,6 +464,8 @@ function validSnapshot(snapshot: unknown): snapshot is Snapshot {
   if (!Number.isInteger(value.moves) || value.moves < 0 || !Number.isInteger(value.elapsed) || value.elapsed < 0 || typeof value.won !== 'boolean') return false;
   if (value.tableaus.some((pile) => !isDescendingAlternating(pile) || (pile.length > 0 && !pile[pile.length - 1].faceUp))) return false;
   if (value.stock.some((card) => card.faceUp) || value.waste.some((card) => !card.faceUp)) return false;
+  if (value.drawCount !== 1 && value.drawCount !== 3) return false;
+  if (value.dailyDate !== null && !isValidDailyDate(value.dailyDate)) return false;
   for (const suit of SUITS) {
     const foundation = foundations[suit] as Card[];
     if (foundation.some((card, index) => !card.faceUp || card.suit !== suit || card.rank !== index + 1)) return false;
@@ -271,6 +479,25 @@ export function validateState(state: unknown): state is GameState {
   if (!state || typeof state !== 'object') return false;
   const value = state as GameState;
   return validSnapshot(value) && Array.isArray(value.history) && value.history.length <= 200 && value.history.every(validSnapshot);
+}
+
+function migrateSnapshotDefaults(value: unknown): unknown {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
+  const snapshot = value as Record<string, unknown>;
+  return {
+    ...snapshot,
+    drawCount: snapshot.drawCount === undefined ? 1 : snapshot.drawCount,
+    dailyDate: snapshot.dailyDate === undefined ? null : snapshot.dailyDate,
+  };
+}
+
+function migrateSavedState(value: unknown): unknown {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
+  const state = value as Record<string, unknown>;
+  return {
+    ...migrateSnapshotDefaults(state) as Record<string, unknown>,
+    history: Array.isArray(state.history) ? state.history.map(migrateSnapshotDefaults) : state.history,
+  };
 }
 
 export function saveGame(state: GameState, storage?: Storage | null): boolean {
@@ -290,7 +517,7 @@ export function loadGame(storage?: Storage | null): GameState | null {
     if (!target) return null;
     const raw = target.getItem('pg_solitaire_v1');
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as GameState & { version?: number };
+    const parsed = migrateSavedState(JSON.parse(raw)) as GameState & { version?: number };
     if (parsed.version !== 1 || !validateState(parsed)) return null;
     return cloneState(parsed);
   } catch {

@@ -1,7 +1,20 @@
 export type Direction = 'up' | 'right' | 'down' | 'left';
 export type GameStatus = 'ready' | 'running' | 'paused' | 'won' | 'lost';
+export type SnakeDifficulty = 'easy' | 'classic' | 'fast';
+export type SnakeMode = 'walls' | 'wrap';
 
 export type Cell = { x: number; y: number };
+
+export const DIFFICULTY_CONFIG: Record<SnakeDifficulty, { label: string; tickMs: number }> = {
+  easy: { label: 'Easy', tickMs: 205 },
+  classic: { label: 'Classic', tickMs: 145 },
+  fast: { label: 'Fast', tickMs: 90 },
+};
+
+export const MODE_CONFIG: Record<SnakeMode, { label: string }> = {
+  walls: { label: 'Walls' },
+  wrap: { label: 'Wrap' },
+};
 
 export type SnakeState = {
   width: number;
@@ -12,6 +25,8 @@ export type SnakeState = {
   food: Cell | null;
   score: number;
   status: GameStatus;
+  difficulty: SnakeDifficulty;
+  mode: SnakeMode;
 };
 
 export const DIRECTIONS: Record<Direction, Cell> = {
@@ -52,6 +67,8 @@ export function createSnakeGame(options: {
   random?: () => number;
   status?: GameStatus;
   score?: number;
+  difficulty?: SnakeDifficulty;
+  mode?: SnakeMode;
 } = {}): SnakeState {
   const width = options.width ?? 24;
   const height = options.height ?? 16;
@@ -73,6 +90,8 @@ export function createSnakeGame(options: {
     food: food ? { ...food } : null,
     score: options.score ?? 0,
     status: options.status ?? 'ready',
+    difficulty: options.difficulty ?? 'classic',
+    mode: options.mode ?? 'walls',
   };
 }
 
@@ -92,16 +111,29 @@ export function resumeGame(state: SnakeState): SnakeState {
 
 export function queueDirection(state: SnakeState, direction: Direction): SnakeState {
   if (state.status !== 'running' && state.status !== 'ready' && state.status !== 'paused') return state;
-  // Keep one turn in reserve per tick. This prevents a fast key sequence from
-  // making the snake turn twice before it has moved.
+  // Keep one turn in reserve per tick so a fast key sequence cannot turn twice.
   if (state.queuedDirection) return state;
-  const reference = state.queuedDirection ?? state.direction;
+  const reference = state.direction;
   if (direction === reference || opposite(direction, reference)) return state;
   return { ...state, queuedDirection: direction };
 }
 
-export function resetGame(state: SnakeState, random: () => number = Math.random): SnakeState {
-  return createSnakeGame({ width: state.width, height: state.height, random });
+export function resetGame(
+  state: SnakeState,
+  random: () => number = Math.random,
+  overrides: { difficulty?: SnakeDifficulty; mode?: SnakeMode } = {},
+): SnakeState {
+  return createSnakeGame({
+    width: state.width,
+    height: state.height,
+    difficulty: overrides.difficulty ?? state.difficulty,
+    mode: overrides.mode ?? state.mode,
+    random,
+  });
+}
+
+function wrapCell(cell: Cell, width: number, height: number): Cell {
+  return { x: (cell.x + width) % width, y: (cell.y + height) % height };
 }
 
 export function stepGame(state: SnakeState, random: () => number = Math.random): SnakeState {
@@ -109,14 +141,16 @@ export function stepGame(state: SnakeState, random: () => number = Math.random):
   const direction = state.queuedDirection ?? state.direction;
   const delta = DIRECTIONS[direction];
   const head = state.snake[0];
-  const nextHead = { x: head.x + delta.x, y: head.y + delta.y };
-  const willEat = sameCell(nextHead, state.food);
-  const bodyToCheck = willEat ? state.snake : state.snake.slice(0, -1);
-  const hitWall = nextHead.x < 0 || nextHead.x >= state.width || nextHead.y < 0 || nextHead.y >= state.height;
-  const hitBody = bodyToCheck.some(cell => sameCell(cell, nextHead));
-  if (hitWall || hitBody) {
+  const rawHead = { x: head.x + delta.x, y: head.y + delta.y };
+  const hitWall = rawHead.x < 0 || rawHead.x >= state.width || rawHead.y < 0 || rawHead.y >= state.height;
+  if (state.mode === 'walls' && hitWall) {
     return { ...state, direction, queuedDirection: null, status: 'lost' };
   }
+  const nextHead = state.mode === 'wrap' ? wrapCell(rawHead, state.width, state.height) : rawHead;
+  const willEat = sameCell(nextHead, state.food);
+  const bodyToCheck = willEat ? state.snake : state.snake.slice(0, -1);
+  const hitBody = bodyToCheck.some(cell => sameCell(cell, nextHead));
+  if (hitBody) return { ...state, direction, queuedDirection: null, status: 'lost' };
 
   const snake = [nextHead, ...state.snake];
   if (!willEat) snake.pop();
