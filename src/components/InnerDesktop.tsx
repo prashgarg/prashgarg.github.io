@@ -253,7 +253,7 @@ const WIN95_STYLE = `
   flex-direction: column;
   position: relative;            /* containing block for the iframe loading layer */
 }
-.win95-content.games-window-content { min-height: 0; overflow: hidden; padding: 0; }
+.win95-desktop .win95-content.games-window-content { min-height: 0; overflow: hidden; padding: 0; }
 .win95-home {
   display: flex;
   flex-direction: column;
