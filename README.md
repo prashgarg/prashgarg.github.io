@@ -94,6 +94,8 @@ Run `node --experimental-strip-types scripts/test-snake.mjs` and
 With a built preview running, `node --experimental-strip-types scripts/verify-games.mjs`
 checks desktop and touch controls, legal moves, save recovery, and lazy loading.
 It accepts a base URL as its first argument and saves screenshots in `shots/games-check/`.
+`node scripts/verify-games-monitor.mjs` also checks card dragging in the 3D
+monitor and touch play from the mobile homepage, with the same optional base URL.
 
 On a Dropbox-synced checkout, local builds can occasionally stall. The GitHub
 Pages CI build is the deployment source of truth.
