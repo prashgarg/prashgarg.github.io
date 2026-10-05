@@ -17,7 +17,7 @@ export function cleanPath(path: string): string {
 export function pathAtLocation(location: Location): string {
   const params = new URLSearchParams(location.search);
   const app = params.get('app');
-  if (app && ['home', 'research', 'talks', 'library', 'now', 'cv'].includes(app)) {
+  if (app && ['home', 'research', 'talks', 'library', 'now', 'cv', 'games'].includes(app)) {
     if (app === 'home') return '/';
     const paper = params.get('paper');
     return app === 'research' && paper ? `/research/${encodeURIComponent(paper)}` : `/${app}`;

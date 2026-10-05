@@ -86,6 +86,15 @@ figure enlargement; `scripts/measure-arrival.mjs` compares cold-browser
 JavaScript responses against another build. Its byte counts are uncompressed
 local responses, not production transfer sizes or device-speed benchmarks.
 
+The Games folder loads Snake and draw-one Klondike Solitaire on demand. Snake
+saves its best score; Solitaire saves the current hand and undo history in this
+browser. Both pause when inactive, and use the desktop's sound setting.
+Run `node --experimental-strip-types scripts/test-snake.mjs` and
+`node --experimental-strip-types scripts/test-solitaire.mjs` for the game rules.
+With a built preview running, `node --experimental-strip-types scripts/verify-games.mjs`
+checks desktop and touch controls, legal moves, save recovery, and lazy loading.
+It accepts a base URL as its first argument and saves screenshots in `shots/games-check/`.
+
 On a Dropbox-synced checkout, local builds can occasionally stall. The GitHub
 Pages CI build is the deployment source of truth.
 
@@ -97,6 +106,7 @@ Pages CI build is the deployment source of truth.
 - `src/components/InnerDesktop.tsx` - Windows 95-style desktop, windows, start
   menu, tray, keyboard shortcuts
 - `src/components/OsPage.tsx` - monitor readiness and keyboard-focus handoff
+- `src/components/games/` - Games folder, Snake and Solitaire UI and rule engines
 - `src/components/PaperFigures.astro` - original figures and accessible enlargement
 - `src/lib/viewPreference.ts` - saved starting view and cross-tab updates
 - `src/styles/office.css` - room controls and the monitor's glass overlay

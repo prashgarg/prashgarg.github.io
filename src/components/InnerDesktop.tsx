@@ -14,13 +14,25 @@
  *   - maximize toggle (dbl-click title bar or □ button)
  *   - minimize to taskbar button (click _ or the taskbar chip)
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Component, Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { papers, talks, site } from '../data/site';
 import { MONITOR_VIEWPORT } from '../lib/monitor';
 import FindDialog from './FindDialog';
 import WindowDocument, { type ReadingSnapshot } from './WindowDocument';
 import { navigationHost, cleanPath, pathAtLocation, writeLocation } from '../lib/desktopNavigation';
 import { readViewPreference, setViewPreference, VIEW_PREFERENCE_EVENT } from '../lib/viewPreference';
+
+const GamesApp = lazy(() => import('./games/GamesApp'));
+
+class GamesLoadBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() { return { failed: true }; }
+  render() {
+    return this.state.failed
+      ? <p role="alert" style={{ padding: 16 }}>Games couldn’t load. <button className="win95-btn" onClick={() => window.location.reload()}>Reload</button></p>
+      : this.props.children;
+  }
+}
 
 
 /* ---------- Win95 CSS injected once ----------------------------------- */
@@ -241,6 +253,7 @@ const WIN95_STYLE = `
   flex-direction: column;
   position: relative;            /* containing block for the iframe loading layer */
 }
+.win95-content.games-window-content { min-height: 0; overflow: hidden; padding: 0; }
 .win95-home {
   display: flex;
   flex-direction: column;
@@ -571,12 +584,12 @@ const WIN95_STYLE = `
               inset -2px -2px #c3c6ca, inset 2px 2px #f4efe2,
               2px 3px 0 rgba(0,0,0,0.28);
 }
-@media (max-width: 900px) {
+@media (max-width: 900px), (max-height: 600px) {
   .win95-vol-slider { display: none; }
   .win95-taskbar-chip { min-width: 76px; max-width: 100px; flex-shrink: 0; }
   .win95-icons, .win95-desktop.embedded .win95-icons {
     top: 12px; left: 10px; right: 10px;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(6, minmax(0, 1fr));
     gap: 4px;
   }
   .win95-icons .win95-icon { width: auto; padding: 6px 2px; }
@@ -995,6 +1008,12 @@ function playErrorDing() {
   osc.connect(g); g.connect(ac.destination);
   osc.start(now); osc.stop(now + 0.3);
 }
+function playGameSound(event: 'move' | 'win' | 'lose') {
+  if (event === 'win') playWindowOpenDing();
+  else if (event === 'lose') playErrorDing();
+  else playUiClick('up', 'soft');
+}
+
 // Startup chime — soft rising triad, once per session after boot.
 function playStartupChime() {
   const ac = getUiAc();
@@ -1084,7 +1103,16 @@ const NAV_LINKS: { label: string; href: string }[] = [
 ];
 
 /* ---------- App registry (multi-window) -------------------------------- */
-type AppId = 'home' | 'research' | 'talks' | 'library' | 'now' | 'cv';
+type AppId = 'home' | 'research' | 'talks' | 'library' | 'now' | 'cv' | 'games';
+
+function GamesIconLg() {
+  return <svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true">
+    <path d="M2 7h11l3 4h14v17H2z" fill="var(--color-cream)" stroke="var(--color-ink)" />
+    <path d="M2 13h28l-3 15H2z" fill="var(--color-brand-yellow)" stroke="var(--color-ink)" />
+    <rect x="9" y="15" width="12" height="9" rx="2" fill="var(--color-cream)" stroke="var(--color-ink)" />
+    <path d="M12 17v5m-2-2h5m3-2h1m-1 3h1" stroke="var(--color-ink)" />
+  </svg>;
+}
 
 /* small 32×32 Win95-style shortcut icons (one per app). Drawn inline as
  * SVG using primitive shapes + the classic Win95 palette so each app has
@@ -1177,6 +1205,7 @@ const APPS: AppDef[] = [
   { id: 'library',  label: 'Library',  title: 'Library — Prashant Garg',  path: '/library',  Icon: LibraryIconLg,  defW: 1080, defH: 760, cascadeIdx: 3 },
   { id: 'now',      label: 'Now',      title: 'Now — Prashant Garg',      path: '/now',      Icon: NowIconLg,      defW: 980,  defH: 700, cascadeIdx: 4 },
   { id: 'cv',       label: 'CV',       title: 'CV — Prashant Garg',       path: '/cv',       Icon: CvIconLg,       defW: 1140, defH: 800, cascadeIdx: 5 },
+  { id: 'games',    label: 'Games',    title: 'Games',                    path: '/games',    Icon: GamesIconLg,    defW: 840,  defH: 600, cascadeIdx: 6 },
 ];
 const APP_BY_ID: Record<AppId, AppDef> = APPS.reduce((acc, a) => { acc[a.id] = a; return acc; }, {} as any);
 const APP_BY_PATH: Record<string, AppDef> = APPS.reduce((acc, a) => { acc[a.path] = a; return acc; }, {} as any);
@@ -1500,10 +1529,10 @@ export default function InnerDesktop({ onClose, embedded = false, active = true,
   // per-window step keeps stacked windows from being pixel-identical.
   const defaultGeo = useCallback((_app: AppDef) => {
     const taskbar = 30;
-    const availW = containerSize.w;
-    const availH = containerSize.h - taskbar;
-    const w = Math.round(Math.min(availW - 24, availW * 0.90));
-    const h = Math.round(Math.min(availH - 24, availH * 0.90));
+    const availW = _app.id === 'games' ? containerRef.current?.clientWidth || containerSize.w : containerSize.w;
+    const availH = (_app.id === 'games' ? containerRef.current?.clientHeight || containerSize.h : containerSize.h) - taskbar;
+    const w = Math.round(Math.min(availW - 24, availW * 0.90, _app.id === 'games' ? _app.defW : Infinity));
+    const h = Math.round(Math.min(availH - 24, availH * 0.90, _app.id === 'games' ? _app.defH : Infinity));
     const step = 18;
     const off = (_app.cascadeIdx * step) % (step * 3);   // 0,18,36 then wrap
     let x = Math.round((availW - w) / 2) + off;
@@ -2027,7 +2056,7 @@ export default function InnerDesktop({ onClose, embedded = false, active = true,
       {wins.map(w => {
         const app = APP_BY_ID[w.id];
         const isTop = topId === w.id;
-        if (w.minimized && w.state !== 'minimizing') return null;
+        if (w.minimized && w.state !== 'minimizing' && w.id !== 'games') return null;
         // Position/size. maximized fills the desktop minus taskbar.
         // View changes resize this same document. Fit existing windows too,
         // without remounting their iframe or losing the reading position.
@@ -2040,6 +2069,8 @@ export default function InnerDesktop({ onClose, embedded = false, active = true,
           : { left: Math.max(8, Math.min(w.x, containerSize.w - width - 8)),
               top: Math.max(8, Math.min(w.y, containerSize.h - height - 38)),
               width, height, zIndex: w.zIndex };
+        // Keep game state mounted while minimised; the active prop pauses it.
+        if (w.id === 'games' && w.minimized && w.state !== 'minimizing') style.display = 'none';
         // transform-origin for opening/closing zoom anim — anchored to the
         // icon position where the window was launched from.
         if (w.openFrom) {
@@ -2059,6 +2090,7 @@ export default function InnerDesktop({ onClose, embedded = false, active = true,
             className={classes.join(' ')}
             style={style}
             onMouseDown={e => { e.stopPropagation(); focusApp(w.id); }}
+            onFocusCapture={() => { if (w.id === 'games' && !isTop) focusApp(w.id); }}
           >
             {/* 8 invisible resize edges + corners (only when not maximized) */}
             {!maximized && (
@@ -2110,9 +2142,13 @@ export default function InnerDesktop({ onClose, embedded = false, active = true,
             </div>
 
             {/* content area — inline HOME, or iframe */}
-            <div className="win95-content">
+            <div className={`win95-content${w.id === 'games' ? ' games-window-content' : ''}`}>
               {w.id === 'home' ? (
                 <HomeContent />
+              ) : w.id === 'games' ? (
+                <GamesLoadBoundary><Suspense fallback={<p role="status" style={{ padding: 16 }}>Loading Games…</p>}>
+                  <GamesApp active={active && isTop && !w.minimized && w.state === 'open' && !dialog && !findOpen && !startOpen && !ctxMenu} onSound={playGameSound} />
+                </Suspense></GamesLoadBoundary>
               ) : (
                 /* When the window has a sub-path override (e.g. a paper
                    detail under /research/...), the iframe loads that
