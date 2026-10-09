@@ -1,0 +1,25 @@
+.sequencer-app { min-width:0; min-height:0; outline:0; }
+.sequencer-toolbar { display:flex; align-items:center; flex-wrap:wrap; gap:7px; padding:8px; }
+.sequencer-play { min-width:84px; font-weight:bold; }
+.sequencer-bpm { display:flex; align-items:center; gap:5px; white-space:nowrap; }
+.sequencer-bpm .accessory-input { width:62px; text-align:right; }
+.sequencer-confirm { display:flex; align-items:center; flex-wrap:wrap; gap:5px; margin-left:auto; }
+.sequencer-grid-wrap { flex:1 1 auto; min-height:0; overflow:auto; padding:3px 8px 8px; background:var(--acc-paper); border-top:1px solid var(--acc-shadow); border-bottom:1px solid var(--acc-shadow); }
+.sequencer-grid { display:grid; grid-template-columns:92px repeat(16, minmax(27px, 1fr)); min-width:565px; gap:4px; align-items:center; }
+.sequencer-corner, .sequencer-step-number { color:var(--acc-muted); font-size:11px; text-align:center; }
+.sequencer-corner { text-align:left; padding-left:4px; text-transform:uppercase; letter-spacing:.06em; }
+.sequencer-step-number { padding:4px 0; border-bottom:2px solid transparent; }
+.sequencer-step-number.is-current { color:var(--acc-focus); font-weight:bold; border-color:var(--acc-accent); }
+.sequencer-row { display:contents; }
+.sequencer-track-label { display:flex; align-items:center; justify-content:space-between; gap:4px; min-height:34px; padding:3px 4px; color:var(--acc-ink); font-size:12px; }
+.sequencer-mute { padding:2px 4px; color:var(--acc-muted); background:transparent; border:1px solid var(--acc-shadow); cursor:pointer; font:10px MSSerif,Arial,sans-serif; }
+.sequencer-mute.is-muted { color:var(--acc-red); }
+.sequencer-cell { min-width:0; min-height:32px; padding:0; background:var(--acc-face); border:0; box-shadow:inset -2px -2px var(--acc-shadow), inset 2px 2px var(--acc-hi), inset -1px -1px var(--acc-border); cursor:pointer; }
+.sequencer-cell:hover { background:color-mix(in srgb,var(--acc-face) 70%,var(--acc-accent)); }
+.sequencer-cell.is-on { background:var(--acc-accent); box-shadow:inset 2px 2px var(--acc-shadow), inset -1px -1px var(--acc-hi); }
+.sequencer-cell.is-current { outline:2px solid var(--acc-focus); outline-offset:-2px; }
+.sequencer-cell.is-on.is-current { background:color-mix(in srgb,var(--acc-accent) 70%,var(--acc-hi)); }
+.sequencer-cell:focus-visible, .sequencer-mute:focus-visible { outline:2px dotted var(--acc-focus); outline-offset:2px; }
+@media (pointer:coarse) { .sequencer-cell { min-height:44px; min-width:44px; } .sequencer-track-label { min-height:44px; } .sequencer-mute { min-height:32px; } .sequencer-grid { grid-template-columns:92px repeat(16,44px); min-width:840px; } }
+@media (max-width:420px) { .sequencer-toolbar { padding:6px; gap:5px; } .sequencer-grid-wrap { padding:3px 6px 7px; } .sequencer-grid { grid-template-columns:86px repeat(16,44px); min-width:829px; } .sequencer-confirm { margin-left:0; } }
+@media (prefers-reduced-motion:reduce) { .sequencer-cell { transition:none; } }

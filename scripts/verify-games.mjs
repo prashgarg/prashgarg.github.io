@@ -42,8 +42,7 @@ try {
   page.on('request',r=>requests.push(r.url()));
   await page.goto(`${base}/os/`,{waitUntil:'load'});await page.getByRole('button',{name:'Games',exact:true}).waitFor();
   assert(!requests.some(url=>/\/(GamesApp|Snake|Solitaire|Minesweeper)\.[^/]+\.js$/.test(url)),'Games should be lazy');
-  await page.getByRole('button',{name:'Start',exact:true}).click();
-  await page.getByRole('menuitem',{name:'Games',exact:true}).click();
+  await page.getByRole('button',{name:'Games',exact:true}).click();
   await page.getByRole('button',{name:'Snake',exact:true}).waitFor();
   assert(!requests.some(url=>/\/(Snake|Solitaire|Minesweeper)\.[^/]+\.js$/.test(url)),'Individual games should be lazy');
   await shot(page,'desktop-folder');
@@ -75,7 +74,7 @@ try {
   await page.getByRole('button',{name:'Close',exact:true}).click();await page.locator('[data-app-window="games"]').waitFor({state:'detached'});
   await page.getByRole('button',{name:'Games',exact:true}).click();await page.getByRole('button',{name:'Solitaire',exact:true}).click();
   await page.locator('.solitaire-board').waitFor();assert.deepEqual((await saved(page)).tableaus,fresh.tableaus);
-  await page.reload({waitUntil:'load'});await page.getByRole('button',{name:'Solitaire',exact:true}).click();
+  await page.reload({waitUntil:'load'});
   await page.locator('.solitaire-board').waitFor();assert.deepEqual((await saved(page)).tableaus,fresh.tableaus);
   await shot(page,'solitaire-desktop');await ctx.close();
   console.log('PASS desktop launch, lazy loading, Snake keyboard/pause/minimise, Solitaire undo/new-deal/save/reload');

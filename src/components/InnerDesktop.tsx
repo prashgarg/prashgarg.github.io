@@ -14,15 +14,34 @@
  *   - maximize toggle (dbl-click title bar or □ button)
  *   - minimize to taskbar button (click _ or the taskbar chip)
  */
-import { Component, Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Component, Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { papers, talks, site } from '../data/site';
 import { MONITOR_VIEWPORT } from '../lib/monitor';
 import FindDialog from './FindDialog';
 import WindowDocument, { type ReadingSnapshot } from './WindowDocument';
 import { navigationHost, cleanPath, pathAtLocation, writeLocation } from '../lib/desktopNavigation';
 import { readViewPreference, setViewPreference, VIEW_PREFERENCE_EVENT } from '../lib/viewPreference';
+import { readEffectiveDesktopVolume, setDesktopVolume, subscribeDesktopAudio, toggleDesktopMuted } from '../lib/desktopAudio';
+import { AccessoriesIcon, NotepadIcon, PaintIcon, CalculatorIcon, FocusTimerIcon, FilingCabinetIcon, AmbientMixerIcon, SequencerIcon } from './accessories/AccessoryIcons';
+import './accessories/accessories.css';
 
 const GamesApp = lazy(() => import('./games/GamesApp'));
+const Accessories = lazy(() => import('./accessories/Accessories'));
+const Notepad = lazy(() => import('./accessories/Notepad'));
+const Paint = lazy(() => import('./accessories/Paint'));
+const Calculator = lazy(() => import('./accessories/Calculator'));
+const FocusTimer = lazy(() => import('./accessories/FocusTimer'));
+const FilingCabinet = lazy(() => import('./accessories/FilingCabinet'));
+const AmbientMixer = lazy(() => import('./accessories/AmbientMixer'));
+const Sequencer = lazy(() => import('./accessories/Sequencer'));
+const ACCESSORY_COMPONENTS = { notepad: Notepad, paint: Paint, calculator: Calculator, focus: FocusTimer, cabinet: FilingCabinet, ambient: AmbientMixer, sequencer: Sequencer };
+const isAccessoryId = (id: unknown): id is keyof typeof ACCESSORY_COMPONENTS => typeof id === 'string' && Object.hasOwn(ACCESSORY_COMPONENTS, id);
+type GameId = 'snake' | 'solitaire' | 'minesweeper';
+const START_GAMES: { id: GameId; label: string; symbol: string }[] = [
+  { id: 'snake', label: 'Snake', symbol: '▰' },
+  { id: 'solitaire', label: 'Solitaire', symbol: '♥' },
+  { id: 'minesweeper', label: 'Minesweeper', symbol: '✹' },
+];
 
 class GamesLoadBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
   state = { failed: false };
@@ -30,6 +49,16 @@ class GamesLoadBoundary extends Component<{ children: ReactNode }, { failed: boo
   render() {
     return this.state.failed
       ? <p role="alert" style={{ padding: 16 }}>Games couldn’t load. <button className="win95-btn" onClick={() => window.location.reload()}>Reload</button></p>
+      : this.props.children;
+  }
+}
+
+class DesktopAppBoundary extends Component<{ children: ReactNode; label: string }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() { return { failed: true }; }
+  render() {
+    return this.state.failed
+      ? <p role="alert" style={{ padding: 16 }}>{this.props.label} couldn’t load. <button className="win95-btn" onClick={() => window.location.reload()}>Reload</button></p>
       : this.props.children;
   }
 }
@@ -253,7 +282,9 @@ const WIN95_STYLE = `
   flex-direction: column;
   position: relative;            /* containing block for the iframe loading layer */
 }
-.win95-desktop .win95-content.games-window-content { min-height: 0; overflow: hidden; padding: 0; }
+.win95-desktop .win95-content.games-window-content,
+.win95-desktop .win95-content.accessory-window-content { min-height: 0; overflow: hidden; padding: 0; }
+.accessory-surface { min-height: 0; flex: 1; overflow: auto; display: flex; flex-direction: column; }
 .win95-home {
   display: flex;
   flex-direction: column;
@@ -475,6 +506,9 @@ const WIN95_STYLE = `
               inset -2px -2px #c3c6ca, inset 2px 2px #86898d;
 }
 .win95-clock {
+  border: 0;
+  background: #c3c6ca;
+  cursor: pointer;
   font-family: MSSerif;
   font-size: 12px;
   color: #000;
@@ -702,6 +736,26 @@ const WIN95_STYLE = `
   background: #000080;
   color: #fff;
 }
+.win95-startmenu-item[aria-expanded="true"] { background:#000080; color:#fff; }
+.win95-startmenu-arrow { margin-left:auto; font:10px Arial,sans-serif; }
+.win95-start-submenu {
+  position:absolute; left:calc(100% - 2px); width:226px; padding:3px;
+  background:#c3c6ca; color:#000; z-index:1;
+  box-shadow:inset -1px -1px #2b2b2b,inset 1px 1px #fff,inset -2px -2px #86898d,3px 3px 10px rgba(0,0,0,.35);
+  max-height:calc(100dvh - 46px); overflow-y:auto;
+}
+.win95-startmenu.has-submenu .win95-startmenu-list { overflow:visible; }
+.win95-start-submenu .win95-startmenu-item { padding-block:6px; }
+.win95-start-submenu .win95-startmenu-item[data-submenu-back] { display:none; }
+@media (hover:none) and (pointer:coarse), (max-width:480px) {
+  .win95-startmenu.compact-submenu { left:0; width:min(264px, 100vw); min-width:0; }
+  .win95-startmenu.compact-submenu .win95-startmenu-spine,
+  .win95-startmenu.compact-submenu .win95-startmenu-list { visibility:hidden; pointer-events:none; }
+  .win95-startmenu.compact-submenu .win95-start-submenu {
+    position:absolute; left:0; top:0; bottom:0; width:100%; max-height:none; overflow-y:auto;
+  }
+  .win95-startmenu.compact-submenu .win95-start-submenu .win95-startmenu-item[data-submenu-back] { display:flex; }
+}
 .win95-startmenu-sep {
   height: 0;
   border-top: 1px solid #86898d;
@@ -810,6 +864,7 @@ const WIN95_STYLE = `
   .win95-tray-btn { min-width: 44px; }
   .win95-startmenu { bottom: 44px; }
   .win95-startmenu-list { max-height: calc(100dvh - 60px); }
+  .win95-startmenu-item { min-height: 44px; }
   .win95-context-item, .win95-btn { min-height: 44px; }
   .win95-window { max-height: calc(100% - 44px); }
 }
@@ -1043,20 +1098,9 @@ function playStartupChime() {
 // Single shared volume value (0..1). Persisted to localStorage so the
 // setting survives navigation. UI volume slider + audio gain both read
 // from this; mute = volume === 0.
-const LS_VOLUME = 'pg_volume_v1';
 function getUiVolume(): number {
-  try {
-    const v = parseFloat(localStorage.getItem(LS_VOLUME) || '0.6');
-    if (isNaN(v)) return 0.6;
-    return Math.max(0, Math.min(1, v));
-  } catch { return 0.6; }
+  return typeof window === 'undefined' ? 0.6 : readEffectiveDesktopVolume();
 }
-function setUiVolume(v: number) {
-  try { localStorage.setItem(LS_VOLUME, String(Math.max(0, Math.min(1, v)))); } catch { /* */ }
-  // notify listeners
-  try { window.dispatchEvent(new CustomEvent('pg-volume', { detail: v })); } catch { /* */ }
-}
-
 /* ---------- helpers ---------------------------------------------------- */
 function getTime() {
   const d = new Date();
@@ -1070,7 +1114,6 @@ interface WinState { x: number; y: number; w: number; h: number; }
 
 const SS_WIN   = 'pg_win';
 const SS_PHASE = 'pg_phase';
-const SS_MUTED = 'pg_muted';
 
 function getInitial(): WinState {
   if (typeof window === 'undefined') return { x: 60, y: 30, w: 860, h: 580 };
@@ -1103,7 +1146,7 @@ const NAV_LINKS: { label: string; href: string }[] = [
 ];
 
 /* ---------- App registry (multi-window) -------------------------------- */
-type AppId = 'home' | 'research' | 'talks' | 'library' | 'now' | 'cv' | 'games';
+type AppId = 'home' | 'research' | 'talks' | 'library' | 'now' | 'cv' | 'games' | 'accessories' | 'notepad' | 'paint' | 'calculator' | 'focus' | 'cabinet' | 'ambient' | 'sequencer';
 
 function GamesIconLg() {
   return <svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true">
@@ -1194,6 +1237,7 @@ interface AppDef {
   defH: number;
   // offset for default placement (so windows cascade)
   cascadeIdx: number;
+  accessory?: boolean;
 }
 // Default window sizes are LARGE (clamped to the desktop by defaultGeo) —
 // a window should show its page's actual content on open, with no
@@ -1206,6 +1250,14 @@ const APPS: AppDef[] = [
   { id: 'now',      label: 'Now',      title: 'Now — Prashant Garg',      path: '/now',      Icon: NowIconLg,      defW: 980,  defH: 700, cascadeIdx: 4 },
   { id: 'cv',       label: 'CV',       title: 'CV — Prashant Garg',       path: '/cv',       Icon: CvIconLg,       defW: 1140, defH: 800, cascadeIdx: 5 },
   { id: 'games',    label: 'Games',    title: 'Games',                    path: '/games',    Icon: GamesIconLg,    defW: 840,  defH: 600, cascadeIdx: 6 },
+  { id: 'accessories', label: 'Accessories', title: 'Accessories', path: '/accessories', Icon: AccessoriesIcon, defW: 580, defH: 380, cascadeIdx: 7 },
+  { id: 'notepad', label: 'Notepad', title: 'Notepad', path: '/accessories/notepad', Icon: NotepadIcon, defW: 700, defH: 530, cascadeIdx: 8, accessory: true },
+  { id: 'paint', label: 'Paint', title: 'Paint', path: '/accessories/paint', Icon: PaintIcon, defW: 900, defH: 640, cascadeIdx: 9, accessory: true },
+  { id: 'calculator', label: 'Calculator', title: 'Calculator', path: '/accessories/calculator', Icon: CalculatorIcon, defW: 410, defH: 580, cascadeIdx: 10, accessory: true },
+  { id: 'focus', label: 'Focus timer', title: 'Focus timer', path: '/accessories/focus', Icon: FocusTimerIcon, defW: 470, defH: 450, cascadeIdx: 11, accessory: true },
+  { id: 'cabinet', label: 'Filing cabinet', title: 'Filing cabinet', path: '/accessories/cabinet', Icon: FilingCabinetIcon, defW: 820, defH: 620, cascadeIdx: 12, accessory: true },
+  { id: 'ambient', label: 'Ambient mixer', title: 'Ambient mixer', path: '/accessories/ambient', Icon: AmbientMixerIcon, defW: 450, defH: 380, cascadeIdx: 13, accessory: true },
+  { id: 'sequencer', label: 'Music sequencer', title: 'Music sequencer', path: '/accessories/sequencer', Icon: SequencerIcon, defW: 880, defH: 400, cascadeIdx: 14, accessory: true },
 ];
 const APP_BY_ID: Record<AppId, AppDef> = APPS.reduce((acc, a) => { acc[a.id] = a; return acc; }, {} as any);
 const APP_BY_PATH: Record<string, AppDef> = APPS.reduce((acc, a) => { acc[a.path] = a; return acc; }, {} as any);
@@ -1329,29 +1381,20 @@ function VolumeOffIcon() {
 
 /* ---------- volume tray (icon + slider) -------------------------------- */
 // Replaces the binary mute toggle with a real volume slider. The slider
-// writes to localStorage via setUiVolume() and dispatches a pg-volume
-// event the audio system listens for. Clicking the icon toggles mute
+// writes through the shared desktop audio state. Clicking the icon toggles mute
 // (saves current volume to "lastNonZero" for unmute restore).
 function VolumeTray() {
   const [vol, setVolLocal] = useState<number>(() => getUiVolume());
-  const lastNonZeroRef = useRef<number>(vol > 0 ? vol : 0.6);
   useEffect(() => {
-    const onExt = (e: any) => {
-      const v = typeof e.detail === 'number' ? e.detail : getUiVolume();
-      if (v !== vol) setVolLocal(v);
-    };
-    window.addEventListener('pg-volume', onExt);
-    return () => window.removeEventListener('pg-volume', onExt);
-  }, [vol]);
+    return subscribeDesktopAudio(state => setVolLocal(state.effectiveVolume));
+  }, []);
   const apply = (v: number) => {
-    const clamped = Math.max(0, Math.min(1, v));
-    if (clamped > 0) lastNonZeroRef.current = clamped;
-    setVolLocal(clamped);
-    setUiVolume(clamped);
+    const state = setDesktopVolume(v);
+    setVolLocal(state.effectiveVolume);
   };
   const toggleMute = () => {
-    if (vol > 0) apply(0);
-    else apply(lastNonZeroRef.current || 0.6);
+    const state = toggleDesktopMuted();
+    setVolLocal(state.effectiveVolume);
   };
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingRight: 6 }}>
@@ -1455,6 +1498,12 @@ export default function InnerDesktop({ onClose, embedded = false, active = true,
   const contextRef = useRef<HTMLDivElement>(null);
   const openFind = useCallback(() => { setStartOpen(false); setCtxMenu(null); setDialog(null); setFindOpen(true); }, []);
   const [startOpen, setStartOpen] = useState(false);
+  const compactStartMenu = containerSize.w <= 480;
+  const [startBranch, setStartBranch] = useState<{ id: 'games' | 'accessories'; top: number } | null>(null);
+  const branchCloseTimer = useRef<number | null>(null);
+  const pendingBranchFocus = useRef<'games' | 'accessories' | null>(null);
+  const pendingParentFocus = useRef<'games' | 'accessories' | null>(null);
+  const [gameLaunch, setGameLaunch] = useState<{ id: GameId; request: number } | null>(null);
   const [selectedIcon, setSelectedIcon] = useState<AppId | null>(null);
   // Right-click context menu state — {x,y} of the menu top-left in
   // container-relative coords, or null if hidden.
@@ -1473,9 +1522,70 @@ export default function InnerDesktop({ onClose, embedded = false, active = true,
     }, 0);
     return () => clearTimeout(timer);
   }, [dialog]);
+  const cancelBranchClose = useCallback(() => {
+    if (branchCloseTimer.current !== null) window.clearTimeout(branchCloseTimer.current);
+    branchCloseTimer.current = null;
+  }, []);
+  const closeStartBranch = useCallback((focusParent = false) => {
+    cancelBranchClose();
+    const id = startBranch?.id;
+    if (focusParent && id) pendingParentFocus.current = id;
+    setStartBranch(null);
+  }, [cancelBranchClose, startBranch?.id]);
+  const scheduleBranchClose = useCallback(() => {
+    cancelBranchClose();
+    branchCloseTimer.current = window.setTimeout(() => closeStartBranch(), 180);
+  }, [cancelBranchClose, closeStartBranch]);
+  const openStartBranch = useCallback((id: 'games' | 'accessories', button: HTMLButtonElement, focusFirst = false) => {
+    cancelBranchClose();
+    const count = id === 'games' ? START_GAMES.length : APPS.filter(app => app.accessory).length;
+    const itemHeight = window.matchMedia('(pointer:coarse)').matches ? 44 : 32;
+    const menuHeight = menuRef.current?.clientHeight || 0;
+    const top = Math.max(0, Math.min(button.offsetTop, menuHeight - count * itemHeight - 6));
+    if (focusFirst) pendingBranchFocus.current = id;
+    setStartBranch({ id, top });
+  }, [cancelBranchClose]);
+  useLayoutEffect(() => {
+    const child = pendingBranchFocus.current;
+    if (child && startBranch?.id === child) {
+      pendingBranchFocus.current = null;
+      menuRef.current?.querySelector<HTMLButtonElement>('#desktop-start-submenu [data-submenu-item]')?.focus();
+      return;
+    }
+    const parent = pendingParentFocus.current;
+    if (parent && !startBranch) {
+      pendingParentFocus.current = null;
+      menuRef.current?.querySelector<HTMLButtonElement>(`[data-start-branch="${parent}"]`)?.focus();
+    }
+  }, [startBranch]);
+  useEffect(() => {
+    if (!startOpen) { setStartBranch(null); cancelBranchClose(); }
+  }, [startOpen, cancelBranchClose]);
+  useEffect(() => () => cancelBranchClose(), [cancelBranchClose]);
+  useEffect(() => {
+    try {
+      if (localStorage.getItem('pg_focus_timer_v1')) {
+        void import('./accessories/focusTimerStore').then(timer => timer.initFocusTimer()).catch(() => {});
+      }
+    } catch { /* private browsing */ }
+  }, []);
+
   // Native menu buttons support Tab; arrows/Home/End follow desktop menu conventions.
   const menuKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
-    const items = [...event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="menuitem"], [role="menuitemcheckbox"]')];
+    const focused = event.target as HTMLElement;
+    const submenu = focused.closest<HTMLElement>('#desktop-start-submenu');
+    const branchId = focused.closest<HTMLButtonElement>('[data-start-branch]')?.dataset.startBranch;
+    if (!submenu && (branchId === 'games' || branchId === 'accessories') && event.key === 'ArrowRight') {
+      event.preventDefault(); event.stopPropagation();
+      openStartBranch(branchId, focused.closest<HTMLButtonElement>('[data-start-branch]')!, true);
+      return;
+    }
+    if (startBranch && (event.key === 'Escape' || event.key === 'ArrowLeft')) {
+      event.preventDefault(); event.stopPropagation(); closeStartBranch(true); return;
+    }
+    const menu = submenu || event.currentTarget;
+    const items = [...menu.querySelectorAll<HTMLButtonElement>('[role="menuitem"], [role="menuitemcheckbox"]')]
+      .filter(item => item.closest('[role="menu"]') === menu && item.getClientRects().length > 0);
     const current = items.indexOf(document.activeElement as HTMLButtonElement);
     let next = current;
     if (event.key === 'ArrowDown') next = (current + 1) % items.length;
@@ -1529,10 +1639,11 @@ export default function InnerDesktop({ onClose, embedded = false, active = true,
   // per-window step keeps stacked windows from being pixel-identical.
   const defaultGeo = useCallback((_app: AppDef) => {
     const taskbar = 30;
-    const availW = _app.id === 'games' ? containerRef.current?.clientWidth || containerSize.w : containerSize.w;
-    const availH = (_app.id === 'games' ? containerRef.current?.clientHeight || containerSize.h : containerSize.h) - taskbar;
-    const w = Math.round(Math.min(availW - 24, availW * 0.90, _app.id === 'games' ? _app.defW : Infinity));
-    const h = Math.round(Math.min(availH - 24, availH * 0.90, _app.id === 'games' ? _app.defH : Infinity));
+    const inlineApp = _app.id === 'games' || _app.id === 'accessories' || !!_app.accessory;
+    const availW = inlineApp ? containerRef.current?.clientWidth || containerSize.w : containerSize.w;
+    const availH = (inlineApp ? containerRef.current?.clientHeight || containerSize.h : containerSize.h) - taskbar;
+    const w = Math.round(Math.min(availW - 24, availW * 0.90, inlineApp ? _app.defW : Infinity));
+    const h = Math.round(Math.min(availH - 24, availH * 0.90, inlineApp ? _app.defH : Infinity));
     const step = 18;
     const off = (_app.cascadeIdx * step) % (step * 3);   // 0,18,36 then wrap
     let x = Math.round((availW - w) / 2) + off;
@@ -1580,8 +1691,15 @@ export default function InnerDesktop({ onClose, embedded = false, active = true,
     focusWindowContent(id);
   }, [defaultGeo, containerSize.w, focusWindowContent]);
 
+  useEffect(() => {
+    const onFinished = () => openApp('focus');
+    window.addEventListener('pg-focus-timer-finished', onFinished);
+    return () => window.removeEventListener('pg-focus-timer-finished', onFinished);
+  }, [openApp]);
+
   const closeApp = useCallback((id: AppId) => {
     playWindowCloseSound('close');
+    if (id === 'games') setGameLaunch(null);
     setWins(ws => ws.map(w => w.id === id ? { ...w, state: 'closing' } : w));
     setTimeout(() => {
       const remaining = winsRef.current.filter(w => w.id !== id);
@@ -1629,6 +1747,18 @@ export default function InnerDesktop({ onClose, embedded = false, active = true,
     window.addEventListener('message', onMsg);
     return () => window.removeEventListener('message', onMsg);
   }, [active, navigate, openFind]);
+  useEffect(() => {
+    const openFocus = (id: unknown) => {
+      if (id === 'focus') openApp('focus');
+    };
+    const onMessage = (event: MessageEvent) => {
+      if (event.origin === window.location.origin && event.source === window.parent && event.data?.type === 'pg-open-accessory') openFocus(event.data.id);
+    };
+    const onEvent = (event: Event) => openFocus((event as CustomEvent<{ id?: unknown }>).detail?.id);
+    window.addEventListener('message', onMessage);
+    window.addEventListener('pg-open-accessory', onEvent);
+    return () => { window.removeEventListener('message', onMessage); window.removeEventListener('pg-open-accessory', onEvent); };
+  }, [openApp]);
 
   const didAutoOpen = useRef(false);
   useEffect(() => {
@@ -1776,9 +1906,6 @@ export default function InnerDesktop({ onClose, embedded = false, active = true,
   }, [active, wins, startOpen, ctxMenu, dialog, findOpen, focusApp, closeApp, toggleMaximize, onClose]);
 
   // ---------- ambient audio (continues from the study) ----------
-  const [muted, setMuted] = useState<boolean>(() => {
-    try { return sessionStorage.getItem(SS_MUTED) === '1'; } catch { return false; }
-  });
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
@@ -1794,25 +1921,37 @@ export default function InnerDesktop({ onClose, embedded = false, active = true,
     if (embedded || insideParentRoom) return;
     const audio = new Audio('/audio/ambient.mp3');
     audio.loop   = true;
-    audio.volume = 0.32 * getUiVolume();   // base level * slider (was a flat 0.32)
-    audio.muted  = muted;
+    const accessoryWindows: Window[] = [window];
+    try {
+      if (window.top !== window && window.top.location.origin === window.location.origin) accessoryWindows.push(window.top);
+    } catch { /* cross-origin parent */ }
+    const updateBed = () => {
+      let accessoryPlaying = false;
+      try {
+        const topDocument = (window.top && window.top.location.origin === window.location.origin) ? window.top.document : document;
+        const sources = JSON.parse(topDocument.documentElement.dataset.pgAccessoryAudio || '[]');
+        accessoryPlaying = Array.isArray(sources) && sources.length > 0;
+      } catch { /* malformed or inaccessible state means no ducking */ }
+      if (audioRef.current) audioRef.current.volume = accessoryPlaying ? 0 : 0.32 * readEffectiveDesktopVolume();
+    };
+    updateBed();
+    audio.muted = false;
     audioRef.current = audio;
     // live-update from the volume slider (standalone /os: same document, so the
     // pg-volume CustomEvent reaches us here)
-    const onVol = () => { if (audioRef.current) audioRef.current.volume = 0.32 * getUiVolume(); };
-    window.addEventListener('pg-volume', onVol);
+    const unsubscribeAudio = subscribeDesktopAudio(updateBed);
+    const onAccessory = updateBed;
+    for (const target of accessoryWindows) target.addEventListener('pg-accessory-audio', onAccessory);
     // attempt autoplay; if blocked wait for first interaction
     audio.play().catch(() => {
       const resume = () => { audio.play().catch(() => {}); };
       document.addEventListener('pointerdown', resume, { once: true });
     });
-    return () => { audio.pause(); audio.src = ''; window.removeEventListener('pg-volume', onVol); };
+    return () => {
+      audio.pause(); audio.src = ''; unsubscribeAudio();
+      for (const target of accessoryWindows) target.removeEventListener('pg-accessory-audio', onAccessory);
+    };
   }, [embedded]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    if (audioRef.current) audioRef.current.muted = muted;
-    try { sessionStorage.setItem(SS_MUTED, muted ? '1' : '0'); } catch { /* ignore */ }
-  }, [muted]);
 
   // Fonts may load asynchronously; the desktop CSS is rendered with its
   // markup below so a preloaded monitor never flashes an unstyled page.
@@ -1987,6 +2126,16 @@ export default function InnerDesktop({ onClose, embedded = false, active = true,
     openApp(id, fp);
     setStartOpen(false);
   };
+  const onStartGame = (id: GameId) => {
+    setGameLaunch(previous => ({ id, request: (previous?.request || 0) + 1 }));
+    openApp('games', undefined, `/games?game=${id}`);
+    setStartOpen(false);
+  };
+  const changeGameRoute = (game: GameId | null) => {
+    const path = game ? `/games?game=${game}` : '/games';
+    setWins(previous => previous.map(win => win.id === 'games' ? { ...win, path } : win));
+    writeLocation(path);
+  };
   const shutDown = () => {
     setStartOpen(false);
     // closing the desktop returns to the 3D study (parent's onClose)
@@ -2024,7 +2173,7 @@ export default function InnerDesktop({ onClose, embedded = false, active = true,
       <div className="win95-icons" inert={!!dialog || findOpen} onMouseDown={e => e.stopPropagation()}>
         {/* (declutter) Home dropped from the icon column — the home panel is
             permanently on the desktop and the taskbar Home button shows it. */}
-        {APPS.filter(a => a.id !== 'home').map(app => (
+        {APPS.filter(a => a.id !== 'home' && a.id !== 'accessories' && !a.accessory).map(app => (
           <div
             key={app.id}
             className={`win95-icon${selectedIcon === app.id ? ' selected' : ''}`}
@@ -2055,8 +2204,9 @@ export default function InnerDesktop({ onClose, embedded = false, active = true,
       {/* ───────────── open windows ───────────── */}
       {wins.map(w => {
         const app = APP_BY_ID[w.id];
+        const Accessory = isAccessoryId(w.id) ? ACCESSORY_COMPONENTS[w.id] : null;
         const isTop = topId === w.id;
-        if (w.minimized && w.state !== 'minimizing' && w.id !== 'games') return null;
+        if (w.minimized && w.state !== 'minimizing' && w.id !== 'games' && w.id !== 'accessories' && !isAccessoryId(w.id)) return null;
         // Position/size. maximized fills the desktop minus taskbar.
         // View changes resize this same document. Fit existing windows too,
         // without remounting their iframe or losing the reading position.
@@ -2070,7 +2220,7 @@ export default function InnerDesktop({ onClose, embedded = false, active = true,
               top: Math.max(8, Math.min(w.y, containerSize.h - height - 38)),
               width, height, zIndex: w.zIndex };
         // Keep game state mounted while minimised; the active prop pauses it.
-        if (w.id === 'games' && w.minimized && w.state !== 'minimizing') style.display = 'none';
+        if ((w.id === 'games' || w.id === 'accessories' || isAccessoryId(w.id)) && w.minimized && w.state !== 'minimizing') style.display = 'none';
         // transform-origin for opening/closing zoom anim — anchored to the
         // icon position where the window was launched from.
         if (w.openFrom) {
@@ -2090,7 +2240,7 @@ export default function InnerDesktop({ onClose, embedded = false, active = true,
             className={classes.join(' ')}
             style={style}
             onMouseDown={e => { e.stopPropagation(); focusApp(w.id); }}
-            onFocusCapture={() => { if (w.id === 'games' && !isTop) focusApp(w.id); }}
+            onFocusCapture={() => { if ((w.id === 'games' || w.id === 'accessories' || app.accessory) && !isTop) focusApp(w.id); }}
           >
             {/* 8 invisible resize edges + corners (only when not maximized) */}
             {!maximized && (
@@ -2142,13 +2292,31 @@ export default function InnerDesktop({ onClose, embedded = false, active = true,
             </div>
 
             {/* content area — inline HOME, or iframe */}
-            <div className={`win95-content${w.id === 'games' ? ' games-window-content' : ''}`}>
+            <div className={`win95-content${w.id === 'games' || w.id === 'accessories' || app.accessory ? ' accessory-window-content' : ''}${w.id === 'games' ? ' games-window-content' : ''}`}>
               {w.id === 'home' ? (
                 <HomeContent />
               ) : w.id === 'games' ? (
                 <GamesLoadBoundary><Suspense fallback={<p role="status" style={{ padding: 16 }}>Loading Games…</p>}>
-                  <GamesApp active={active && isTop && !w.minimized && w.state === 'open' && !dialog && !findOpen && !startOpen && !ctxMenu} onSound={playGameSound} />
+                  <GamesApp
+                    active={active && isTop && !w.minimized && w.state === 'open' && !dialog && !findOpen && !startOpen && !ctxMenu}
+                    onSound={playGameSound}
+                    launchGame={gameLaunch}
+                    routeGame={new URL(w.path || app.path, window.location.origin).searchParams.get('game')}
+                    onGameChange={changeGameRoute}
+                  />
                 </Suspense></GamesLoadBoundary>
+              ) : w.id === 'accessories' || Accessory ? (
+                <div className="accessory-surface">
+                  {Accessory ? (
+                    <DesktopAppBoundary label={app.label}><Suspense fallback={<p role="status" style={{ padding: 16 }}>Loading {app.label}…</p>}>
+                      <Accessory active={active && isTop && !w.minimized && w.state === 'open' && !dialog && !findOpen && !startOpen && !ctxMenu} {...(w.id === 'cabinet' ? { onNavigate: navigate } : {})} />
+                    </Suspense></DesktopAppBoundary>
+                  ) : (
+                    <DesktopAppBoundary label="Accessories"><Suspense fallback={<p role="status" style={{ padding: 16 }}>Loading Accessories…</p>}>
+                      <Accessories onOpen={id => openApp(id)} />
+                    </Suspense></DesktopAppBoundary>
+                  )}
+                </div>
               ) : (
                 /* When the window has a sub-path override (e.g. a paper
                    detail under /research/...), the iframe loads that
@@ -2244,10 +2412,12 @@ export default function InnerDesktop({ onClose, embedded = false, active = true,
 
       {/* ───────────── Start menu ───────────── */}
       {startOpen && (
-        <div id="desktop-start-menu" ref={menuRef} role="menu" aria-label="Start" className="win95-startmenu" onKeyDown={menuKeyDown} onMouseDown={e => e.stopPropagation()}>
-          <div className="win95-startmenu-spine"><span><b>prashant</b>garg.os</span></div>
-          <div className="win95-startmenu-list">
-            {APPS.filter(a => a.id !== 'home').map(app => (
+        <div id="desktop-start-menu" ref={menuRef} role="menu" aria-label="Start" className={`win95-startmenu${startBranch ? ' has-submenu' : ''}${compactStartMenu && startBranch ? ' compact-submenu' : ''}`} onKeyDown={menuKeyDown} onMouseDown={e => e.stopPropagation()} onPointerEnter={cancelBranchClose} onPointerLeave={scheduleBranchClose}
+          onPointerOver={e => { if (startBranch && !(e.target as HTMLElement).closest('[data-start-branch], #desktop-start-submenu')) closeStartBranch(); }}
+          onFocusCapture={e => { if (startBranch && !(e.target as HTMLElement).closest('[data-start-branch], #desktop-start-submenu')) closeStartBranch(); }}>
+          <div className="win95-startmenu-spine" inert={compactStartMenu && !!startBranch}><span><b>prashant</b>garg.os</span></div>
+          <div className="win95-startmenu-list" inert={compactStartMenu && !!startBranch}>
+            {APPS.filter(a => a.id !== 'home' && a.id !== 'games' && a.id !== 'accessories' && !a.accessory).map(app => (
               <button type="button" role="menuitem"
                 key={app.id}
                 className="win95-startmenu-item"
@@ -2259,6 +2429,23 @@ export default function InnerDesktop({ onClose, embedded = false, active = true,
                 {app.label}
               </button>
             ))}
+            {(['games', 'accessories'] as const).map(branch => {
+              const app = APP_BY_ID[branch];
+              return <button type="button" role="menuitem" key={branch}
+                data-start-branch={branch}
+                aria-haspopup="menu" aria-expanded={startBranch?.id === branch}
+                className="win95-startmenu-item"
+                onMouseDown={() => playUiClick('down', 'menu')}
+                onMouseUp={() => playUiClick('up', 'menu')}
+                onMouseEnter={e => openStartBranch(branch, e.currentTarget)}
+                onMouseLeave={scheduleBranchClose}
+                aria-controls="desktop-start-submenu"
+                onClick={e => openStartBranch(branch, e.currentTarget, true)}
+              >
+                <div className="win95-startmenu-icon"><app.Icon /></div>
+                {app.label}<span className="win95-startmenu-arrow" aria-hidden="true">▶</span>
+              </button>;
+            })}
             <div className="win95-startmenu-sep" />
             <button type="button" role="menuitem" className="win95-startmenu-item" onClick={openFind}>
               <span className="win95-startmenu-icon" aria-hidden="true">⌕</span>Find…
@@ -2334,6 +2521,17 @@ export default function InnerDesktop({ onClose, embedded = false, active = true,
               Shut Down…
             </button>
           </div>
+          {startBranch && <div id="desktop-start-submenu" role="menu" aria-label={startBranch.id === 'games' ? 'Games' : 'Accessories'} className="win95-start-submenu"
+            style={{ top: compactStartMenu ? 0 : startBranch.top }} onPointerEnter={cancelBranchClose} onPointerLeave={scheduleBranchClose}>
+            <button type="button" role="menuitem" data-submenu-back className="win95-startmenu-item" onClick={() => closeStartBranch(true)}><span className="win95-startmenu-icon" aria-hidden="true">◀</span>Start</button>
+            {startBranch.id === 'games' ? START_GAMES.map(game => <button type="button" role="menuitem" data-submenu-item key={game.id}
+              className="win95-startmenu-item" onClick={() => onStartGame(game.id)}>
+              <span className="win95-startmenu-icon" aria-hidden="true">{game.symbol}</span>{game.label}
+            </button>) : APPS.filter(app => app.accessory).map(app => <button type="button" role="menuitem" data-submenu-item key={app.id}
+              className="win95-startmenu-item" onClick={() => onStartMenuItem(app.id)}>
+              <span className="win95-startmenu-icon"><app.Icon /></span>{app.label}
+            </button>)}
+          </div>}
         </div>
       )}
 
@@ -2468,7 +2666,7 @@ export default function InnerDesktop({ onClose, embedded = false, active = true,
           onClick={onToggleReading}>Desktop</button>}
         {/* system tray: volume slider + icon (click icon = mute toggle) */}
         <VolumeTray />
-        <div className="win95-clock">{time}</div>
+        <button className="win95-clock" title="Open Focus timer" onClick={() => openApp('focus')}>{time}</button>
       </div>
     </div>
   );

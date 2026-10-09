@@ -17,10 +17,15 @@ export function cleanPath(path: string): string {
 export function pathAtLocation(location: Location): string {
   const params = new URLSearchParams(location.search);
   const app = params.get('app');
-  if (app && ['home', 'research', 'talks', 'library', 'now', 'cv', 'games'].includes(app)) {
+  if (app && ['home', 'research', 'talks', 'library', 'now', 'cv', 'games', 'accessories', 'notepad', 'paint', 'calculator', 'focus', 'cabinet', 'ambient', 'sequencer'].includes(app)) {
     if (app === 'home') return '/';
     const paper = params.get('paper');
-    return app === 'research' && paper ? `/research/${encodeURIComponent(paper)}` : `/${app}`;
+    const game = params.get('game');
+    if (app === 'games' && game && ['snake', 'solitaire', 'minesweeper'].includes(game)) return `/games?game=${game}`;
+    return app === 'research' && paper ? `/research/${encodeURIComponent(paper)}`
+      : ['accessories', 'notepad', 'paint', 'calculator', 'focus', 'cabinet', 'ambient', 'sequencer'].includes(app)
+        ? (app === 'accessories' ? '/accessories' : `/accessories/${app}`)
+        : `/${app}`;
   }
   return location.pathname === '/os' || location.pathname === '/os/' ? '/' : cleanPath(location.pathname + location.search + location.hash);
 }
@@ -29,5 +34,7 @@ export function writeLocation(path: string) {
   const host = navigationHost();
   const next = cleanPath(path);
   if (pathAtLocation(host.location) === next) return;
-  host.history.pushState({ ...host.history.state, pgDesktop: true }, '', next);
+  const accessory = next === '/accessories' ? 'accessories' : next.startsWith('/accessories/') ? next.slice('/accessories/'.length) : null;
+  const target = accessory ? `${host.location.pathname.replace(/\/$/, '') === '/os' ? '/os/' : '/'}?app=${encodeURIComponent(accessory)}` : next;
+  host.history.pushState({ ...host.history.state, pgDesktop: true }, '', target);
 }

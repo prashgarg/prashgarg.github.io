@@ -86,9 +86,10 @@ figure enlargement; `scripts/measure-arrival.mjs` compares cold-browser
 JavaScript responses against another build. Its byte counts are uncompressed
 local responses, not production transfer sizes or device-speed benchmarks.
 
-The Games folder loads Snake and draw-one Klondike Solitaire on demand. Snake
-saves its best score; Solitaire saves the current hand and undo history in this
-browser. Both pause when inactive, and use the desktop's sound setting.
+Games and Accessories have cascading Start menus, with a replacement panel on
+small screens. The Games desktop icon still opens its folder. Snake, Klondike
+Solitaire, and Minesweeper load on demand and save their state in this browser.
+Games pause when inactive and use the desktop's sound setting.
 Run `node --experimental-strip-types scripts/test-snake.mjs` and
 `node --experimental-strip-types scripts/test-solitaire.mjs` for the game rules.
 With a built preview running, `node --experimental-strip-types scripts/verify-games.mjs`
@@ -96,6 +97,24 @@ checks desktop and touch controls, legal moves, save recovery, and lazy loading.
 It accepts a base URL as its first argument and saves screenshots in `shots/games-check/`.
 `node scripts/verify-games-monitor.mjs` also checks card dragging in the 3D
 monitor and touch play from the mobile homepage, with the same optional base URL.
+
+Accessories includes Notepad (local notes and text export), Paint (drawing,
+undo, and PNG export), Calculator, Focus timer, Filing cabinet (saved papers and
+BibTeX export), Ambient mixer, and Music sequencer. The room and taskbar clocks
+open Focus timer. Timers continue when closed; sound accessories continue when
+minimized and stop when closed. Notes, drawings, reading lists, and audio
+patterns stay in browser storage. Audio starts only after Play, follows the
+shared room/tray volume controls, and ducks the site soundtrack while playing.
+The sound preference lives in `src/lib/desktopAudio.ts`; transient playback
+ownership is cleared on stop, close, or iframe reload.
+
+Run `node scripts/test-desktop-audio.mjs` and the other `scripts/test-*.mjs`
+accessory checks for their stores and engines. Against a built preview,
+`verify-start-submenus.mjs`, `verify-accessories.mjs`, `verify-focus-timer.mjs`,
+`verify-desktop-tools.mjs`, `verify-accessories-monitor.mjs`, and
+`verify-accessory-audio-monitor.mjs` check keyboard/touch menus, persistence,
+exports, timer completion, and audio in both desktop presentations. Each takes
+the preview URL as its first argument.
 
 On a Dropbox-synced checkout, local builds can occasionally stall. The GitHub
 Pages CI build is the deployment source of truth.
@@ -108,7 +127,9 @@ Pages CI build is the deployment source of truth.
 - `src/components/InnerDesktop.tsx` - Windows 95-style desktop, windows, start
   menu, tray, keyboard shortcuts
 - `src/components/OsPage.tsx` - monitor readiness and keyboard-focus handoff
-- `src/components/games/` - Games folder, Snake and Solitaire UI and rule engines
+- `src/components/games/` - Games folder, Snake, Solitaire, and Minesweeper
+- `src/components/accessories/` - accessory apps, engines, stores, and audio ownership
+- `src/lib/desktopAudio.ts` - shared volume/mute preferences and frame synchronization
 - `src/components/PaperFigures.astro` - original figures and accessible enlargement
 - `src/lib/viewPreference.ts` - saved starting view and cross-tab updates
 - `src/styles/office.css` - room controls and the monitor's glass overlay

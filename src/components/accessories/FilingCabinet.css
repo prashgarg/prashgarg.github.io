@@ -1,0 +1,36 @@
+.filing-cabinet-app { min-width:0; min-height:0; }
+.filing-toolbar { display:flex; flex-wrap:wrap; align-items:center; gap:6px; padding:8px; flex:0 0 auto; }
+.filing-tabs { display:flex; gap:4px; }
+.filing-tab[aria-selected="true"] { box-shadow:inset 1px 1px var(--acc-border), inset -1px -1px var(--acc-hi); font-weight:bold; }
+.filing-search { display:flex; flex:1 1 150px; min-width:110px; }
+.filing-search .accessory-input { width:100%; }
+.filing-export { white-space:nowrap; }
+.filing-alert { flex:0 0 auto; margin:0; padding:4px 8px; color:var(--acc-red); font-size:12px; }
+.filing-list { flex:1 1 auto; min-height:0; overflow:auto; padding:2px 8px 8px; background:var(--acc-paper); }
+.filing-record { display:flex; align-items:flex-start; gap:9px; padding:10px 4px; border-bottom:1px solid color-mix(in srgb, var(--acc-shadow) 60%, transparent); }
+.filing-record-main { min-width:0; flex:1 1 auto; }
+.filing-record h2 { margin:0; font-size:15px; line-height:1.2; font-weight:bold; }
+.filing-record h2 a { color:var(--acc-focus); text-decoration:underline; }
+.filing-meta, .filing-authors { margin:3px 0 0; color:var(--acc-muted); font-size:12px; }
+.filing-authors { font-style:italic; }
+.filing-links { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-top:7px; font-size:12px; }
+.filing-links a { color:var(--acc-focus); text-decoration:underline; }
+.filing-inline-button { padding:0; color:var(--acc-focus); background:transparent; border:0; font:inherit; text-decoration:underline; cursor:pointer; }
+.filing-inline-button:focus-visible, .filing-record h2 a:focus-visible, .filing-links a:focus-visible { outline:2px solid var(--acc-focus); outline-offset:2px; }
+.filing-save { flex:0 0 auto; min-width:58px; }
+.filing-save[aria-pressed="true"] { background:var(--acc-accent); font-weight:bold; box-shadow:inset 1px 1px var(--acc-border),inset -1px -1px var(--acc-hi); }
+.filing-empty { margin:24px 8px; color:var(--acc-muted); }
+.filing-status { display:flex; justify-content:space-between; }
+@media (max-width:520px) {
+  .filing-toolbar { align-items:stretch; }
+  .filing-tabs { flex:1 0 100%; }
+  .filing-tab { flex:1; }
+  .filing-search { flex-basis:calc(100% - 90px); }
+  .filing-export { flex:0 0 auto; }
+  .filing-record { padding:9px 2px; }
+  .filing-record h2 { font-size:14px; }
+  .filing-links { gap:8px; }
+}
+@media (pointer:coarse) {
+  .filing-links a, .filing-inline-button { min-height:44px; padding-block:11px; }
+}

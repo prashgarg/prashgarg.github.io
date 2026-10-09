@@ -1,0 +1,38 @@
+.ambient-mixer-app {
+  min-width: 0;
+  min-height: 0;
+  padding: 12px;
+  gap: 12px;
+  color: var(--acc-ink);
+  background: var(--acc-face);
+}
+
+.ambient-mixer-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 10px;
+  background: var(--acc-paper);
+  border: 2px inset var(--acc-shadow);
+}
+.ambient-mixer-heading span { display: block; }
+.ambient-mixer-volume { flex: 0 0 auto; color: var(--acc-muted); font: 11px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+.ambient-mixer-controls { display: grid; gap: 9px; }
+.ambient-channel { display: grid; gap: 5px; }
+.ambient-channel-label { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; }
+.ambient-channel-label output { color: var(--acc-muted); font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; }
+.ambient-channel input[type='range'] { width: 100%; min-height: 30px; accent-color: var(--acc-accent); cursor: pointer; }
+.ambient-channel input[type='range']:focus-visible { outline: 2px solid var(--acc-focus); outline-offset: 2px; }
+.ambient-mixer-actions { display: flex; flex-wrap: wrap; gap: 7px; margin-top: auto; }
+.ambient-mixer-status { min-height: 25px; }
+
+@media (pointer: coarse) {
+  .ambient-mixer-app { padding: 10px; gap: 10px; }
+  .ambient-channel input[type='range'] { min-height: 44px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ambient-channel input[type='range'] { scroll-behavior: auto; }
+}

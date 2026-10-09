@@ -1,4 +1,4 @@
-import { Component, Suspense, lazy, useRef, useState, type ReactNode } from 'react';
+import { Component, Suspense, lazy, useEffect, useRef, useState, type ReactNode } from 'react';
 import './games.css';
 
 const Snake = lazy(() => import('./Snake'));
@@ -8,6 +8,9 @@ type Game = 'snake' | 'solitaire' | 'minesweeper';
 export interface GameProps {
   active: boolean;
   onSound?: (event: 'move' | 'win' | 'lose') => void;
+  launchGame?: { id: Game; request: number } | null;
+  routeGame?: string | null;
+  onGameChange?: (game: Game | null) => void;
 }
 
 function SnakeIcon() {
@@ -44,18 +47,30 @@ class GameBoundary extends Component<{ children: ReactNode }, { failed: boolean 
   }
 }
 
-export default function GamesApp({ active, onSound }: GameProps) {
+export default function GamesApp({ active, onSound, launchGame, routeGame, onGameChange }: GameProps) {
   const [game, setGame] = useState<Game | null>(null);
   const [opened, setOpened] = useState<Set<Game>>(() => new Set());
   const rootRef = useRef<HTMLDivElement>(null);
-  const choose = (next: Game) => {
+  const select = (next: Game) => {
     setOpened(previous => new Set(previous).add(next));
     setGame(next);
     requestAnimationFrame(() => rootRef.current?.querySelector<HTMLElement>(`[data-game-pane="${next}"]`)?.focus({preventScroll:true}));
   };
+  const choose = (next: Game) => {
+    select(next);
+    onGameChange?.(next);
+  };
+  useEffect(() => {
+    if (routeGame === 'snake' || routeGame === 'solitaire' || routeGame === 'minesweeper') select(routeGame);
+    else if (routeGame === null) setGame(null);
+  }, [routeGame]);
+  useEffect(() => {
+    if (launchGame) select(launchGame.id);
+  }, [launchGame?.request]);
   const back = () => {
     const previous = game;
     setGame(null);
+    onGameChange?.(null);
     requestAnimationFrame(() => rootRef.current?.querySelector<HTMLElement>(`[data-game-option="${previous}"]`)?.focus({preventScroll:true}));
   };
   return <div ref={rootRef} className="pg-games" data-game={game || 'folder'}>

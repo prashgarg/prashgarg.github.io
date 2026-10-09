@@ -1,0 +1,67 @@
+.paint-app {
+  overflow: hidden;
+}
+
+.paint-app:focus-visible { outline: 2px dotted var(--acc-focus); outline-offset: -3px; }
+.paint-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; padding: 7px 8px; }
+.paint-toolbar + .paint-actions { border-top: 1px solid var(--acc-shadow); padding-top: 5px; padding-bottom: 5px; }
+.paint-tool-group, .paint-palette { display: flex; align-items: center; gap: 4px; }
+.paint-tool { min-height: 32px; padding: 4px 8px; }
+.paint-tool.is-selected, .paint-swatch.is-selected { outline: 2px solid var(--acc-focus); outline-offset: 1px; }
+.paint-tool.is-selected { background: var(--acc-accent); box-shadow: inset 1px 1px var(--acc-border), inset -1px -1px var(--acc-hi); }
+.paint-swatch {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 2px solid var(--acc-border);
+  background: var(--swatch);
+  box-shadow: inset 1px 1px var(--acc-hi), inset -1px -1px var(--acc-shadow);
+  cursor: pointer;
+}
+.paint-size-label { display: inline-flex; align-items: center; gap: 5px; margin-left: auto; white-space: nowrap; }
+.paint-size { min-height: 30px; padding: 3px 4px; }
+.paint-actions { justify-content: flex-start; }
+.paint-export { margin-left: auto; }
+.paint-app .paint-swatch:focus-visible { outline: 2px solid var(--acc-focus); outline-offset: 2px; }
+
+.paint-stage {
+  display: grid;
+  align-items: safe center;
+  justify-items: center;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 10px;
+  background: color-mix(in srgb, var(--acc-face) 84%, var(--acc-shadow));
+}
+.paint-canvas-shell {
+  position: relative;
+  width: min(100%, 800px);
+  aspect-ratio: 8 / 5;
+  flex: 0 0 auto;
+  border: 3px solid var(--acc-border);
+  background: #fffdf7;
+  box-shadow: inset 2px 2px var(--acc-shadow), inset -2px -2px var(--acc-hi), 3px 3px 0 color-mix(in srgb, var(--acc-shadow) 70%, transparent);
+}
+.paint-canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: crosshair; }
+.paint-canvas:focus-visible { outline: 2px dotted var(--acc-focus); outline-offset: -4px; }
+.paint-restoring { position: absolute; inset: 0; display: grid; place-items: center; color: var(--acc-muted); background: color-mix(in srgb, var(--acc-paper) 88%, transparent); pointer-events: none; }
+.paint-status { flex: 0 0 auto; margin: 0; padding: 4px 9px; color: var(--acc-muted); border-top: 1px solid var(--acc-shadow); font-size: 12px; }
+
+@media (pointer: coarse) {
+  .paint-app .paint-tool { min-height: 44px; }
+  .paint-swatch { width: 32px; height: 32px; }
+  .paint-size { min-height: 44px; }
+}
+@media (max-width: 520px) {
+  .paint-toolbar { gap: 5px; padding: 6px; }
+  .paint-tool { padding-inline: 7px; }
+  .paint-palette { order: 3; flex-basis: 100%; justify-content: flex-start; }
+  .paint-size-label { margin-left: 0; }
+  .paint-actions { padding-inline: 6px; }
+  .paint-export { margin-left: auto; }
+  .paint-stage { padding: 7px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .paint-app *, .paint-app *::before, .paint-app *::after { transition: none !important; animation: none !important; }
+}

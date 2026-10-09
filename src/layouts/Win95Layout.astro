@@ -526,6 +526,14 @@ const navItems = [
           return _ac;
         }
         function playClick(type) {
+          var volume = 0.6;
+          try {
+            var raw = localStorage.getItem('pg_volume_v1');
+            var saved = raw === null || raw === '' ? 0.6 : Number(raw);
+            volume = isFinite(saved) ? Math.max(0, Math.min(1, saved)) : 0.6;
+            if (sessionStorage.getItem('pg_muted') === '1' || JSON.parse(localStorage.getItem('pg_bios_v1') || '{}').sounds === false) volume = 0;
+          } catch(e) {}
+          if (volume <= 0.001) return;
           var ac = getAc(); if (!ac) return;
           var now   = ac.currentTime;
           var durS  = type === 'down' ? 0.022 : 0.015;
@@ -537,7 +545,7 @@ const navItems = [
           for (var i = 0; i < n; i++) d[i] = (Math.random()*2-1) * Math.exp(-i/(n*0.25));
           var src = ac.createBufferSource(); src.buffer = buf;
           var bpf = ac.createBiquadFilter(); bpf.type = 'bandpass'; bpf.frequency.value = freq; bpf.Q.value = 0.7;
-          var g   = ac.createGain(); g.gain.value = gain;
+          var g   = ac.createGain(); g.gain.value = gain * volume;
           src.connect(bpf); bpf.connect(g); g.connect(ac.destination);
           src.start(now);
         }
@@ -576,6 +584,7 @@ const navItems = [
         // window.top it's cross-origin = definitely embedded → stay silent.)
         try { if (window.self !== window.top) return; } catch (e) { return; }
 
+        var LS_VOLUME = 'pg_volume_v1';
         var SS_MUTED = 'pg_muted';
         var muted = false;
         try { muted = sessionStorage.getItem(SS_MUTED) === '1'; } catch(e) {}
@@ -583,6 +592,19 @@ const navItems = [
         var volOn  = document.getElementById('w95-vol-on');
         var volOff = document.getElementById('w95-vol-off');
 
+        function readVolume() {
+          var raw = null;
+          try { raw = localStorage.getItem(LS_VOLUME); } catch(e) {}
+          var value = raw === null || raw === '' ? 0.6 : Number(raw);
+          return isFinite(value) ? Math.max(0, Math.min(1, value)) : 0.6;
+        }
+        function syncState() {
+          try { muted = sessionStorage.getItem(SS_MUTED) === '1' || readVolume() <= 0.001; } catch(e) {}
+          var effective = muted ? 0 : readVolume();
+          audio.volume = 0.32 * effective;
+          audio.muted = false;
+          updateIcon();
+        }
         function updateIcon() {
           if (volOn)  volOn.style.display  = muted ? 'none'  : 'block';
           if (volOff) volOff.style.display = muted ? 'block' : 'none';
@@ -591,8 +613,7 @@ const navItems = [
 
         var audio = new Audio('/audio/ambient.mp3');
         audio.loop   = true;
-        audio.volume = 0.32;
-        audio.muted  = muted;
+        syncState();
 
         function tryPlay() {
           audio.play().catch(function() {
@@ -611,11 +632,22 @@ const navItems = [
           // can toggle mute too — WCAG 1.4.2 / keyboard operability.
           btn.addEventListener('click', function() {
             muted = !muted;
-            audio.muted = muted;
+            if (!muted && readVolume() <= 0.001) {
+              try {
+                var restored = Number(localStorage.getItem('pg_last_nonzero_volume_v1'));
+                localStorage.setItem(LS_VOLUME, String(isFinite(restored) && restored > 0 ? Math.min(1, restored) : 0.6));
+              } catch(e) {}
+            }
             try { sessionStorage.setItem(SS_MUTED, muted ? '1' : '0'); } catch(e) {}
-            updateIcon();
+            syncState();
+            try { window.dispatchEvent(new CustomEvent('pg-room-mute')); } catch(e) {}
           });
         }
+        window.addEventListener('pg-volume', syncState);
+        window.addEventListener('pg-room-mute', syncState);
+        window.addEventListener('storage', function(e) {
+          if (e.key === LS_VOLUME || e.key === SS_MUTED) syncState();
+        });
       })();
     </script>
 

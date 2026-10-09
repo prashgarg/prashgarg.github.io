@@ -1,0 +1,147 @@
+.notepad-app {
+  min-width: 0;
+  color: var(--acc-ink);
+  background: var(--acc-face);
+}
+
+.notepad-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 7px;
+  border-bottom: 1px solid var(--acc-shadow);
+}
+
+.notepad-filename {
+  display: flex;
+  flex: 1 1 120px;
+  min-width: 80px;
+}
+
+.notepad-filename .accessory-input {
+  width: 100%;
+  min-width: 0;
+}
+
+.notepad-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 34px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.notepad-wrap input {
+  accent-color: var(--acc-accent);
+}
+
+.notepad-confirm {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  padding: 6px 8px;
+  color: var(--acc-ink);
+  background: var(--acc-accent);
+  border-bottom: 1px solid var(--acc-shadow);
+}
+
+.notepad-confirm span {
+  margin-right: auto;
+}
+
+.notepad-editor {
+  display: block;
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
+  resize: none;
+  padding: 12px;
+  border: 0;
+  outline: 0;
+  color: var(--acc-ink);
+  background: var(--acc-paper);
+  font: 16px/1.5 MSSerif, Georgia, serif;
+  white-space: pre-wrap;
+  overflow: auto;
+}
+
+.notepad-editor:focus {
+  box-shadow: inset 0 0 0 2px var(--acc-focus);
+}
+
+.notepad-editor-nowrap {
+  white-space: pre;
+  overflow-x: auto;
+}
+
+.notepad-editor::placeholder {
+  color: var(--acc-muted);
+  opacity: .75;
+}
+
+.notepad-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 29px;
+  padding: 4px 8px;
+  border-top: 1px solid var(--acc-shadow);
+  font-size: 12px;
+}
+
+.notepad-help {
+  color: var(--acc-muted);
+  text-align: right;
+}
+
+@media (max-width: 420px) {
+  .notepad-toolbar {
+    gap: 5px;
+    padding: 5px;
+  }
+
+  .notepad-toolbar .accessory-button {
+    min-height: 38px;
+    padding-inline: 8px;
+  }
+
+  .notepad-filename {
+    order: 3;
+    flex-basis: calc(100% - 50px);
+  }
+
+  .notepad-wrap {
+    order: 4;
+    min-height: 38px;
+  }
+
+  .notepad-editor {
+    padding: 9px;
+    font-size: 15px;
+  }
+
+  .notepad-footer {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 1px;
+  }
+
+  .notepad-help {
+    text-align: left;
+  }
+}
+
+@media (pointer: coarse) {
+  .notepad-wrap {
+    min-height: 44px;
+  }
+
+  .notepad-wrap input {
+    width: 18px;
+    height: 18px;
+  }
+}

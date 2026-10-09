@@ -20,6 +20,7 @@ import InnerDesktop from './InnerDesktop';
 import OfficeInfo from './OfficeInfo';
 import '../styles/office.css';
 import { MONITOR_VIEWPORT } from '../lib/monitor';
+import { readDesktopAudio, subscribeDesktopAudio, toggleDesktopMuted } from '../lib/desktopAudio';
 
 /* ---------- shared UI audio helpers ---------------------------------- */
 // Mechanical click + keyboard typing sounds, synthesised inline so we
@@ -941,9 +942,16 @@ function CameraRig({ phase, onArrived, onEntryDone, reducedMotion }: {
 }
 
 /* ---------- wall clock ----------------------------------------------- */
-function WallClock({ pos }: { pos: [number, number, number] }) {
+function WallClock({ pos, onActivate }: {
+  pos: [number, number, number];
+  onActivate?: () => void;
+}) {
   const hrRef  = useRef<THREE.Mesh>(null);
   const minRef = useRef<THREE.Mesh>(null);
+  const [hovered, setHovered] = useState(false);
+  useEffect(() => () => {
+    if (typeof document !== 'undefined' && document.body.style.cursor === 'pointer') document.body.style.cursor = '';
+  }, []);
   useFrame(() => {
     const now = new Date();
     const hr  = now.getHours() % 12 + now.getMinutes() / 60;
@@ -951,6 +959,11 @@ function WallClock({ pos }: { pos: [number, number, number] }) {
     if (hrRef.current)  hrRef.current.rotation.z  = -(hr / 12) * Math.PI * 2;
     if (minRef.current) minRef.current.rotation.z = -(mn / 60) * Math.PI * 2;
   });
+  const interactive = Boolean(onActivate);
+  const setPointer = (value: boolean) => {
+    setHovered(value);
+    if (typeof document !== 'undefined') document.body.style.cursor = value ? 'pointer' : '';
+  };
   return (
     <group position={pos} rotation={[0, -Math.PI / 2, 0]}>
       {/* face — bigger (radius 0.40 → 0.55) so it reads from the
@@ -989,6 +1002,22 @@ function WallClock({ pos }: { pos: [number, number, number] }) {
         <circleGeometry args={[0.030, 16]} />
         <meshStandardMaterial color="#1A1A1A" />
       </mesh>
+      {interactive && <>
+        <mesh
+          position={[0, 0, 0.035]}
+          onPointerOver={event => { event.stopPropagation(); setPointer(true); }}
+          onPointerOut={event => { event.stopPropagation(); setPointer(false); }}
+          onPointerDown={event => event.stopPropagation()}
+          onClick={event => { event.stopPropagation(); onActivate?.(); }}
+        >
+          <circleGeometry args={[0.61, 48]} />
+          <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+        </mesh>
+        {hovered && <Html position={[0, -0.72, 0.04]} center distanceFactor={7}
+          style={{ pointerEvents: 'none', whiteSpace: 'nowrap', padding: '3px 6px', border: '1px solid rgba(20,17,13,.62)', background: 'rgba(232,238,223,.92)', color: '#14110D', font: '11px ui-monospace, SFMono-Regular, Menlo, monospace', letterSpacing: '.02em' }}>
+          Focus timer
+        </Html>}
+      </>}
     </group>
   );
 }
@@ -2502,11 +2531,15 @@ function MonitorDesktop({ phase, reading, compact, onEnter, onReady, onToggleRea
   );
 }
 
-function OfficeScene({ phase, reading, compact, onMonitorClick, onDesktopReady, onToggleReading, externalDesktop }: {
+function OfficeScene({ phase, reading, compact, onMonitorClick, onDesktopReady, onToggleReading, onClockActivate, externalDesktop }: {
   phase: Phase; reading: boolean; compact: boolean;
   onMonitorClick: () => void; onDesktopReady: () => void; onToggleReading: () => void;
+  onClockActivate: () => void;
   externalDesktop?: boolean;
 }) {
+  useEffect(() => {
+    if (phase !== 'idle' && typeof document !== 'undefined') document.body.style.cursor = '';
+  }, [phase]);
   // Engraved nameplate texture (real text on the chrome face)
   const nameTex = useMemo(() => getEngravedTex('P. GARG'), []);
   const kierTex = useMemo(() => getKierPortraitTex(), []);
@@ -2795,13 +2828,13 @@ function OfficeScene({ phase, reading, compact, onMonitorClick, onDesktopReady, 
       {/* ── WALL CLOCKS — one on each side wall + one on back wall
           (the back-wall clock is the one actually visible from the
           idle camera given the room is wider than the camera FOV). */}
-      <WallClock pos={[ROOM_W / 2 - 0.12, 2.8, 3]} />
-      <WallClock pos={[-ROOM_W / 2 + 0.12, 2.8, -2]} />
+      <WallClock pos={[ROOM_W / 2 - 0.12, 2.8, 3]} onActivate={phase === 'idle' ? onClockActivate : undefined} />
+      <WallClock pos={[-ROOM_W / 2 + 0.12, 2.8, -2]} onActivate={phase === 'idle' ? onClockActivate : undefined} />
       {/* back-wall clock — right of centre, ~3m up. WallClock has a
           built-in -π/2 y-rotation (for side walls), so counter-rotate
           by +π/2 to face +z (toward camera). */}
       <group position={[7.5, 3.0, -ROOM_D / 2 + 0.06]} rotation-y={Math.PI / 2}>
-        <WallClock pos={[0, 0, 0]} />
+        <WallClock pos={[0, 0, 0]} onActivate={phase === 'idle' ? onClockActivate : undefined} />
       </group>
 
       {/* ── LUMON MOTTO BANNER — wide cream sign with dark "text"
@@ -3271,7 +3304,13 @@ function GrainOverlay() {
 
 /* ---------- ambient audio -------------------------------------------- */
 const AMBIENT_VOL = 0.32;
-function StudyAudio({ active, muted, focusMode }: { active: boolean; muted: boolean; focusMode: boolean }) {
+function accessoryAudioIsPlaying(): boolean {
+  try {
+    const sources = JSON.parse(document.documentElement.dataset.pgAccessoryAudio || '[]');
+    return Array.isArray(sources) && sources.length > 0;
+  } catch { return false; }
+}
+function StudyAudio({ active, focusMode }: { active: boolean; focusMode: boolean }) {
   const ctxRef  = useRef<AudioContext | null>(null);
   const gainRef = useRef<GainNode | null>(null);
   // BiquadFilterNode applied between master gain and ac.destination.
@@ -3281,18 +3320,29 @@ function StudyAudio({ active, muted, focusMode }: { active: boolean; muted: bool
   // study site. When focus is off it sits at 18 kHz (effectively flat).
   const filterRef = useRef<BiquadFilterNode | null>(null);
   const startedRef = useRef(false);
+  const [accessoryPlaying, setAccessoryPlaying] = useState(accessoryAudioIsPlaying);
+  const settingsRef = useRef({ active, effectiveVol: 0.6, accessoryPlaying, focusMode });
+  useEffect(() => {
+    const update = () => setAccessoryPlaying(accessoryAudioIsPlaying());
+    window.addEventListener('pg-accessory-audio', update);
+    return () => window.removeEventListener('pg-accessory-audio', update);
+  }, []);
   useEffect(() => {
     const start = async () => {
       if (startedRef.current) return; startedRef.current = true;
       const ac = new AudioContext(); ctxRef.current = ac;
       const master = ac.createGain(); gainRef.current = master;
-      master.gain.setValueAtTime(0, ac.currentTime);
+      const settings = settingsRef.current;
+      master.gain.setValueAtTime(
+        settings.active && !settings.accessoryPlaying ? AMBIENT_VOL * settings.effectiveVol : 0,
+        ac.currentTime,
+      );
       // Insert focus-mode low-pass filter between master gain and
       // destination. Starts wide-open (18 kHz) so it's effectively flat;
       // the phase-change useEffect lerps its cutoff down/up.
       const focusFilter = ac.createBiquadFilter();
       focusFilter.type = 'lowpass';
-      focusFilter.frequency.setValueAtTime(18000, ac.currentTime);
+      focusFilter.frequency.setValueAtTime(settings.focusMode ? 700 : 18000, ac.currentTime);
       focusFilter.Q.setValueAtTime(0.7, ac.currentTime);
       filterRef.current = focusFilter;
       master.connect(focusFilter);
@@ -3346,29 +3396,17 @@ function StudyAudio({ active, muted, focusMode }: { active: boolean; muted: bool
   // Read the shared volume (0..1) from localStorage and update it on
   // `pg-volume` events fired by the InnerDesktop volume slider. Mute
   // toggle still respected on top (mute = effective volume 0).
-  const [vol, setVol] = useState<number>(() => {
-    if (typeof window === 'undefined') return 0.6;
-    try { const v = parseFloat(localStorage.getItem('pg_volume_v1') || '0.6'); return isNaN(v) ? 0.6 : Math.max(0, Math.min(1, v)); } catch { return 0.6; }
-  });
+  const [effectiveVol, setEffectiveVol] = useState<number>(() => readDesktopAudio().effectiveVolume);
+  settingsRef.current = { active, effectiveVol, accessoryPlaying, focusMode };
   useEffect(() => {
-    const apply = (v: number) => setVol(Math.max(0, Math.min(1, isNaN(v) ? 0.6 : v)));
-    const onVol = (e: any) => apply(typeof e.detail === 'number' ? e.detail : parseFloat(localStorage.getItem('pg_volume_v1') || '0.6'));
-    // The volume slider lives in the composited /os iframe; its `pg-volume`
-    // CustomEvent does NOT cross frames, so the room soundtrack never heard it
-    // (the slider appeared dead). The cross-document `storage` event DOES fire
-    // here when the same-origin iframe writes localStorage — that's what makes
-    // the slider actually adjust the room's soundtrack volume.
-    const onStorage = (e: StorageEvent) => { if (e.key === 'pg_volume_v1') apply(parseFloat(e.newValue || '0.6')); };
-    window.addEventListener('pg-volume', onVol);
-    window.addEventListener('storage', onStorage);
-    return () => { window.removeEventListener('pg-volume', onVol); window.removeEventListener('storage', onStorage); };
+    return subscribeDesktopAudio(state => setEffectiveVol(state.effectiveVolume));
   }, []);
   useEffect(() => {
     const g = gainRef.current, ac = ctxRef.current; if (!g || !ac) return;
-    const target = (active && !muted) ? (AMBIENT_VOL * vol) : 0;
+    const target = active && !accessoryPlaying ? (AMBIENT_VOL * effectiveVol) : 0;
     g.gain.cancelScheduledValues(ac.currentTime);
     g.gain.linearRampToValueAtTime(target, ac.currentTime + 1.2);
-  }, [active, muted, vol]);
+  }, [active, effectiveVol, accessoryPlaying]);
   // Focus-mode filter: slide the low-pass cutoff down when inside the
   // monitor (700 Hz — kills crisp highs, leaves a muffled bass-heavy
   // bed), back up to 18 kHz when out. Exponential ramp over 1.4 s so
@@ -3415,7 +3453,6 @@ function ExitHint({ onExit }: { onExit: () => void }) {
    TOP-LEVEL COMPONENT
    ================================================================ */
 const SS_PHASE = 'pg_phase';
-const SS_MUTED = 'pg_muted';
 const READING_QUERY = '(max-width: 900px), (max-height: 600px)';
 
 export interface OfficeProps {
@@ -3525,6 +3562,30 @@ export default function Office({ externalDesktop = false, startInRoom = false, o
 
   const handleEntryDone    = () => setPhase('idle');
   const handleClick        = () => { if (phase === 'idle') setPhase(reducedMotion || reading ? 'desktop' : 'dollying'); };
+  const focusTimerRequested = useRef(false);
+  const handleClockActivate = useCallback(() => {
+    if (phase !== 'idle') return;
+    focusTimerRequested.current = true;
+    handleClick();
+  }, [phase, reading, reducedMotion]);
+  useEffect(() => {
+    if (!focusTimerRequested.current || phase !== 'desktop' || !monitorReady) return;
+    let cancelled = false;
+    const flush = () => {
+      if (cancelled || !focusTimerRequested.current) return;
+      if (externalDesktop || !COMPOSITE) {
+        window.dispatchEvent(new CustomEvent('pg-open-accessory', { detail: { id: 'focus' } }));
+        focusTimerRequested.current = false;
+        return;
+      }
+      const frame = document.querySelector<HTMLIFrameElement>('iframe[title="prashantgarg.os"]');
+      if (!frame?.contentWindow) return;
+      frame.contentWindow.postMessage({ type: 'pg-open-accessory', id: 'focus' }, window.location.origin);
+      focusTimerRequested.current = false;
+    };
+    const frame = window.requestAnimationFrame(flush);
+    return () => { cancelled = true; window.cancelAnimationFrame(frame); };
+  }, [externalDesktop, monitorReady, phase]);
   const showReading = () => { setPreferReading(true); setPhase('desktop'); };
   const handleArrived      = () => setPhase('desktop');
   // Persist 'desktop' for ALL visitors (was touch-only) so that returning
@@ -3593,12 +3654,11 @@ export default function Office({ externalDesktop = false, startInRoom = false, o
   // while the fullscreen desktop covers everything.
   const mount3d = !isTouch || !(phase === 'splash' || phase === 'desktop');
 
-  const [muted, setMuted] = useState<boolean>(() => {
-    try { return sessionStorage.getItem(SS_MUTED) === '1'; } catch { return false; }
-  });
-  useEffect(() => {
-    try { sessionStorage.setItem(SS_MUTED, muted ? '1' : '0'); } catch { /* */ }
-  }, [muted]);
+  const [muted, setMuted] = useState<boolean>(() => readDesktopAudio().muted);
+  useEffect(() => subscribeDesktopAudio(state => setMuted(state.muted)), []);
+  const handleMuteToggle = useCallback(() => {
+    setMuted(toggleDesktopMuted().muted);
+  }, []);
 
   // audio plays during every visible phase — the 3D room stays on screen
   // even when the embedded InnerDesktop is open, so music continues
@@ -3685,7 +3745,8 @@ export default function Office({ externalDesktop = false, startInRoom = false, o
           <CameraRig phase={phase} onArrived={handleArrived} onEntryDone={handleEntryDone} reducedMotion={reducedMotion} />
           <ExternalDesktopProjection enabled={externalDesktop} phase={phase} />
           <OfficeScene phase={phase} reading={reading} compact={compact} externalDesktop={externalDesktop}
-            onMonitorClick={handleClick} onDesktopReady={handleDesktopReady} onToggleReading={toggleReading} />
+            onMonitorClick={handleClick} onDesktopReady={handleDesktopReady} onToggleReading={toggleReading}
+            onClockActivate={handleClockActivate} />
           {/* Post-processing: Bloom only. N8AO (screen-space AO) was the
               source of the floor "flicker in various places" — as the camera
               parallaxes/breathes, the denoised SSAO samples crawl across the
@@ -3707,11 +3768,10 @@ export default function Office({ externalDesktop = false, startInRoom = false, o
       {phase !== 'splash' && phase !== 'desktop' && mount3d && <GrainOverlay />}
       <StudyAudio
         active={audioActive}
-        muted={muted}
         focusMode={phase === 'desktop'}
       />
       {phase !== 'splash' && !(phase === 'desktop' && reading) && (
-        <HudOverlay muted={muted} onMuteToggle={() => setMuted(m => !m)} focused={phase === 'desktop'} />
+        <HudOverlay muted={muted} onMuteToggle={handleMuteToggle} focused={phase === 'desktop'} />
       )}
       {COMPOSITE && phase === 'desktop' && !reading && <ExitHint onExit={handleDesktopClose} />}
       {phase === 'idle' && <TapHint onEnter={handleClick} />}
