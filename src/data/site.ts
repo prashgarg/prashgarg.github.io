@@ -305,14 +305,15 @@ export const papers: Paper[] = [
   {
     slug: 'health-shocks-research',
     // DRAFT plain-English summary (G31) — flagged for user review
-    tldr: 'Does medical research follow the diseases that actually burden people? Linking publication output to disease burden across 204 countries over three decades, we find research now responds faster to outbreaks than it used to — but responsiveness remains highly uneven across places, and philanthropic and government funding account for much of the improvement in lower-income settings.',
-    title: '(How) Do Health Shocks Reallocate Research Direction?',
-    status: 'working',
+    tldr: 'Does medical research follow changing health needs? Linking publication output to disease burden across 204 countries and territories, we find that research has become more responsive but large gaps between places remain. Outbreak alerts are followed by research surges concentrated after 2000, and philanthropic and corporate funders support different disease portfolios.',
+    title: 'Health shocks reallocate the direction of medical research',
+    status: 'rr',
+    venue: 'Nature Health',
     coauthors: ['Hongyu Zhou', 'Thiemo Fetzer'],
     blurb:
-      "We examine whether research systems reallocate scientific effort as health needs change. We assemble a global disease-location panel for 204 countries and territories (1990-2021) by linking disease-specific publication output to disease burden in the same place and year. Using large language models, we extract diseases from article text, map them into a standardized disease classification, and classify research funders by type. Empirically, we estimate how publication output co-moves with disease burden within countries and diseases over time, and we use event-study difference-in-differences designs that exploit plausibly exogenous variation from the timing of outbreak alerts. We find that responsiveness to endemic burden has increased over time but remains highly uneven across locations; outbreak alerts trigger rapid, statistically significant research surges that have strengthened in recent years; and funding composition is strongly associated with adjustment dynamics, with philanthropic and government-supported research contributing disproportionately to responsiveness growth in lower-income settings.",
+      "We examine whether research systems reallocate scientific effort as health needs change. We assemble a global disease–location panel for 204 countries and territories (1990–2021) by linking disease-specific publication output to disease burden in the same place and year. Using large language models, we extract diseases from article text, map them into a disease classification, and classify research funders by type. We estimate how publication output co-moves with disease burden within countries and diseases over time, and use event-study designs around the timing of outbreak alerts, including models with alerted-cell pre-outbreak trends. We find that responsiveness to endemic burden has increased over time but remains highly uneven across locations; outbreak alerts are followed by rapid, statistically significant research surges concentrated after 2000; and funder portfolios differ sharply in the diseases they support, with philanthropic funders tilted toward several diseases concentrated in lower-income settings and corporate funders tilted toward major non-communicable diseases.",
     links: [
-      { label: 'Paper (CEPR DP21230)', url: 'https://cepr.org/publications/dp21230' },
+      { label: 'Preprint', url: 'https://www.researchsquare.com/article/rs-10794773/v1' },
     ],
   },
   {

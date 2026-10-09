@@ -96,12 +96,11 @@ export const verifiedCitations: Record<string, VerifiedCitation> = {
     sourceUrl: 'https://cepr.org/publications/dp19708',
   },
   'health-shocks-research': {
-    kind: 'working-paper',
-    authors: ['Zhou, Hongyu', 'Garg, Prashant', 'Fetzer, Thiemo'],
+    kind: 'preprint',
+    authors: ['Garg, Prashant', 'Zhou, Hongyu', 'Fetzer, Thiemo'],
     year: 2026,
-    institution: 'CEPR',
-    workingPaperNumber: '21230',
-    sourceUrl: 'https://cepr.org/publications/dp21230',
+    doi: '10.21203/rs.3.rs-10794773/v1',
+    sourceUrl: 'https://www.researchsquare.com/article/rs-10794773/v1',
   },
   'platform-migration': {
     kind: 'preprint',
