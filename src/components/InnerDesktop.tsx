@@ -1502,6 +1502,7 @@ export default function InnerDesktop({ onClose, embedded = false, active = true,
   const [startBranch, setStartBranch] = useState<{ id: 'games' | 'accessories'; top: number } | null>(null);
   const branchCloseTimer = useRef<number | null>(null);
   const branchSwitchTimer = useRef<number | null>(null);
+  const branchSwitchTarget = useRef<{ id: 'games' | 'accessories'; button: HTMLButtonElement } | null>(null);
   const pendingBranchFocus = useRef<'games' | 'accessories' | null>(null);
   const pendingParentFocus = useRef<'games' | 'accessories' | null>(null);
   const [gameLaunch, setGameLaunch] = useState<{ id: GameId; request: number } | null>(null);
@@ -1530,6 +1531,7 @@ export default function InnerDesktop({ onClose, embedded = false, active = true,
   const cancelBranchSwitch = useCallback(() => {
     if (branchSwitchTimer.current !== null) window.clearTimeout(branchSwitchTimer.current);
     branchSwitchTimer.current = null;
+    branchSwitchTarget.current = null;
   }, []);
   const closeStartBranch = useCallback((focusParent = false) => {
     cancelBranchClose();
@@ -1558,9 +1560,19 @@ export default function InnerDesktop({ onClose, embedded = false, active = true,
     cancelBranchSwitch();
     // Crossing the neighbouring row on the way to a child is not a switch.
     if (startBranch && startBranch.id !== id) {
+      branchSwitchTarget.current = { id, button };
       branchSwitchTimer.current = window.setTimeout(() => openStartBranch(id, button), 500);
     } else openStartBranch(id, button);
   }, [cancelBranchClose, cancelBranchSwitch, openStartBranch, startBranch?.id]);
+  const trackStartPointer = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    const target = branchSwitchTarget.current;
+    // Keep the current fly-out while the pointer is travelling right into it.
+    // A pause on the neighbouring parent still opens that parent's menu.
+    if (target && event.movementX > 0) {
+      if (branchSwitchTimer.current !== null) window.clearTimeout(branchSwitchTimer.current);
+      branchSwitchTimer.current = window.setTimeout(() => openStartBranch(target.id, target.button), 900);
+    }
+  }, [openStartBranch]);
   useLayoutEffect(() => {
     const child = pendingBranchFocus.current;
     if (child && startBranch?.id === child) {
@@ -2429,7 +2441,7 @@ export default function InnerDesktop({ onClose, embedded = false, active = true,
       {/* ───────────── Start menu ───────────── */}
       {startOpen && (
         <div id="desktop-start-menu" ref={menuRef} role="menu" aria-label="Start" className={`win95-startmenu${startBranch ? ' has-submenu' : ''}${compactStartMenu && startBranch ? ' compact-submenu' : ''}`} onKeyDown={menuKeyDown} onMouseDown={e => e.stopPropagation()} onPointerEnter={cancelBranchClose} onPointerLeave={scheduleBranchClose}
-          onPointerOver={e => { if (startBranch && !(e.target as HTMLElement).closest('[data-start-branch], #desktop-start-submenu') && (e.target as HTMLElement).closest('[role="menuitem"], [role="menuitemcheckbox"]')) scheduleBranchClose(); }}
+          onPointerMove={trackStartPointer}
           onFocusCapture={e => { if (startBranch && !(e.target as HTMLElement).closest('[data-start-branch], #desktop-start-submenu')) closeStartBranch(); }}>
           <div className="win95-startmenu-spine" inert={compactStartMenu && !!startBranch}><span><b>prashant</b>garg.os</span></div>
           <div className="win95-startmenu-list" inert={compactStartMenu && !!startBranch}>

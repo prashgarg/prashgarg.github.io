@@ -80,7 +80,7 @@ const slowDiagonal = async (page, parent, item) => {
   await page.mouse.move(start.x, start.y);
   for (let step = 1; step <= 30; step += 1) {
     await page.mouse.move(start.x + (end.x - start.x) * step / 30, start.y + (end.y - start.y) * step / 30);
-    await page.waitForTimeout(30);
+    await page.waitForTimeout(200);
   }
   await page.waitForTimeout(850);
   assert(await item.isVisible(), 'submenu should remain open after a slow diagonal crossing and a pause');
@@ -112,6 +112,11 @@ try {
   for (const label of games) await menuitem(gamesMenu, label).waitFor();
   await slowDiagonal(page, gamesParent, menuitem(gamesMenu, 'Minesweeper'));
   await screenshot(page, 'desktop-games-flyout');
+  // Deliberately resting on another parent must still switch branches.
+  await menuitem(start(page), 'Accessories').hover();
+  await branch(page, 'Accessories').waitFor();
+  await gamesParent.hover();
+  await gamesMenu.waitFor();
 
   // A child game is a direct launch into the selected pane, rather than a
   // second click through a folder window.
