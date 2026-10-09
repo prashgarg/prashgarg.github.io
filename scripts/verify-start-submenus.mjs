@@ -70,6 +70,21 @@ const assertFocused = async item => {
     `expected ${await item.innerText()} to have keyboard focus`,
   );
 };
+const slowDiagonal = async (page, parent, item) => {
+  await parent.hover();
+  const from = await parent.boundingBox();
+  const to = await item.boundingBox();
+  assert(from && to);
+  const start = { x: from.x + from.width / 2, y: from.y + from.height / 2 };
+  const end = { x: to.x + to.width / 2, y: to.y + to.height / 2 };
+  await page.mouse.move(start.x, start.y);
+  for (let step = 1; step <= 30; step += 1) {
+    await page.mouse.move(start.x + (end.x - start.x) * step / 30, start.y + (end.y - start.y) * step / 30);
+    await page.waitForTimeout(30);
+  }
+  await page.waitForTimeout(850);
+  assert(await item.isVisible(), 'submenu should remain open after a slow diagonal crossing and a pause');
+};
 
 try {
   // Desktop uses a genuine right-hand fly-out. Hovering the parent should not
@@ -95,6 +110,7 @@ try {
   await page.mouse.move(childBox.x + 4, childBox.y + childBox.height / 2, { steps: 12 });
   await gamesMenu.waitFor();
   for (const label of games) await menuitem(gamesMenu, label).waitFor();
+  await slowDiagonal(page, gamesParent, menuitem(gamesMenu, 'Minesweeper'));
   await screenshot(page, 'desktop-games-flyout');
 
   // A child game is a direct launch into the selected pane, rather than a
@@ -112,6 +128,16 @@ try {
   const accessoriesMenu = branch(page, 'Accessories');
   await accessoriesMenu.waitFor();
   for (const label of accessories) await menuitem(accessoriesMenu, label).waitFor();
+  await slowDiagonal(page, accessoriesParent, menuitem(accessoriesMenu, 'Music sequencer'));
+  // A brief excursion outside the child should also be forgiving.
+  const farItem = menuitem(accessoriesMenu, 'Music sequencer');
+  const farBox = await farItem.boundingBox();
+  const menuBox = await accessoriesMenu.boundingBox();
+  await page.mouse.move(menuBox.x + menuBox.width + 20, farBox.y + farBox.height / 2);
+  await page.waitForTimeout(300);
+  await farItem.hover();
+  await page.waitForTimeout(850);
+  assert(await farItem.isVisible(), 're-entering within the grace period should cancel closure');
   await screenshot(page, 'desktop-accessories-flyout');
   for (const label of accessories) {
     await menuitem(accessoriesMenu, label).click();
@@ -131,7 +157,7 @@ try {
   assert.equal(await start(page).count(), 0, 'clicking outside should close the root Start menu');
   assert.equal(await branch(page, 'Accessories').count(), 0, 'clicking outside should close the branch menu');
   await desktop.close();
-  console.log('PASS desktop Games/Accessories fly-outs, direct launches, pointer crossing, and outside close');
+  console.log('PASS desktop fly-outs, slow diagonal crossings, hover pauses, re-entry, direct launches, and outside close');
 
   // Keyboard contract: Right enters a branch, Down/Up stay within it, Left
   // returns to its parent, and Escape first closes the branch then the root.
@@ -233,6 +259,7 @@ try {
     await menuitem(mGames, 'Minesweeper').tap();
     await m.locator('[data-app-window="games"]').waitFor();
     await m.locator('[data-game="minesweeper"]').waitFor();
+    await m.getByRole('grid', { name: /Minesweeper board/ }).waitFor();
     assert.equal(await m.locator('.games-folder').count(), 0);
     await screenshot(m, `mobile-${width}-minesweeper`);
     await mobile.close();

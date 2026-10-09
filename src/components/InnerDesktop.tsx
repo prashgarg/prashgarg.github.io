@@ -1501,6 +1501,7 @@ export default function InnerDesktop({ onClose, embedded = false, active = true,
   const compactStartMenu = containerSize.w <= 480;
   const [startBranch, setStartBranch] = useState<{ id: 'games' | 'accessories'; top: number } | null>(null);
   const branchCloseTimer = useRef<number | null>(null);
+  const branchSwitchTimer = useRef<number | null>(null);
   const pendingBranchFocus = useRef<'games' | 'accessories' | null>(null);
   const pendingParentFocus = useRef<'games' | 'accessories' | null>(null);
   const [gameLaunch, setGameLaunch] = useState<{ id: GameId; request: number } | null>(null);
@@ -1526,25 +1527,40 @@ export default function InnerDesktop({ onClose, embedded = false, active = true,
     if (branchCloseTimer.current !== null) window.clearTimeout(branchCloseTimer.current);
     branchCloseTimer.current = null;
   }, []);
+  const cancelBranchSwitch = useCallback(() => {
+    if (branchSwitchTimer.current !== null) window.clearTimeout(branchSwitchTimer.current);
+    branchSwitchTimer.current = null;
+  }, []);
   const closeStartBranch = useCallback((focusParent = false) => {
     cancelBranchClose();
+    cancelBranchSwitch();
     const id = startBranch?.id;
     if (focusParent && id) pendingParentFocus.current = id;
     setStartBranch(null);
-  }, [cancelBranchClose, startBranch?.id]);
+  }, [cancelBranchClose, cancelBranchSwitch, startBranch?.id]);
   const scheduleBranchClose = useCallback(() => {
     cancelBranchClose();
-    branchCloseTimer.current = window.setTimeout(() => closeStartBranch(), 180);
-  }, [cancelBranchClose, closeStartBranch]);
+    cancelBranchSwitch();
+    branchCloseTimer.current = window.setTimeout(() => closeStartBranch(), 650);
+  }, [cancelBranchClose, cancelBranchSwitch, closeStartBranch]);
   const openStartBranch = useCallback((id: 'games' | 'accessories', button: HTMLButtonElement, focusFirst = false) => {
     cancelBranchClose();
+    cancelBranchSwitch();
     const count = id === 'games' ? START_GAMES.length : APPS.filter(app => app.accessory).length;
     const itemHeight = window.matchMedia('(pointer:coarse)').matches ? 44 : 32;
     const menuHeight = menuRef.current?.clientHeight || 0;
     const top = Math.max(0, Math.min(button.offsetTop, menuHeight - count * itemHeight - 6));
     if (focusFirst) pendingBranchFocus.current = id;
     setStartBranch({ id, top });
-  }, [cancelBranchClose]);
+  }, [cancelBranchClose, cancelBranchSwitch]);
+  const hoverStartBranch = useCallback((id: 'games' | 'accessories', button: HTMLButtonElement) => {
+    cancelBranchClose();
+    cancelBranchSwitch();
+    // Crossing the neighbouring row on the way to a child is not a switch.
+    if (startBranch && startBranch.id !== id) {
+      branchSwitchTimer.current = window.setTimeout(() => openStartBranch(id, button), 500);
+    } else openStartBranch(id, button);
+  }, [cancelBranchClose, cancelBranchSwitch, openStartBranch, startBranch?.id]);
   useLayoutEffect(() => {
     const child = pendingBranchFocus.current;
     if (child && startBranch?.id === child) {
@@ -1559,9 +1575,9 @@ export default function InnerDesktop({ onClose, embedded = false, active = true,
     }
   }, [startBranch]);
   useEffect(() => {
-    if (!startOpen) { setStartBranch(null); cancelBranchClose(); }
-  }, [startOpen, cancelBranchClose]);
-  useEffect(() => () => cancelBranchClose(), [cancelBranchClose]);
+    if (!startOpen) { setStartBranch(null); cancelBranchClose(); cancelBranchSwitch(); }
+  }, [startOpen, cancelBranchClose, cancelBranchSwitch]);
+  useEffect(() => () => { cancelBranchClose(); cancelBranchSwitch(); }, [cancelBranchClose, cancelBranchSwitch]);
   useEffect(() => {
     try {
       if (localStorage.getItem('pg_focus_timer_v1')) {
@@ -2413,7 +2429,7 @@ export default function InnerDesktop({ onClose, embedded = false, active = true,
       {/* ───────────── Start menu ───────────── */}
       {startOpen && (
         <div id="desktop-start-menu" ref={menuRef} role="menu" aria-label="Start" className={`win95-startmenu${startBranch ? ' has-submenu' : ''}${compactStartMenu && startBranch ? ' compact-submenu' : ''}`} onKeyDown={menuKeyDown} onMouseDown={e => e.stopPropagation()} onPointerEnter={cancelBranchClose} onPointerLeave={scheduleBranchClose}
-          onPointerOver={e => { if (startBranch && !(e.target as HTMLElement).closest('[data-start-branch], #desktop-start-submenu')) closeStartBranch(); }}
+          onPointerOver={e => { if (startBranch && !(e.target as HTMLElement).closest('[data-start-branch], #desktop-start-submenu') && (e.target as HTMLElement).closest('[role="menuitem"], [role="menuitemcheckbox"]')) scheduleBranchClose(); }}
           onFocusCapture={e => { if (startBranch && !(e.target as HTMLElement).closest('[data-start-branch], #desktop-start-submenu')) closeStartBranch(); }}>
           <div className="win95-startmenu-spine" inert={compactStartMenu && !!startBranch}><span><b>prashant</b>garg.os</span></div>
           <div className="win95-startmenu-list" inert={compactStartMenu && !!startBranch}>
@@ -2437,8 +2453,8 @@ export default function InnerDesktop({ onClose, embedded = false, active = true,
                 className="win95-startmenu-item"
                 onMouseDown={() => playUiClick('down', 'menu')}
                 onMouseUp={() => playUiClick('up', 'menu')}
-                onMouseEnter={e => openStartBranch(branch, e.currentTarget)}
-                onMouseLeave={scheduleBranchClose}
+                onPointerEnter={e => { if (e.pointerType === 'mouse') hoverStartBranch(branch, e.currentTarget); }}
+                onPointerLeave={cancelBranchSwitch}
                 aria-controls="desktop-start-submenu"
                 onClick={e => openStartBranch(branch, e.currentTarget, true)}
               >
@@ -2522,7 +2538,7 @@ export default function InnerDesktop({ onClose, embedded = false, active = true,
             </button>
           </div>
           {startBranch && <div id="desktop-start-submenu" role="menu" aria-label={startBranch.id === 'games' ? 'Games' : 'Accessories'} className="win95-start-submenu"
-            style={{ top: compactStartMenu ? 0 : startBranch.top }} onPointerEnter={cancelBranchClose} onPointerLeave={scheduleBranchClose}>
+            style={{ top: compactStartMenu ? 0 : startBranch.top }} onPointerEnter={() => { cancelBranchClose(); cancelBranchSwitch(); }}>
             <button type="button" role="menuitem" data-submenu-back className="win95-startmenu-item" onClick={() => closeStartBranch(true)}><span className="win95-startmenu-icon" aria-hidden="true">◀</span>Start</button>
             {startBranch.id === 'games' ? START_GAMES.map(game => <button type="button" role="menuitem" data-submenu-item key={game.id}
               className="win95-startmenu-item" onClick={() => onStartGame(game.id)}>
