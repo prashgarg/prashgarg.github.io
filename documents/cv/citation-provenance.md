@@ -19,13 +19,15 @@ status shown on the site. Published records are the only records exported as
 | AI-Generated Production Networks: Measurement and Applications to Global Trade | Fetzer; Lambert; Feld; Garg. CEPR Discussion Paper No. 19708 (2024). | [CEPR](https://cepr.org/publications/dp19708) |
 | Health shocks reallocate the direction of medical research | Garg; Zhou; Fetzer. Research Square preprint DOI `10.21203/rs.3.rs-10794773/v1` (2026), revise and resubmit at *Nature Health*. | [Research Square](https://www.researchsquare.com/article/rs-10794773/v1) |
 | Simple Contagion Drives Population-Scale Platform Migration | Quelle; Denker; Garg; Bovet. arXiv preprint `2505.24801`, revised 2026; DOI `10.48550/arXiv.2505.24801`. | [arXiv](https://arxiv.org/abs/2505.24801) |
-| AI Health Advice Accuracy Varies Across Languages and Contexts | Garg; Fetzer. Research Square preprint DOI `10.21203/rs.3.rs-7460273/v1` (2025). | [Research Square](https://www.researchsquare.com/article/rs-7460273/v1) |
+| How much do language and context affect the accuracy of AI health advice? | Garg; Fetzer. *BMJ Health & Care Informatics* 33(1), e102056 (2026). Published 13 October 2026; DOI `10.1136/bmjhci-2026-102056`. Checked 13 October 2026. | [BMJ](https://informatics.bmj.com/content/33/1/e102056) |
 
-On 29 September 2026, the author confirmed that *AI Health Advice Accuracy
-Varies Across Languages and Contexts* is accepted at *BMJ Health & Care
-Informatics* but not yet published. It is displayed as forthcoming; its citation
-retains the existing preprint identifier and year and adds the forthcoming
-status rather than inventing a publication date or journal DOI.
+On 13 October 2026, the author supplied the published BMJ article, titled
+*How much do language and context affect the accuracy of AI health advice?*
+(previously *AI Health Advice Accuracy Varies Across Languages and Contexts*).
+The publisher's citation metadata confirms the author order, publication date,
+volume, issue, and DOI above. The website and CV now list it as a publication;
+the paper link and abstract use the version of record, and citation exports use
+the journal DOI rather than the Research Square preprint identifier.
 
 On 9 October 2026, the author confirmed that *Health shocks reallocate the
 direction of medical research* is revise and resubmit at *Nature Health*. The

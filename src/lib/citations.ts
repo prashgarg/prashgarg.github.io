@@ -112,11 +112,15 @@ export const verifiedCitations: Record<string, VerifiedCitation> = {
     sourceUrl: 'https://arxiv.org/abs/2505.24801',
   },
   'ai-health-advice': {
-    kind: 'preprint',
+    kind: 'article',
     authors: ['Garg, Prashant', 'Fetzer, Thiemo'],
-    year: 2025,
-    doi: '10.21203/rs.3.rs-7460273/v1',
-    sourceUrl: 'https://www.researchsquare.com/article/rs-7460273/v1',
+    journal: 'BMJ Health & Care Informatics',
+    year: 2026,
+    volume: '33',
+    issue: '1',
+    articleNumber: 'e102056',
+    doi: '10.1136/bmjhci-2026-102056',
+    sourceUrl: 'https://informatics.bmj.com/content/33/1/e102056',
   },
 };
 

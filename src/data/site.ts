@@ -320,14 +320,15 @@ export const papers: Paper[] = [
     slug: 'ai-health-advice',
     // DRAFT plain-English summary (G31) — flagged for user review
     tldr: 'We tested seven leading AI models on thousands of vetted health statements in 21 languages. They are accurate on English-language textbook material but slip in many non-European languages and on contested topics. Thorough multilingual validation should come before anyone relies on AI for health advice at global scale.',
-    title: 'AI Health Advice Accuracy Varies Across Languages and Contexts',
-    status: 'accepted',
+    title: 'How much do language and context affect the accuracy of AI health advice?',
+    status: 'published',
     venue: 'BMJ Health & Care Informatics',
+    year: 2026,
     coauthors: ['Thiemo Fetzer'],
     blurb:
-      "Using basic health statements authorized by UK and EU registers and ~9,100 journalist-vetted public-health assertions on topics such as abortion, COVID-19 and politics from sources ranging from peer-reviewed journals and government advisories to social media and news across the political spectrum, we benchmark seven leading large language models in 21 languages. We find that, despite high accuracy on English-centric textbook claims, performance falls in multiple non-European languages and fluctuates by topic and source. This highlights the urgency of comprehensive multilingual, domain-aware validation before deploying AI in global health communication.",
+      "Objectives: Large language models (LLMs) are increasingly used for health advice, but evidence on how performance varies across languages, topics and sources remains limited. We assess linguistic and contextual variation in Artificial Intelligence (AI) health-claim verification. Methods: We evaluated seven widely accessible LLMs using UK and European Union (EU) health-claim registers and 9088 journalist-vetted PUBHEALTH claims. The register-language analysis used authorised entries translated into 21 languages; status-labelled UK/EU extensions added non-authorised entries for diagnostic checks. PUBHEALTH claims spanned COVID-19, abortion, politics and general health across government, media and other source domains, including nature.com. Models classified claims as supported or unsupported using modal responses across repeated runs. Results: Authorised-claim sensitivity was highest in English and closely related European languages and declined with syntactic distance from English. In status-labelled UK and EU register extensions, models recognised authorised claims but often overclassified non-authorised claims as supported. PUBHEALTH accuracy was lower and varied by topic and source; inaccuracy was highest for general-health claims and claims linked to nature.com. Discussion: High authorised-claim sensitivity for English register claims can hide lower sensitivity in other languages and weaker performance in other public-health contexts. Training-data exposure, editorial framing and topic-specific tuning are plausible contributors to these gaps. Conclusions: LLM performance in health-claim verification varies substantially by language, topic and source. English-language performance does not reliably generalise across contexts, underscoring the need for multilingual, domain-specific evaluation before public-health deployment.",
     links: [
-      { label: 'Preprint', url: 'https://www.researchsquare.com/article/rs-7460273/v1' },
+      { label: 'Paper (open access)', url: 'https://informatics.bmj.com/content/33/1/e102056' },
     ],
   },
   {
