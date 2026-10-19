@@ -450,6 +450,7 @@ export interface Talk {
 
 export const talks: Talk[] = [
   // 2027
+  { year: 2027, title: 'Title TBC', venue: 'Kyiv School of Economics', location: 'Virtual', date: '2 Feb 2027' },
   { year: 2027, title: 'Global Automation Atlas', venue: 'STEG Annual Conference & Theme Workshops 2027', location: 'Manchester', date: '6–9 Jan 2027', url: 'https://cepr.org/events/steg-annual-conference-theme-workshops-2027' },
   // 2026
   { year: 2026, title: 'Global Automation Atlas', venue: 'Inaugural IZA@LISER Conference in Labour Economics', location: 'Luxembourg', date: '10–11 Dec 2026', url: 'https://www.liser.lu/events/IZAatLISER2026' },
